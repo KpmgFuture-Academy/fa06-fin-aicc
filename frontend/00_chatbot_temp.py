@@ -2,9 +2,60 @@ import streamlit as st
 import requests
 import uuid
 import time
+import os
 
 # --- 백엔드 설정 ---
-BACKEND_URL = "http://127.0.0.1:8000" 
+BACKEND_URL = os.getenv("BACKEND_URL", "mock")  # 기본은 목 모드
+
+
+def _is_mock_mode():
+    return BACKEND_URL.lower() == "mock"
+
+
+def _mock_chat_response(payload):
+    user_message = payload.get("user_message", "")
+    return {
+        "ai_message": f"(Mock) '{user_message}' 문의를 확인했습니다.",
+        "source_documents": [
+            {"source": "FAQ.pdf", "page": 1, "score": 0.95},
+            {"source": "약관집.pdf", "page": 3, "score": 0.88},
+        ],
+    }
+
+
+def _mock_handover_response(_payload):
+    return {
+        "status": "success",
+        "analysis_result": {
+            "customer_sentiment": "POSITIVE",
+            "summary": "상담원 연결 요청 이전에 모의 응답으로 진행되었습니다.",
+            "extracted_keywords": ["모의", "상담원 연결", "테스트"],
+            "kms_recommendations": [
+                {
+                    "title": "Mock 상품 안내서",
+                    "url": "http://example.com/mock-guide",
+                    "relevance_score": 0.91,
+                }
+            ],
+        },
+    }
+
+
+def call_backend(path: str, payload: dict):
+    if _is_mock_mode():
+        if path == "/api/v1/chat/message":
+            return _mock_chat_response(payload)
+        if path == "/api/v1/handover/analyze":
+            return _mock_handover_response(payload)
+        raise ValueError(f"Mock mode does not support path: {path}")
+
+    response = requests.post(
+        f"{BACKEND_URL}{path}",
+        json=payload,
+        timeout=10,
+    )
+    response.raise_for_status()
+    return response.json()
 
 # --- 페이지 설정 ---
 st.set_page_config(
@@ -44,13 +95,10 @@ if prompt := st.chat_input("문의 내용을 입력해 주세요."):
     with st.chat_message("assistant"):
         with st.spinner("AI 챗봇이 답변을 생성하는 중..."):
             try:
-                response = requests.post(
-                    f"{BACKEND_URL}/api/v1/chat/message",
-                    json={"session_id": st.session_state.session_id, "user_message": prompt}
+                api_response = call_backend(
+                    "/api/v1/chat/message",
+                    {"session_id": st.session_state.session_id, "user_message": prompt},
                 )
-                response.raise_for_status() # 오류 발생 시 예외 처리
-                
-                api_response = response.json()
                 ai_message = api_response.get("ai_message", "죄송합니다. 답변을 생성하지 못했습니다.")
                 source_documents = api_response.get("source_documents", [])
                 
@@ -82,13 +130,10 @@ if st.button("전문 상담원 연결 요청"):
     with st.spinner("대화 내용을 분석하여 상담원에게 전달하는 중입니다..."):
         try:
             # 1. 백엔드에 분석 요청
-            response = requests.post(
-                f"{BACKEND_URL}/api/v1/handover/analyze",
-                json={"session_id": st.session_state.session_id, "trigger_reason": "USER_REQUEST"}
+            analysis_data = call_backend(
+                "/api/v1/handover/analyze",
+                {"session_id": st.session_state.session_id, "trigger_reason": "USER_REQUEST"},
             )
-            response.raise_for_status()
-            
-            analysis_data = response.json()
             
             # 2. 분석 결과를 세션 상태에 저장 (다음 페이지에서 사용)
             st.session_state.analysis_result = analysis_data.get("analysis_result")
@@ -111,5 +156,4 @@ if st.button("전문 상담원 연결 요청"):
 if "analysis_result" in st.session_state:
     st.info("상담원 연결이 요청되었습니다. 아래 버튼을 눌러 상담원 화면으로 이동하세요.")
     if st.button("상담원 화면으로 이동"):
-        # st.switch_page("pages/01_consultation_session.py") # 파일 경로 확인 필요
-        st.warning("페이지 이동 기능은 앱 구조에 맞게 설정해야 합니다.")
+        st.switch_page("pages/01_consultation_session.py")
