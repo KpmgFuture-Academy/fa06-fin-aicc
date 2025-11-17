@@ -1,3 +1,7 @@
+# 공통 용어 사전
+# 고객 의도가 '단순 질문'인지 '화난 민원'인지 '상담원 연결'인지 정해둔 단어장
+# 오타 방지용
+
 from enum import Enum
 
 class IntentType(str, Enum):   # 챗봇 의도 타입

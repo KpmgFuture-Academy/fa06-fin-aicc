@@ -1,3 +1,5 @@
+# 채팅 담당 직원 - 진짜 뇌(Langgraph)를 추후 연결해야 함
+
 from fastapi import APIRouter
 from app.schemas.chat import ChatRequest, ChatResponse, SourceDocument
 from app.schemas.common import IntentType, ActionType

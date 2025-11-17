@@ -1,3 +1,4 @@
+# 상담원 이관 담당 직원 - 상담원에게 요약 리포트 전달하는 역할
 from fastapi import APIRouter
 import asyncio
 from app.schemas.handover import HandoverRequest, HandoverResponse, AnalysisResult, KMSRecommendation

@@ -1,3 +1,5 @@
+# 상담원 이관 시 챗봇의 상세 리포트 양식
+
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Optional
 from app.schemas.common import SentimentType
