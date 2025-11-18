@@ -4,11 +4,11 @@
 1. 고객 채팅 Input → intent_classification
 2. intent_classification → decision_agent
 3. decision_agent 분기:
-   - 상담사 연결 필요 → human_transfer → END
-   - 챗봇으로 처리 가능 → rag_search → answer_agent → chat_db_storage
-4. chat_db_storage 분기:
-   - 이번 턴이 상담 종료가 아님 → 다음 채팅 대기
-   - 이번 턴이 상담 종료임 → summary_agent → END (상담원 대시보드)
+   - 상담사 연결 필요 → summary_agent → human_transfer → END
+   - 챗봇으로 처리 가능 → rag_search → answer_agent → chat_db_storage → END
+   
+한 사용자(세션)에 대해 여러 턴의 대화가 가능하며, 상담사 이관이 결정된 시점에만
+전체 대화를 요약하여 대시보드에 표시합니다.
 """
 
 from __future__ import annotations
@@ -34,25 +34,13 @@ from ai_engine.graph.state import GraphState
 def _route_after_decision(state: GraphState) -> str:
     """판단 에이전트 이후 분기.
 
-    requires_consultant가 True면 human_transfer로,
+    requires_consultant가 True면 summary_agent로 (요약 생성 후 상담사 연결),
     False면 rag_search 경로로 이동.
     """
     requires_consultant = state.get("requires_consultant", False)
     if requires_consultant:
-        return "human_transfer"
+        return "summary_agent"
     return "rag_search"
-
-
-def _route_after_storage(state: GraphState) -> str:
-    """DB 저장 이후 분기.
-
-    is_session_end가 True면 summary_agent로,
-    False면 여기서 턴 종료(END).
-    """
-    is_session_end = state.get("is_session_end", False)
-    if is_session_end:
-        return "end_session"
-    return "continue_chat"
 
 
 def build_workflow() -> Any:
@@ -89,7 +77,7 @@ def build_workflow() -> Any:
         "decision_agent",
         _route_after_decision,
         {
-            "human_transfer": "human_transfer",
+            "summary_agent": "summary_agent",
             "rag_search": "rag_search",
         },
     )
@@ -97,21 +85,10 @@ def build_workflow() -> Any:
     # 챗봇 처리 경로
     graph.add_edge("rag_search", "answer_agent")
     graph.add_edge("answer_agent", "chat_db_storage")
+    graph.add_edge("chat_db_storage", END)  # 챗봇 처리 후 종료 (다음 턴 대기)
 
-    # chat_db_storage 이후: 이번 턴이 마지막인지에 따라 분기
-    graph.add_conditional_edges(
-        "chat_db_storage",
-        _route_after_storage,
-        {
-            "continue_chat": END,          # 상담 계속: 여기서 턴 종료
-            "end_session": "summary_agent" # 상담 종료: 요약/대시보드로
-        },
-    )
-
-    # summary_agent 이후 종료
-    graph.add_edge("summary_agent", END)
-
-    # 상담사 이관 경로 종료
-    graph.add_edge("human_transfer", END)
+    # 상담사 이관 경로: 요약 생성 후 상담사 연결
+    graph.add_edge("summary_agent", "human_transfer")
+    graph.add_edge("human_transfer", END)  # 상담사 연결 완료 후 종료
 
     return graph.compile()

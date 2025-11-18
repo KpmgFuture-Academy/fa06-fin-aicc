@@ -1,6 +1,3 @@
-# ai_engine/graph/state.py
-# 세션 정보, 사용자 메시지, 의도, 검색 결과, LLM 답변 등 상태 관리
-
 """Langgraph 상태 정의
 FastAPI 'app/schemas'에서 선언한 데이터 계약을 그대로 충족할 수 있도록
 세션/의도/답변/근거 문서 등의 필드를 한 군데에서 관리한다.
@@ -9,14 +6,15 @@ FastAPI 'app/schemas'에서 선언한 데이터 계약을 그대로 충족할 �
 1. 고객 채팅 Input → intent_classification
 2. intent_classification → decision_agent
 3. decision_agent 분기:
-   1) 상담사 연결 필요 → consultant_transfer
-   2) 챗봇으로 처리 가능 → rag_search → answer_generation → chat_db_storage 
-     → summary_agent → kms_document_search_agent → 상담원 대시보드
+   1) 상담사 연결 필요 → summary_agent → human_transfer → END (대시보드)
+   2) 챗봇으로 처리 가능 → rag_search → answer_agent → chat_db_storage → END
 
 피드백 루프:
-- 상담 DB 저장 후 새로운 고객 채팅이 들어오면 다시 intent_classification부터 시작
+- 각 턴마다 워크플로우가 실행되고 END로 종료됨
+- 새로운 고객 채팅이 들어오면 API에서 이전 conversation_history를 포함하여
+  다시 intent_classification부터 워크플로우를 실행
 - conversation_history에 이전 대화를 누적하여 맥락 유지
-- 각 턴마다 conversation_turn을 증가시켜 대화 진행 상황 추적
+- 상담사 이관이 결정된 시점에만 summary_agent가 실행되어 전체 대화 요약 생성
 """
 
 from typing import TypedDict, List, Optional, Dict, Any
@@ -68,14 +66,14 @@ class GraphState(TypedDict, total=False):
     rag_best_score: Optional[float]  # 최고 유사도 점수
     rag_low_confidence: bool  # RAG 신뢰도 낮음 플래그
     
-    # ========== 답변 생성 에이전트 노드 (answer_generation) ==========
+    # ========== 답변 생성 에이전트 노드 (answer_agent) ==========
     ai_message: str          # LLM이 생성한 답변
     source_documents: List[SourceDocument]  # SourceDocument 형태로 변환된 문서들
     
-    # ========== 상담 DB 저장 노드 (consultation_db_storage) ==========
+    # ========== 상담 DB 저장 노드 (chat_db_storage) ==========
     # DB 저장은 별도 처리, 상태는 그대로 유지
     db_stored: bool  # DB 저장 완료 여부
-    is_session_end: bool  # 세션 종료 여부 (summary_agent 실행 여부 결정)
+    is_session_end: bool  # 세션 종료 여부 (현재는 사용되지 않음, 향후 확장용)
     
     # ========== 요약 에이전트 노드 (summary_agent) ==========
     conversation_history: List[ConversationMessage]  # 전체 대화 이력
@@ -86,7 +84,7 @@ class GraphState(TypedDict, total=False):
     # ========== KMS 문서 검색 에이전트 노드 (kms_document_search_agent) ==========
     kms_recommendations: List[KMSRecommendation]  # 추천 KMS 문서 리스트
     
-    # ========== 상담사 이관 노드 (consultant_transfer) ==========
+    # ========== 상담사 이관 노드 (human_transfer) ==========
     suggested_action: ActionType  # CONTINUE 또는 HANDOVER
     handover_analysis_result: Optional[Dict[str, Any]]  # HandoverResponse의 analysis_result
     
