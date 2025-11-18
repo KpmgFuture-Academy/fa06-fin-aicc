@@ -87,8 +87,9 @@ def build_workflow() -> Any:
     graph.add_edge("answer_agent", "chat_db_storage")
     graph.add_edge("chat_db_storage", END)  # 챗봇 처리 후 종료 (다음 턴 대기)
 
-    # 상담사 이관 경로: 요약 생성 후 상담사 연결
+    # 상담사 이관 경로: 요약 생성 후 상담사 연결, DB 저장 후 종료
     graph.add_edge("summary_agent", "human_transfer")
-    graph.add_edge("human_transfer", END)  # 상담사 연결 완료 후 종료
+    graph.add_edge("human_transfer", "chat_db_storage")  # 상담사 연결 경로에서도 DB 저장
+    graph.add_edge("chat_db_storage", END)  # 상담사 연결 완료 후 종료
 
     return graph.compile()

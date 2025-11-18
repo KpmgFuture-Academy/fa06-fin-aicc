@@ -1,34 +1,67 @@
-# 상담원 이관 담당 직원 - 상담원에게 요약 리포트 전달하는 역할
-from fastapi import APIRouter
-import asyncio
-from app.schemas.handover import HandoverRequest, HandoverResponse, AnalysisResult, KMSRecommendation
-from app.schemas.common import SentimentType
+# 상담원 이관 담당 직원 - LangGraph 워크플로우를 통해 요약 리포트 생성
 
+import logging
+from fastapi import APIRouter, HTTPException, status
+from app.schemas.handover import HandoverRequest, HandoverResponse
+from app.services.workflow_service import process_handover
+from app.services.session_manager import session_manager
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 @router.post("/analyze", response_model=HandoverResponse)
 async def analyze_handover(request: HandoverRequest):
-    # 분석하는 척 2초 딜레이
-    await asyncio.sleep(2)
-
-    # 프론트엔드 개발용 가짜 데이터 반환
-    return HandoverResponse(
-        status="success",
-        analysis_result=AnalysisResult(
-            customer_sentiment=SentimentType.NEGATIVE,
-            summary="고객은 주택담보대출 중도상환수수료 면제 조건을 문의했으나, 챗봇 답변이 불충분하여 상담을 요청함.",
-            extracted_keywords=["중도상환수수료", "면제 조건", "주택담보대출"],
-            kms_recommendations=[
-                KMSRecommendation(
-                    title="2025년 중도상환수수료 면제 규정",
-                    url="http://bank-kms.com/doc/12345",
-                    relevance_score=0.98
-                ),
-                KMSRecommendation(
-                    title="대출 상환 관련 FAQ",
-                    url="http://bank-kms.com/doc/67890",
-                    relevance_score=0.85
-                )
-            ]
-        )
-    )
+    """
+    상담원 이관 요청을 받아 LangGraph 워크플로우를 통해 요약 및 분석 결과를 반환
+    
+    - **session_id**: 세션 ID (필수)
+    - **trigger_reason**: 이관 사유 (필수)
+    
+    처리 흐름:
+    1. DB에서 세션의 전체 대화 이력 로드
+    2. summary_agent를 통해 요약 생성
+    3. 감정 분석 및 키워드 추출
+    4. KMS 문서 추천
+    5. HandoverResponse 반환
+    """
+    try:
+        # 입력 검증
+        if not request.session_id or not request.session_id.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="session_id는 필수입니다."
+            )
+        
+        if not request.trigger_reason or not request.trigger_reason.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="trigger_reason은 필수입니다."
+            )
+        
+        logger.info(f"상담원 이관 요청 수신 - 세션: {request.session_id}, 사유: {request.trigger_reason}")
+        
+        # 세션 존재 여부 확인
+        conversation_history = session_manager.get_conversation_history(request.session_id)
+        if not conversation_history:
+            logger.warning(f"대화 이력이 없는 세션 - 세션: {request.session_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="해당 세션의 대화 이력을 찾을 수 없습니다. 먼저 채팅을 시작해주세요."
+            )
+        
+        logger.info(f"대화 이력 로드 완료 - 세션: {request.session_id}, 메시지 수: {len(conversation_history)}")
+        
+        # 워크플로우 실행
+        response = await process_handover(request)
+        
+        logger.info(f"상담원 이관 처리 완료 - 세션: {request.session_id}, 상태: {response.status}")
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"상담원 이관 처리 중 오류 발생 - 세션: {request.session_id}, 오류: {str(e)}", exc_info=True)
+        # 에러 발생 시에도 응답 반환 (워크플로우 서비스에서 처리)
+        return await process_handover(request)
