@@ -54,7 +54,8 @@ class GraphState(TypedDict, total=False):
     previous_turn_state: Optional[Dict[str, Any]]  # 이전 턴의 주요 상태 정보 (선택적)
     
     # ========== 의도 분류 노드 (intent_classification) ==========
-    intent: IntentType        # KoBERT 모델이 분류한 의도
+    context_intent: str       # KoBERT 모델이 분류한 문맥 의도 (도메인 분류, 예: "대출", "예금", "대출 상환" 등)
+    intent: IntentType        # 상담사 연결 필요 여부 판단을 위한 의도 타입 (INFO_REQ, COMPLAINT, HUMAN_REQ)
     intent_confidence: float  # 의도 분류 신뢰도 (0.0 ~ 1.0)
     
     # ========== 판단 에이전트 노드 (decision_agent) ==========
