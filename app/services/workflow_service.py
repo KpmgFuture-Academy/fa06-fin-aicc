@@ -148,6 +148,10 @@ async def process_chat_message(request: ChatRequest) -> ChatResponse:
                 logger.error(f"판단 에이전트 노드 오류 - 세션: {request.session_id}, 오류: {metadata['decision_error']}")
             if "summary_error" in metadata:
                 logger.error(f"요약 에이전트 노드 오류 - 세션: {request.session_id}, 오류: {metadata['summary_error']}")
+            if "intent_error" in metadata:
+                logger.warning(f"의도 분류 Tool 오류 (키워드 기반 fallback 사용) - 세션: {request.session_id}, 오류: {metadata['intent_error']}")
+            if "rag_error" in metadata:
+                logger.warning(f"RAG 검색 Tool 오류 (빈 결과 반환) - 세션: {request.session_id}, 오류: {metadata['rag_error']}")
         
         # DB 저장 상태 확인
         db_stored = final_state.get("db_stored", False)

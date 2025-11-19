@@ -63,6 +63,28 @@ async def startup_event():
             logger.error("   .env 파일에 OPENAI_API_KEY=sk-... 를 추가해주세요.")
             logger.error("   프로젝트 루트 디렉토리에 .env 파일이 있는지 확인하세요.")
             logger.error("   환경 변수는 사용하지 않습니다. 반드시 .env 파일에 설정해야 합니다.")
+    
+    # 벡터 DB 초기화 확인
+    try:
+        from ai_engine.vector_store import get_vector_store
+        vector_store = get_vector_store()
+        logger.info(f"✅ 벡터 DB 초기화 완료 - 경로: {settings.vector_db_path}, 컬렉션: {settings.collection_name}")
+    except Exception as e:
+        logger.warning(f"⚠️ 벡터 DB 초기화 실패 (RAG 검색은 빈 결과 반환): {str(e)}")
+        logger.warning("   벡터 DB는 선택사항입니다. 문서가 없으면 RAG 검색 결과가 비어있을 수 있습니다.")
+    
+    # KoBERT 모델 확인
+    try:
+        from ai_engine.ingestion.bert_financial_intent_classifier.scripts.inference import IntentClassifier
+        classifier = IntentClassifier()
+        if classifier is not None:
+            logger.info("✅ KoBERT 의도 분류 모델 로드 완료")
+        else:
+            logger.warning("⚠️ KoBERT 모델을 찾을 수 없습니다. 키워드 기반 fallback을 사용합니다.")
+            logger.warning("   모델 다운로드: ai_engine/ingestion/bert_financial_intent_classifier/MODEL_DOWNLOAD.md 참조")
+    except Exception as e:
+        logger.warning(f"⚠️ KoBERT 모델 로드 실패 (키워드 기반 fallback 사용): {str(e)}")
+        logger.warning("   모델 다운로드: ai_engine/ingestion/bert_financial_intent_classifier/MODEL_DOWNLOAD.md 참조")
 
 
 @app.on_event("shutdown")
