@@ -1,4 +1,4 @@
-# ai_engine/graph/nodes/consultant_transfer.py
+# ai_engine/graph/nodes/human_transfer.py
 
 from ai_engine.graph.state import GraphState
 from app.schemas.common import ActionType
