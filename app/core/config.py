@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     use_lm_studio: bool = False  # True면 LM Studio 사용, False면 OpenAI 사용
     llm_timeout: int = 60  # LLM 호출 타임아웃 (초) - OpenAI는 빠르므로 60초로 설정
     
+    # 벡터 DB 설정 (ChromaDB)
+    vector_db_path: str = "./chroma_db"  # ChromaDB 저장 경로
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # 한국어 지원 임베딩 모델
+    collection_name: str = "financial_documents"  # ChromaDB 컬렉션 이름
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

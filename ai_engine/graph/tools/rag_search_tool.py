@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import logging
 from typing import List, Dict, Any
 from langchain.tools import tool
 from ai_engine.graph.state import RetrievedDocument
+from ai_engine.vector_store import search_documents
+
+# 로깅 설정
+logger = logging.getLogger(__name__)
+
+# 신뢰도 임계값 설정
+LOW_CONFIDENCE_THRESHOLD = 0.5  # 이 값보다 낮으면 신뢰도 낮음으로 판단
 
 
 @tool
@@ -30,13 +39,31 @@ def search_rag_documents(query: str, top_k: int = 5) -> str:
     Examples:
         search_rag_documents("대출 금리") -> "[{\"content\": \"...\", \"source\": \"상품설명서.pdf\", ...}]"
     """
-    # TODO: 벡터 DB 검색 구현
-    # TODO: retriever를 호출하여 실제 검색 수행
-    # TODO: RAG 검색 실패 시 예외 처리 및 fallback 전략 설정
-    # TODO: best score 계산 후 low confidence 플래그 설정
-    
-    # 임시로 빈 결과 반환 (JSON 형식)
-    return "[]"
+    try:
+        # 벡터 DB에서 문서 검색
+        results = search_documents(
+            query=query,
+            top_k=top_k,
+            score_threshold=0.0  # 최소 점수 임계값 (필요시 조정)
+        )
+        
+        # 검색 결과가 없는 경우
+        if not results:
+            logger.warning(f"RAG 검색 결과 없음: query='{query}'")
+            return "[]"
+        
+        # JSON 문자열로 변환
+        result_json = json.dumps(results, ensure_ascii=False, indent=2)
+        
+        logger.info(f"RAG 검색 완료: query='{query}', found={len(results)} documents")
+        return result_json
+        
+    except Exception as e:
+        # RAG 검색 실패 시 예외 처리 및 fallback
+        logger.error(f"RAG 검색 실패: query='{query}', error={str(e)}", exc_info=True)
+        
+        # 빈 결과 반환 (fallback)
+        return "[]"
 
 
 def parse_rag_result(result_json: str) -> List[RetrievedDocument]:
@@ -48,7 +75,6 @@ def parse_rag_result(result_json: str) -> List[RetrievedDocument]:
     Returns:
         RetrievedDocument 리스트
     """
-    import json
     try:
         data = json.loads(result_json)
         return [
@@ -60,8 +86,36 @@ def parse_rag_result(result_json: str) -> List[RetrievedDocument]:
             )
             for doc in data
         ]
-    except (json.JSONDecodeError, KeyError, TypeError):
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.error(f"RAG 결과 파싱 실패: {str(e)}", exc_info=True)
         return []
+
+
+def get_best_score(documents: List[RetrievedDocument]) -> float:
+    """검색된 문서들 중 최고 유사도 점수를 반환합니다.
+    
+    Args:
+        documents: RetrievedDocument 리스트
+        
+    Returns:
+        최고 유사도 점수 (문서가 없으면 0.0)
+    """
+    if not documents:
+        return 0.0
+    return max(doc["score"] for doc in documents)
+
+
+def is_low_confidence(documents: List[RetrievedDocument]) -> bool:
+    """검색 결과의 신뢰도가 낮은지 판단합니다.
+    
+    Args:
+        documents: RetrievedDocument 리스트
+        
+    Returns:
+        신뢰도가 낮으면 True, 그렇지 않으면 False
+    """
+    best_score = get_best_score(documents)
+    return best_score < LOW_CONFIDENCE_THRESHOLD
 
 
 # Tool 인스턴스 생성

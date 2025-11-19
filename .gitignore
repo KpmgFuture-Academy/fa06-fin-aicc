@@ -12,3 +12,6 @@ __pycache__/
 
 # 환경 변수 파일 (API 키 등 비밀번호가 들어가는 파일)
 .env
+
+# 모델 파일
+models/bert_intent_classifier/
