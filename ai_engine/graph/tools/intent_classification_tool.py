@@ -6,7 +6,7 @@ import logging
 from functools import lru_cache
 from typing import Optional
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 from ai_engine.ingestion.bert_financial_intent_classifier.scripts.inference import (
     IntentClassifier,
 )

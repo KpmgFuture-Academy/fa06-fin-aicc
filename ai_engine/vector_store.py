@@ -11,10 +11,10 @@ from typing import Optional, List, Dict, Any
 from uuid import uuid4
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from app.core.config import settings
 
 

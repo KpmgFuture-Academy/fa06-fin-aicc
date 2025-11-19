@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import List, Dict, Any
-from langchain.tools import tool
+from langchain_core.tools import tool
 from ai_engine.graph.state import RetrievedDocument
 from ai_engine.vector_store import search_documents
 
