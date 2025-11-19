@@ -29,7 +29,7 @@ from ai_engine.graph.nodes.decision_agent import decision_agent_node
 from ai_engine.graph.nodes.answer_agent import answer_agent_node
 from ai_engine.graph.nodes.chat_db_storage import chat_db_storage_node
 from ai_engine.graph.nodes.summary_agent import summary_agent_node
-from ai_engine.graph.nodes.consultant_transfer import consultant_transfer_node
+from ai_engine.graph.nodes.human_transfer import consultant_transfer_node
 from ai_engine.graph.state import GraphState
 
 
