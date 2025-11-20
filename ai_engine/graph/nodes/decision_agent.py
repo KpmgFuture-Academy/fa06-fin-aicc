@@ -50,6 +50,53 @@ def decision_agent_node(state: GraphState) -> GraphState:
     user_message = state["user_message"]
     
     try:
+        # 1단계: 직접적인 상담원 연결 요청 감지 (RAG 검색 전에 먼저 체크)
+        direct_handover_keywords = [
+            "상담원 연결", "상담사 연결", "상담원 연결해", "상담사 연결해",
+            "상담원 연결해줘", "상담사 연결해줘", "상담원 연결해주세요", "상담사 연결해주세요",
+            "상담원 연결요", "상담사 연결요", "상담원 연결 부탁", "상담사 연결 부탁",
+            "직원 연결", "직원 연결해", "직원 연결해줘", "직원 연결해주세요",
+            "상담원과 통화", "상담사와 통화", "직원과 통화", "상담원과 대화", "상담사와 대화",
+            "상담원 전화", "상담사 전화", "직원 전화", "상담원 부르", "상담사 부르",
+            "상담원 필요", "상담사 필요", "직원 필요", "상담원 원해", "상담사 원해",
+            "상담원으로", "상담사로", "직원으로", "상담원한테", "상담사한테"
+        ]
+        
+        # 키워드 매칭
+        is_direct_handover_request = any(
+            keyword in user_message for keyword in direct_handover_keywords
+        )
+        
+        # 패턴 매칭 (더 포괄적인 감지)
+        # "상담원/상담사/직원" + "연결/부르/필요/원해" 같은 패턴
+        import re
+        handover_patterns = [
+            r"상담원.*연결", r"상담사.*연결", r"직원.*연결",
+            r"상담원.*부르", r"상담사.*부르", r"직원.*부르",
+            r"상담원.*필요", r"상담사.*필요", r"직원.*필요",
+            r"상담원.*원해", r"상담사.*원해", r"직원.*원해",
+            r"연결.*상담원", r"연결.*상담사", r"연결.*직원",
+            r"부르.*상담원", r"부르.*상담사", r"부르.*직원"
+        ]
+        
+        is_pattern_match = any(
+            re.search(pattern, user_message, re.IGNORECASE) for pattern in handover_patterns
+        )
+        
+        is_direct_handover_request = is_direct_handover_request or is_pattern_match
+        
+        # 직접적인 상담원 연결 요청이면 RAG 검색 없이 바로 상담원 이관
+        if is_direct_handover_request:
+            state["context_intent"] = "상담원 연결 요청"
+            state["retrieved_documents"] = []
+            state["rag_best_score"] = None
+            state["rag_low_confidence"] = True
+            state["requires_consultant"] = True
+            state["handover_reason"] = "고객이 직접 상담원 연결을 요청함"
+            state["intent"] = IntentType.HUMAN_REQ
+            logger.info(f"직접 상담원 연결 요청 감지 - 상담원 이관: 세션={state.get('session_id', 'unknown')}, 메시지='{user_message}'")
+            return state
+        
         # Tool을 직접 호출 (LLM을 거치지 않고)
         context_intent = intent_classification_tool.invoke({"user_message": user_message})
     
@@ -61,7 +108,8 @@ def decision_agent_node(state: GraphState) -> GraphState:
         state["retrieved_documents"] = retrieved_docs
         if retrieved_docs:
             state["rag_best_score"] = max(doc["score"] for doc in retrieved_docs)
-            state["rag_low_confidence"] = state["rag_best_score"] < 0.7  # 임계값 설정
+            # 유사도 임계값을 낮춤 (0.7 → 0.3): 검색 결과가 있으면 일단 챗봇으로 처리 시도
+            state["rag_low_confidence"] = state["rag_best_score"] < 0.3
         else:
             state["rag_best_score"] = None
             state["rag_low_confidence"] = True
@@ -80,20 +128,25 @@ def decision_agent_node(state: GraphState) -> GraphState:
         # System 메시지로 역할 정의
         system_message = SystemMessage(content="""당신은 고객 질문을 분석하여 상담사 연결이 필요한지 판단하는 에이전트입니다.
 
-문맥 의도는 질문의 주제를 나타냅니다 (예: "대출", "예금", "대출 상환" 등).
+문맥 의도는 질문의 주제를 나타냅니다 (예: "대출", "예금", "카드론" 등).
 이를 기반으로 상담사 연결 필요 여부를 판단하세요.
 
 다음 기준에 따라 판단하세요:
 
-상담사 연결이 필요한 경우:
-- 문맥 의도가 "상담" 또는 고객이 상담사를 직접 요청한 경우
-- 고객 메시지에 불만이나 민원 표현이 있는 경우
-- RAG 검색 결과가 없거나 신뢰도가 낮은 경우 (유사도 < 0.7)
-- 복잡한 민원이나 계약 변경 요청인 경우 (예: "대출 상환" 같은 복잡한 절차)
+상담사 연결이 필요한 경우 (다음 조건을 모두 만족해야 함):
+- 고객이 상담사를 직접 요청한 경우 (예: "상담사 연결해줘", "직원과 통화하고 싶어요")
+- 고객 메시지에 명확한 불만이나 민원 표현이 있는 경우 (예: "불만", "민원", "화가 났어요")
+- RAG 검색 결과가 전혀 없는 경우 (검색된 문서가 0개)
+- 복잡한 계약 변경이나 대출 신청 같은 경우
 
-챗봇으로 처리 가능한 경우:
-- 단순 정보 문의이고 RAG 검색 결과가 충분한 경우
-- FAQ 형태의 단순한 질문인 경우
+챗봇으로 처리 가능한 경우 (다음 중 하나라도 해당하면):
+- 단순 정보 문의인 경우 (예: "카드론 한도가 얼마야?", "대출 금리는?", "예금 이자는?")
+- RAG 검색 결과가 있는 경우 (검색된 문서가 1개 이상이면 챗봇으로 처리)
+- FAQ 형태의 질문인 경우
+- 문맥 의도가 "카드론", "대출", "예금", "신용카드" 같은 금융 상품 관련 정보 문의인 경우
+
+중요: RAG 검색 결과가 있으면 (검색된 문서가 1개 이상) 반드시 챗봇으로 처리하세요.
+단순 정보 문의는 상담사 연결이 필요하지 않습니다.
 
 다음 형식으로만 답변해주세요:
 - "상담사 연결 필요: [이유] | IntentType: HUMAN_REQ" 또는 "상담사 연결 필요: [이유] | IntentType: COMPLAINT"
@@ -115,12 +168,51 @@ IntentType 설명:
 
 이를 바탕으로 상담사 연결 필요 여부를 판단해주세요.""")
         
-        # LLM 호출 (단순 판단만 수행)
-        response = llm.invoke([system_message, human_message])
-        final_response = response.content
+        # 개인화된 질문 감지 (유사도와 관계없이 상담원 이관 필요)
+        personalization_keywords = [
+            "내 경우", "나한테", "제 상황", "내 상황", "나에게", "제 경우",
+            "내 것", "나의", "제 것", "개인적으로", "저는", "저에게",
+            "내가", "제가", "나를", "저를", "내 정보", "제 정보",
+            "내 계좌", "제 계좌", "내 대출", "제 대출", "내 보험", "제 보험",
+            "나에게 해당", "저에게 해당", "내게 해당", "제게 해당",
+            "나한테 적용", "저한테 적용", "내게 적용", "제게 적용",
+            "내 거", "제 거", "나의 것", "저의 것"
+        ]
         
-        # 최종 판단: 상담사 연결 필요 여부 파싱
-        requires_consultant = "상담사 연결 필요" in final_response
+        is_personalized_query = any(
+            keyword in user_message for keyword in personalization_keywords
+        )
+        
+        # 유사도 임계값 설정 (이 값보다 낮으면 상담원 이관)
+        SIMILARITY_THRESHOLD = settings.similarity_threshold  # 설정에서 가져옴 (기본값: 0.5)
+        
+        # RAG 검색 결과와 유사도 점수 확인
+        if retrieved_docs and len(retrieved_docs) > 0:
+            best_score = state.get("rag_best_score", 0.0)
+            
+            # 개인화된 질문이면 유사도와 관계없이 상담원 이관
+            if is_personalized_query:
+                requires_consultant = True
+                final_response = f"상담사 연결 필요: 개인화된 질문으로 개인 정보 확인이 필요함 (유사도: {best_score:.4f}) | IntentType: HUMAN_REQ"
+                logger.warning(f"개인화된 질문 감지 - 상담원 이관: 세션={state.get('session_id', 'unknown')}, 검색 결과 수={len(retrieved_docs)}, 최고 유사도={best_score:.4f}")
+            # 유사도가 임계값 이상이면 챗봇으로 처리
+            elif best_score >= SIMILARITY_THRESHOLD:
+                requires_consultant = False
+                final_response = f"챗봇으로 처리 가능: RAG 검색 결과가 있고 유사도가 충분함 (유사도: {best_score:.4f}) | IntentType: INFO_REQ"
+                logger.info(f"RAG 검색 결과 있음 - 챗봇으로 처리: 세션={state.get('session_id', 'unknown')}, 검색 결과 수={len(retrieved_docs)}, 최고 유사도={best_score:.4f} (임계값: {SIMILARITY_THRESHOLD})")
+            else:
+                # 유사도가 낮으면 상담원 이관
+                requires_consultant = True
+                final_response = f"상담사 연결 필요: RAG 검색 결과는 있으나 유사도가 낮아 정확한 답변을 제공하기 어려움 (유사도: {best_score:.4f}, 임계값: {SIMILARITY_THRESHOLD}) | IntentType: HUMAN_REQ"
+                logger.warning(f"RAG 검색 결과 있으나 유사도 낮음 - 상담원 이관: 세션={state.get('session_id', 'unknown')}, 검색 결과 수={len(retrieved_docs)}, 최고 유사도={best_score:.4f} (임계값: {SIMILARITY_THRESHOLD})")
+        else:
+            # 검색 결과가 없으면 LLM으로 판단
+            response = llm.invoke([system_message, human_message])
+            final_response = response.content
+            
+            # 최종 판단: 상담사 연결 필요 여부 파싱
+            requires_consultant = "상담사 연결 필요" in final_response
+            logger.info(f"LLM 판단 결과: 세션={state.get('session_id', 'unknown')}, requires_consultant={requires_consultant}, 응답={final_response[:100]}")
         
         # IntentType 파싱 (LLM 응답에서 추출 시도)
         intent_type = None

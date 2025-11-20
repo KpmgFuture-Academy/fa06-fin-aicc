@@ -54,8 +54,36 @@ class Settings(BaseSettings):
     
     # 벡터 DB 설정 (ChromaDB)
     vector_db_path: str = "./chroma_db"  # ChromaDB 저장 경로
-    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # 한국어 지원 임베딩 모델
+    # 한국어 특화 임베딩 모델 (한국어 금융 문서에 최적화)
+    embedding_model: str = "jhgan/ko-sroberta-multitask"  # 한국어 특화 모델
+    # 다른 옵션: "BM-K/KoSimCSE-roberta-multitask" 또는 "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     collection_name: str = "financial_documents"  # ChromaDB 컬렉션 이름
+    similarity_threshold: float = 0.25  # RAG 검색 유사도 임계값 (0.0 ~ 1.0, 이 값 이상이어야 챗봇으로 처리)
+    enable_query_expansion: bool = True  # 쿼리 확장 활성화 (동의어, 관련어 추가)
+    
+    # Hybrid Search 설정 (벡터 검색 + BM25)
+    enable_hybrid_search: bool = True  # Hybrid Search 활성화 여부
+    # RRF (Reciprocal Rank Fusion) 사용 여부
+    use_rrf: bool = True  # True면 RRF 사용, False면 가중치 결합 사용
+    rrf_k: int = 60  # RRF 상수 k (일반적으로 60 사용, 낮을수록 순위 영향 큼)
+    # 가중치 결합 방식 (use_rrf=False일 때 사용)
+    vector_search_weight: float = 0.7  # 벡터 검색 가중치 (0.0 ~ 1.0)
+    bm25_search_weight: float = 0.3  # BM25 검색 가중치 (0.0 ~ 1.0, vector_weight + bm25_weight = 1.0 권장)
+    # BM25 한국어 토크나이저
+    # None: 기본 정규표현식 토크나이저
+    # "kiwi": Kiwi 형태소 분석기 사용 (권장, 높은 정확도)
+    # "konlpy": KoNLPy 형태소 분석기 (향후 지원)
+    # "mecab": MeCab 형태소 분석기 (향후 지원)
+    bm25_korean_tokenizer: Optional[str] = "kiwi"  # 기본값을 Kiwi로 설정
+    
+    # Reranking 설정
+    enable_reranking: bool = True  # Reranking 활성화 여부
+    rerank_top_k: int = 20  # Reranking할 상위 문서 수 (검색 후 이 중에서 재정렬)
+    rerank_final_k: int = 5  # 최종 반환할 문서 수
+    # 한국어 최적화: 기본값을 한국어 reranker로 설정
+    reranker_model: str = "Dongjin-kr/ko-reranker"  # 한국어 특화 Cross-Encoder 모델
+    # 다른 옵션: "sigridjineth/ko-reranker-v1.1" (더 큰 모델, 더 정확하지만 느림)
+    # 영어 모델: "cross-encoder/ms-marco-MiniLM-L-6-v2"
     
     class Config:
         env_file = ".env"
