@@ -3,22 +3,32 @@ FastAPI 'app/schemas'에서 선언한 데이터 계약을 그대로 충족할 �
 세션/의도/답변/근거 문서 등의 필드를 한 군데에서 관리한다.
 
 플로우차트 기반 노드 흐름:
-1. 고객 채팅 Input → intent_classification
-2. intent_classification → decision_agent
-3. decision_agent 분기:
-   1) 상담사 연결 필요 → summary_agent → human_transfer → END (대시보드)
-   2) 챗봇으로 처리 가능 → rag_search → answer_agent → chat_db_storage → END
+1. 고객 채팅 Input → triage_agent
+   (triage_agent 내부에서 intent_classification_tool과 rag_search_tool 사용)
+2. triage_agent 분기 (triage_decision 기반):
+   - AUTO_HANDLE_OK → answer_agent (답변 생성) → chat_db_storage → END
+   - NEED_MORE_INFO → answer_agent (질문 생성) → chat_db_storage → END
+   - HUMAN_REQUIRED → answer_agent (상담사 연결 안내) → chat_db_storage → END
+
+정보 수집 단계:
+- HUMAN_REQUIRED + 긍정 응답 → is_collecting_info=True 설정
+- 정보 수집 중 (is_collecting_info=True):
+  - triage_agent에서 Tool 사용 건너뛰고 NEED_MORE_INFO 반환
+  - answer_agent에서 정보 수집 질문 생성 (info_collection_count 증가)
+  - 1~5번째 질문: chat_db_storage → END
+  - 6번째 턴: 고정 메시지 출력 후 summary_agent → human_transfer → chat_db_storage → END
+- 상태 복원: conversation_history를 분석하여 정보 수집 상태 복원
 
 피드백 루프:
 - 각 턴마다 워크플로우가 실행되고 END로 종료됨
 - 새로운 고객 채팅이 들어오면 API에서 이전 conversation_history를 포함하여
-  다시 intent_classification부터 워크플로우를 실행
+  다시 triage_agent부터 워크플로우를 실행
 - conversation_history에 이전 대화를 누적하여 맥락 유지
-- 상담사 이관이 결정된 시점에만 summary_agent가 실행되어 전체 대화 요약 생성
+- 모든 케이스가 answer_agent를 거치며, answer_agent 내부에서 triage_decision에 따라 처리
 """
 
 from typing import TypedDict, List, Optional, Dict, Any
-from app.schemas.common import IntentType, ActionType, SentimentType
+from app.schemas.common import IntentType, ActionType, SentimentType, TriageDecisionType
 from app.schemas.chat import SourceDocument
 from app.schemas.handover import KMSRecommendation
 
@@ -58,7 +68,8 @@ class GraphState(TypedDict, total=False):
     intent: IntentType        # 상담사 연결 필요 여부 판단을 위한 의도 타입 (INFO_REQ, COMPLAINT, HUMAN_REQ)
     intent_confidence: float  # 의도 분류 신뢰도 (0.0 ~ 1.0)
     
-    # ========== 판단 에이전트 노드 (decision_agent) ==========
+    # ========== 판단 에이전트 노드 (triage_agent) ==========
+    triage_decision: Optional[TriageDecisionType]  # Triage 의사결정 결과 (AUTO_HANDLE_OK, NEED_MORE_INFO, HUMAN_REQUIRED)
     requires_consultant: bool  # 상담사 연결 필요 여부
     handover_reason: Optional[str]  # 이관 사유
     
@@ -70,6 +81,10 @@ class GraphState(TypedDict, total=False):
     # ========== 답변 생성 에이전트 노드 (answer_agent) ==========
     ai_message: str          # LLM이 생성한 답변
     source_documents: List[SourceDocument]  # SourceDocument 형태로 변환된 문서들
+    
+    # ========== 정보 수집 단계 관련 ==========
+    is_collecting_info: bool  # 정보 수집 단계 여부 (False: 일반 대화, True: 정보 수집 중)
+    info_collection_count: int  # 정보 수집 질문 횟수 (0~6, 6회 도달 시 summary_agent로 이동)
     
     # ========== 상담 DB 저장 노드 (chat_db_storage) ==========
     # DB 저장은 별도 처리, 상태는 그대로 유지

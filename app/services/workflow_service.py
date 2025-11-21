@@ -9,7 +9,7 @@ from ai_engine.graph.workflow import build_workflow
 from ai_engine.graph.state import GraphState, ConversationMessage
 from app.schemas.chat import ChatRequest, ChatResponse, SourceDocument
 from app.schemas.handover import HandoverRequest, HandoverResponse, AnalysisResult
-from app.schemas.common import IntentType, ActionType, SentimentType
+from app.schemas.common import IntentType, ActionType, SentimentType, TriageDecisionType
 from app.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,46 @@ def get_workflow():
     return _workflow
 
 
+def _restore_info_collection_state(conversation_history: list[ConversationMessage]) -> tuple[bool, int]:
+    """conversation_history를 분석하여 정보 수집 상태 복원
+    
+    Returns:
+        tuple[bool, int]: (is_collecting_info, info_collection_count)
+    """
+    if not conversation_history:
+        return False, 0
+    
+    is_collecting = False
+    count = 0
+    found_start_message = False
+    
+    # 최근 메시지부터 역순으로 확인
+    for msg in reversed(conversation_history):
+        if msg.get("role") == "assistant":
+            message = msg.get("message", "")
+            
+            # 정보 수집 완료 메시지 확인 ("상담사 연결 예정입니다")
+            if "상담사 연결 예정입니다" in message:
+                # 정보 수집이 완료되었으므로 상태 리셋
+                return False, 0
+            
+            # 정보 수집 시작 메시지 확인
+            if "추가적인 질문을 드리겠습니다" in message:
+                is_collecting = True
+                found_start_message = True
+                # 이 메시지 이후의 질문들을 카운트해야 하므로 continue
+                continue
+            
+            # 정보 수집 시작 후 질문 카운트
+            if found_start_message and is_collecting:
+                # 질문 패턴 확인 (?, "어떤", "알려주세요", "궁금", "필요" 등)
+                question_indicators = ["?", "어떤", "알려주세요", "알려주시", "궁금", "필요", "어떻게", "무엇", "어디"]
+                if any(indicator in message for indicator in question_indicators):
+                    count += 1
+    
+    return is_collecting, count
+
+
 def chat_request_to_state(request: ChatRequest) -> GraphState:
     """ChatRequest를 GraphState로 변환"""
     # 이전 대화 이력 로드
@@ -35,6 +75,9 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
     # 턴 수 계산
     conversation_turn = len([msg for msg in conversation_history if msg.get("role") == "user"])
     
+    # conversation_history를 분석하여 정보 수집 상태 복원
+    is_collecting_info, info_collection_count = _restore_info_collection_state(conversation_history)
+    
     state: GraphState = {
         "session_id": request.session_id,
         "user_message": request.user_message,
@@ -42,17 +85,36 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
         "conversation_turn": conversation_turn + 1,  # 현재 턴 포함
         "is_new_turn": True,
         "processing_start_time": datetime.now().isoformat(),
+        "is_collecting_info": is_collecting_info,  # conversation_history에서 복원
+        "info_collection_count": info_collection_count,  # conversation_history에서 복원
     }
     
     return state
 
 
 def state_to_chat_response(state: GraphState) -> ChatResponse:
-    """GraphState를 ChatResponse로 변환"""
+    """GraphState를 ChatResponse로 변환
+    
+    suggested_action 결정:
+    - state에 이미 suggested_action이 설정되어 있으면 우선 사용 (예: human_transfer 노드에서 설정)
+    - 그 외의 경우:
+      - triage_decision이 HUMAN_REQUIRED이거나 requires_consultant가 True면 HANDOVER
+      - 그 외의 경우 CONTINUE
+    """
     # suggested_action 결정
-    # requires_consultant가 True면 HANDOVER, 아니면 CONTINUE
-    requires_consultant = state.get("requires_consultant", False)
-    suggested_action = ActionType.HANDOVER if requires_consultant else ActionType.CONTINUE
+    # state에 이미 설정된 suggested_action이 있으면 우선 사용 (human_transfer 노드 등에서 설정)
+    suggested_action = state.get("suggested_action")
+    
+    if suggested_action is None:
+        # suggested_action이 설정되지 않은 경우에만 결정
+        triage_decision = state.get("triage_decision")
+        requires_consultant = state.get("requires_consultant", False)
+        
+        # triage_decision이 HUMAN_REQUIRED이거나 requires_consultant가 True면 HANDOVER
+        if triage_decision == TriageDecisionType.HUMAN_REQUIRED or requires_consultant:
+            suggested_action = ActionType.HANDOVER
+        else:
+            suggested_action = ActionType.CONTINUE
     
     # ai_message 설정
     ai_message = state.get("ai_message")
@@ -145,7 +207,7 @@ async def process_chat_message(request: ChatRequest) -> ChatResponse:
             if "answer_error" in metadata:
                 logger.error(f"답변 생성 노드 오류 - 세션: {request.session_id}, 오류: {metadata['answer_error']}")
             if "decision_error" in metadata:
-                logger.error(f"판단 에이전트 노드 오류 - 세션: {request.session_id}, 오류: {metadata['decision_error']}")
+                logger.error(f"Triage 에이전트 노드 오류 - 세션: {request.session_id}, 오류: {metadata['decision_error']}")
             if "summary_error" in metadata:
                 logger.error(f"요약 에이전트 노드 오류 - 세션: {request.session_id}, 오류: {metadata['summary_error']}")
             if "intent_error" in metadata:
@@ -213,16 +275,23 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
         logger.info(f"대화 이력 로드 완료 - 세션: {request.session_id}, 메시지 수: {len(conversation_history)}")
         
         # GraphState 생성 (상담원 이관 요청)
+        # 상담원 이관 요청은 직접 요청이므로 triage_agent를 거치지 않고 바로 처리
         initial_state: GraphState = {
             "session_id": request.session_id,
             "user_message": f"[상담원 이관 요청] {request.trigger_reason}",
             "conversation_history": conversation_history,
-            "requires_consultant": True,  # 강제로 상담원 연결 경로로
+            "triage_decision": TriageDecisionType.HUMAN_REQUIRED,  # 상담원 이관 요청
+            "requires_consultant": True,
             "handover_reason": request.trigger_reason,
+            "intent": IntentType.HUMAN_REQ,
             "processing_start_time": datetime.now().isoformat(),
+            "is_collecting_info": False,  # 상담원 이관 요청은 정보 수집과 별개
+            "info_collection_count": 0,  # 상담원 이관 요청은 정보 수집과 별개
         }
         
-        # 워크플로우 실행 (summary_agent → human_transfer 경로)
+        # 워크플로우 실행
+        # 현재는 모든 케이스가 answer_agent를 거치지만, 상담원 이관 요청의 경우
+        # summary_agent와 human_transfer가 필요한 경우를 위해 별도 처리 고려 가능
         workflow = get_workflow()
         final_state = await workflow.ainvoke(initial_state)
         

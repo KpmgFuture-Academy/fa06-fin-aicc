@@ -1,4 +1,4 @@
-# ai_engine/graph/nodes/consultation_db_storage.py
+# ai_engine/graph/nodes/chat_db_storage.py
 
 from __future__ import annotations
 from datetime import datetime
