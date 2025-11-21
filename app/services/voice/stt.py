@@ -8,6 +8,7 @@ OpenAI Whisper HTTP 엔드포인트에 대한 얇은 래퍼와 최소한의 추�
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import mimetypes
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable, Protocol
 
@@ -75,7 +76,8 @@ class OpenAIWhisperSTT:
         self,
         api_key: str,
         *,
-        model: str = "gpt-4o-mini-transcribe",
+        # Default to whisper-1 to get verbose_json (segments/timestamps) support.
+        model: str = "whisper-1",
         endpoint: str = OPENAI_STT_URL,
         timeout: float = 60.0,
     ) -> None:
@@ -97,9 +99,9 @@ class OpenAIWhisperSTT:
 
     def transcribe(self, audio: str | Path | bytes | BinaryIO, *, language: str | None = None) -> TranscriptionResult:
         audio_bytes = _read_audio_bytes(audio)
-        files = {
-            "file": ("audio.wav", audio_bytes, "application/octet-stream"),
-        }
+        name = Path(audio).name if isinstance(audio, (str, Path)) else "audio.bin"
+        mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        files = {"file": (name, audio_bytes, mime)}
         data: dict[str, Any] = {
             "model": self._model,
             "response_format": "verbose_json",
