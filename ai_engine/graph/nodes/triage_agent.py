@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from ai_engine.graph.state import GraphState
 from app.core.config import settings
-from ai_engine.graph.tools import intent_classification_tool, rag_search_tool
+from ai_engine.graph.tools import intent_classification_tool, rag_search_tool, chat_history_tool
 from ai_engine.graph.tools.rag_search_tool import parse_rag_result
 from app.schemas.common import IntentType, TriageDecisionType
 
@@ -115,9 +115,21 @@ def triage_agent_node(state: GraphState) -> GraphState:
         
         # Tool을 직접 호출 (LLM을 거치지 않고)
         context_intent = intent_classification_tool.invoke({"user_message": user_message})
-    
         rag_result_json = rag_search_tool.invoke({"query": user_message, "top_k": 5})
         retrieved_docs = parse_rag_result(rag_result_json)
+        
+        # 대화 이력 Tool 호출 (조건부: 대화 이력이 있을 때만)
+        conversation_history = state.get("conversation_history", [])
+        if conversation_history:
+            formatted_history = chat_history_tool.invoke({
+                "conversation_history": conversation_history,
+                "max_messages": 10,  # 최근 10개 메시지만 (토큰 제한 고려)
+                "include_timestamps": False  # 타임스탬프는 불필요
+            })
+            logger.info(f"대화 이력 로드 - 세션={state.get('session_id', 'unknown')}, 메시지 수={len(conversation_history)}")
+        else:
+            formatted_history = "대화 이력이 없습니다. (첫 대화입니다)"
+            logger.debug(f"대화 이력 없음 - 첫 대화: 세션={state.get('session_id', 'unknown')}")
         
         # 상태 업데이트
         state["context_intent"] = context_intent
@@ -146,11 +158,21 @@ def triage_agent_node(state: GraphState) -> GraphState:
         else:
             rag_info = "\n\n[검색된 문서] 없음 (관련 문서를 찾지 못했습니다)"
         
+        # 대화 이력 정보 구성
+        history_info = f"\n\n{formatted_history}"
+        
         # System 메시지로 역할 정의
         system_message = SystemMessage(content="""당신은 고객 질문을 분석하여 처리 방식을 결정하는 Triage 에이전트입니다.
 
 문맥 의도는 질문의 주제를 나타냅니다 (예: "대출", "예금", "카드론" 등).
 검색된 문서에는 출처, 페이지, 유사도 점수(0.0~1.0), 그리고 **전체 문서 내용**이 포함되어 있습니다.
+
+**대화 이력 활용:**
+- 대화 이력이 제공되면, 이전 대화 맥락을 참고하여 판단하세요
+- 이전에 이미 질문한 내용이 있으면 중복 질문을 피하세요
+- 대화 흐름을 파악하여 더 정확한 판단을 하세요
+- 정보 수집 단계가 진행 중이면 그 맥락을 고려하세요
+- 첫 대화인 경우 대화 이력이 없을 수 있습니다
 
 **판단 기준 (우선순위 순서대로 적용):**
 
@@ -200,7 +222,7 @@ def triage_agent_node(state: GraphState) -> GraphState:
 - "NEED_MORE_INFO"
 - "HUMAN_REQUIRED"
 
-다른 설명이나 추가 텍스트 없이 위 세 가지 중 하나만 답변하세요.
+다른 설명이나 추가 텍스트 없이 위 세 가지 중 하나만 답변하세요. 
 """)
         
         human_message = HumanMessage(content=f"""다음 고객 질문을 분석해주세요:
@@ -210,6 +232,7 @@ def triage_agent_node(state: GraphState) -> GraphState:
 
 {intent_info}
 {rag_info}
+{history_info}
 
 위 정보를 바탕으로 처리 방식을 결정해주세요. AUTO_HANDLE_OK, NEED_MORE_INFO, HUMAN_REQUIRED 중 하나만 답변하세요.""")
         
