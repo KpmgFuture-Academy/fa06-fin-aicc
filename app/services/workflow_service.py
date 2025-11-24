@@ -40,8 +40,8 @@ def _restore_info_collection_state(conversation_history: list[ConversationMessag
     count = 0
     found_start_message = False
     
-    # 최근 메시지부터 역순으로 확인
-    for msg in reversed(conversation_history):
+    # 시간순으로 확인 (정순)
+    for msg in conversation_history:
         if msg.get("role") == "assistant":
             message = msg.get("message", "")
             
@@ -58,11 +58,12 @@ def _restore_info_collection_state(conversation_history: list[ConversationMessag
                 continue
             
             # 정보 수집 시작 후 질문 카운트
+            # "추가적인 질문을 드리겠습니다" 이후의 assistant 메시지는 모두 정보 수집 질문
+            # 질문 패턴 체크 없이 카운트 (일반 NEED_MORE_INFO 질문과 구분하기 위해)
             if found_start_message and is_collecting:
-                # 질문 패턴 확인 (?, "어떤", "알려주세요", "궁금", "필요" 등)
-                question_indicators = ["?", "어떤", "알려주세요", "알려주시", "궁금", "필요", "어떻게", "무엇", "어디"]
-                if any(indicator in message for indicator in question_indicators):
-                    count += 1
+                # "상담사 연결 예정입니다" 메시지는 제외 (위에서 처리됨)
+                # 그 외의 assistant 메시지는 모두 정보 수집 질문으로 카운트
+                count += 1
     
     return is_collecting, count
 

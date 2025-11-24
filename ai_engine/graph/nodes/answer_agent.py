@@ -119,6 +119,8 @@ def answer_agent_node(state: GraphState) -> GraphState:
     triage_decision 값에 따라 다른 방식으로 처리:
     - AUTO_HANDLE_OK: RAG 문서 기반 답변 생성
     - NEED_MORE_INFO: 추가 정보를 위한 질문 생성
+      * 일반적인 추가 정보 요청: 질문을 더 구체화해서 답변하기 위함 (RAG 검색 결과가 낮을 때)
+      * 정보 수집 단계: 상담사 연결 전까지 고객 정보 수집용 (is_collecting_info=True일 때)
     - HUMAN_REQUIRED: 상담사 연결 안내 메시지
     """
     user_message = state["user_message"]
@@ -135,8 +137,8 @@ def answer_agent_node(state: GraphState) -> GraphState:
         recent_messages = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
         if any("상담사 연결하시겠습니까" in msg.get("message", "") for msg in recent_messages if msg.get("role") == "assistant"):
             # 사용자의 긍정/부정 응답 키워드 확인
-            positive_keywords = ["예", "네", "연결", "좋아요", "좋아", "좋습니다", "연결해", "연결해주세요", "연결해줘", "연결요", "부탁", "부탁해", "부탁드려요"]
-            negative_keywords = ["아니오", "아니요", "싫어", "싫어요", "싫습니다", "안 해", "안해", "안 할래", "안 할게", "안 할게요", "괜찮아", "괜찮아요", "필요 없어", "필요없어", "필요 없어요", "필요없어요", "안 해요", "안해요", "거절", "거절해", "거절할게", "안 할게요"]
+            positive_keywords = ["예", "네", "응", "연결", "좋아요", "좋아", "좋습니다", "연결해", "연결해주세요", "연결해줘", "연결요", "부탁", "부탁해", "부탁드려요"]
+            negative_keywords = ["아니오", "아니요", "아니", "싫어", "싫어요", "싫습니다", "안 해", "안해", "안 할래", "안 할게", "안 할게요", "괜찮아", "괜찮아요", "필요 없어", "필요없어", "필요 없어요", "필요없어요", "안 해요", "안해요", "거절", "거절해", "거절할게", "안 할게요"]
             user_response = user_message.strip()
             is_handover_confirmation = any(keyword in user_response for keyword in positive_keywords)
             is_handover_rejection = any(keyword in user_response for keyword in negative_keywords)
@@ -154,7 +156,7 @@ def answer_agent_node(state: GraphState) -> GraphState:
             state["is_collecting_info"] = True
             state["info_collection_count"] = 0
             state["ai_message"] = "상담사 연결 전, 빠른 업무 처리를 도와드리기 위해 추가적인 질문을 드리겠습니다."
-            logger.info(f"상담사 연결 긍정 응답 감지 - 정보 수집 시작: 세션={state.get('session_id', 'unknown')}")
+            logger.info(f"상담사 연결 긍정 응답 감지 - 정보 수집 시작: 세션={state.get('session_id', 'unknown')}, info_collection_count={state['info_collection_count']}")
             state["source_documents"] = []
             return state
         elif is_handover_rejection:
@@ -178,6 +180,7 @@ def answer_agent_node(state: GraphState) -> GraphState:
             # 정보 수집 단계인지 확인
             is_collecting = state.get("is_collecting_info", False)
             current_count = state.get("info_collection_count", 0)
+            logger.info(f"정보 수집 단계 확인 - 세션: {state.get('session_id', 'unknown')}, is_collecting={is_collecting}, current_count={current_count}")
             
             # 정보 수집 6번째 턴 (count가 5에서 6으로 증가한 후)
             if is_collecting and current_count >= 6:
@@ -186,6 +189,28 @@ def answer_agent_node(state: GraphState) -> GraphState:
                 state["source_documents"] = []
                 logger.info(f"정보 수집 완료 - 상담사 연결 안내 메시지 출력: 세션={state.get('session_id', 'unknown')}, 횟수: {current_count}")
                 return state
+            
+            # 정보 수집 단계 첫 번째 질문 전 안내 메시지 출력
+            # conversation_history에 이미 해당 메시지가 있는지 확인 (중복 방지)
+            if is_collecting and current_count == 0:
+                # conversation_history의 마지막 assistant 메시지 확인
+                conversation_history = state.get("conversation_history", [])
+                last_assistant_msg = None
+                for msg in reversed(conversation_history):
+                    if msg.get("role") == "assistant":
+                        last_assistant_msg = msg.get("message", "")
+                        break
+                
+                # 이미 "추가적인 질문을 드리겠습니다" 메시지가 있으면 출력하지 않고 바로 질문 생성
+                if last_assistant_msg and "추가적인 질문을 드리겠습니다" in last_assistant_msg:
+                    logger.info(f"정보 수집 시작 메시지 이미 존재 - 바로 질문 생성: 세션={state.get('session_id', 'unknown')}")
+                    # continue to question generation below
+                else:
+                    # 메시지가 없으면 출력 (상태 복원 실패 등 예외 상황 대비)
+                    state["ai_message"] = "상담사 연결 전, 빠른 업무 처리를 도와드리기 위해 추가적인 질문을 드리겠습니다."
+                    logger.info(f"정보 수집 시작 안내 메시지 출력 - 세션: {state.get('session_id', 'unknown')}")
+                    state["source_documents"] = []
+                    return state
             
             # 1~5번째 질문 생성 (기존 로직)
             # 프롬프트 생성 (헬퍼 함수 사용)
