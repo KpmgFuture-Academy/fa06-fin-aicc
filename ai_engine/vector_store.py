@@ -216,6 +216,8 @@ def search_documents(
     import re
     logger = logging.getLogger(__name__)
     
+    logger.info(f"[RAG 검색 시작] query='{query}', top_k={top_k}, threshold={score_threshold}")
+    
     # 메타 쿼리 필터링: 상담원 연결 요청 등은 RAG 검색 대상이 아님
     # 이런 쿼리는 실제 금융 상품 정보를 요청하는 것이 아니라 시스템 기능을 요청하는 것
     meta_query_keywords = [
@@ -239,16 +241,22 @@ def search_documents(
     )
     
     if is_meta_query:
-        logger.info(f"메타 쿼리 감지 - RAG 검색 건너뜀: query='{query}'")
+        logger.info(f"[1단계: 메타 쿼리 필터링] 메타 쿼리 감지 - RAG 검색 건너뜀: query='{query}'")
         return []  # 빈 결과 반환 (상담원 연결 요청은 RAG 검색 대상이 아님)
     
-    # 쿼리 확장 (설정에서 활성화된 경우)
+    # 쿼리 확장 (BM25 검색에만 적용, 벡터 검색은 원본 쿼리 사용)
+    # 벡터 검색: 임베딩 모델이 이미 의미적 유사도를 잘 처리하므로 원본 쿼리 사용
+    # BM25 검색: 키워드 매칭이므로 동의어 추가가 도움이 될 수 있음
+    vector_search_query = query  # 벡터 검색은 항상 원본 쿼리 사용
+    
     if settings.enable_query_expansion:
         from ai_engine.utils.query_expansion import expand_query
-        expanded_query = expand_query(query)
-        search_query = expanded_query
+        bm25_search_query = expand_query(query)  # BM25 검색에만 확장 쿼리 사용
+        logger.info(f"[2단계: 쿼리 확장] 벡터 검색: 원본 쿼리 '{query}' 사용")
+        logger.info(f"[2단계: 쿼리 확장] BM25 검색: 확장 쿼리 '{bm25_search_query}' 사용")
     else:
-        search_query = query
+        bm25_search_query = query  # 확장 비활성화 시 원본 쿼리 사용
+        logger.info(f"[2단계: 쿼리 확장] 비활성화 - 원본 쿼리 사용: '{query}'")
     
     # Hybrid Search 사용 여부 확인
     if settings.enable_hybrid_search:
@@ -258,17 +266,15 @@ def search_documents(
             bm25_retriever = _get_bm25_retriever()
             
             if bm25_retriever is not None:
-                # 벡터 검색과 BM25 검색을 각각 수행
-                # RRF를 위해 충분히 많은 결과 가져오기
-                search_k = max(top_k * 2, settings.rerank_top_k if settings.enable_reranking else top_k * 2)
+                # 개선된 방식: 벡터 검색으로 상위 20개 추리고, 그에만 BM25 점수 보정
+                # 이렇게 하면 벡터 유사도 점수가 희석되지 않고, BM25가 보정 역할만 수행
+                vector_candidate_k = 20  # 벡터 검색으로 상위 20개 추림
                 
+                # 벡터 검색: 원본 쿼리 사용 (임베딩 모델이 의미적 유사도 처리)
                 vector_results_with_score = vector_store.similarity_search_with_score(
-                    search_query,
-                    k=search_k
+                    vector_search_query,  # 원본 쿼리
+                    k=vector_candidate_k  # 상위 20개만 추림
                 )
-                
-                # LangChain 최신 버전에서는 invoke 메서드 사용
-                bm25_docs = bm25_retriever.invoke(search_query)
                 
                 # 벡터 검색 결과 포맷팅
                 vector_results = []
@@ -282,100 +288,54 @@ def search_documents(
                         "score": similarity_score
                     })
                 
-                # 디버깅: 벡터 검색 결과 로깅
+                # 벡터 검색 결과 로깅
                 if vector_results:
-                    logger.debug(f"벡터 검색 결과: {len(vector_results)}개, 최고 점수: {max(doc['score'] for doc in vector_results):.4f}")
+                    max_vector_score = max(doc['score'] for doc in vector_results)
+                    logger.info(f"[3-1단계: 벡터 검색] 상위 {len(vector_results)}개 추림, 최고 점수: {max_vector_score:.4f}")
+                else:
+                    logger.warning(f"[3-1단계: 벡터 검색] 결과 없음")
+                    # 벡터 검색 결과가 없으면 BM25 검색도 의미 없음
+                    return []
                 
-                # BM25 검색 결과 포맷팅
-                bm25_results = []
-                for doc in bm25_docs:
-                    bm25_results.append({
-                        "content": doc.page_content,
-                        "source": doc.metadata.get("source", "unknown"),
-                        "page": doc.metadata.get("page", 0)
+                # 벡터 검색으로 추린 상위 20개 문서에 대해서만 BM25 점수 계산 (보정용)
+                # BM25는 독립 검색이 아니라 벡터 결과에 대한 보정만 수행
+                vector_doc_list = [Document(page_content=doc["content"], metadata={"source": doc["source"], "page": doc["page"]}) 
+                                  for doc in vector_results]
+                bm25_scores_dict = _get_bm25_scores(bm25_search_query, vector_doc_list)  # 확장 쿼리로 점수 계산
+                
+                logger.info(f"[3-2단계: BM25 보정] 벡터 상위 {len(vector_results)}개 문서에 대해 BM25 점수 계산 (보정용)")
+                
+                # 벡터 점수를 주 점수로 사용, BM25는 보정만 수행
+                # 벡터 유사도 점수가 희석되지 않도록 보정 방식 적용
+                logger.info(f"[4단계: Hybrid Search 결합] 벡터 주 점수 + BM25 보정 방식 사용")
+                
+                combined_scores = []
+                for vector_doc in vector_results:
+                    content = vector_doc["content"]
+                    vector_score = vector_doc["score"]
+                    
+                    # BM25 점수 찾기 (벡터 상위 20개에 대해서만 계산됨)
+                    bm25_score = bm25_scores_dict.get(content, 0.0)
+                    
+                    # 벡터 점수를 주 점수로 사용, BM25는 보정만
+                    if vector_score > 0:
+                        # BM25 점수가 높으면 약간 보정 (최대 5% 증가)
+                        # BM25 점수가 낮으면 보정 없음 (점수 하락 방지)
+                        bm25_boost = max(0, (bm25_score - 0.5) * 0.1)  # BM25 > 0.5일 때만 보정
+                        final_score = min(vector_score + bm25_boost, 1.0)
+                    else:
+                        # 벡터 점수가 없으면 BM25 점수 사용 (fallback)
+                        final_score = bm25_score
+                    
+                    combined_scores.append({
+                        "content": content,
+                        "source": vector_doc["source"],
+                        "page": vector_doc["page"],
+                        "score": round(final_score, 4)
                     })
                 
-                # 디버깅: BM25 검색 결과 로깅
-                if bm25_results:
-                    logger.debug(f"BM25 검색 결과: {len(bm25_results)}개")
-                
-                # RRF 또는 가중치 결합 방식 선택
-                if settings.use_rrf:
-                    # RRF 방식으로 결합 (순위 재정렬용)
-                    rrf_ranked = _rrf_combine_results(
-                        vector_results=vector_results,
-                        bm25_results=bm25_results,
-                        k=settings.rrf_k
-                    )
-                    
-                    # RRF는 순위만 제공, 실제 점수는 벡터/BM25 점수를 가중 평균으로 결합
-                    bm25_doc_list = [Document(page_content=doc["content"], metadata={"source": doc["source"], "page": doc["page"]}) 
-                                    for doc in bm25_results]
-                    bm25_scores_dict = _get_bm25_scores(search_query, bm25_doc_list)
-                    
-                    # RRF 순위에 따라 정렬하되, 점수는 원본 점수 사용
-                    combined_scores = []
-                    for rrf_item in rrf_ranked:
-                        content = rrf_item["content"]
-                        
-                        # 벡터 점수 찾기
-                        vector_doc = next((d for d in vector_results if d["content"] == content), None)
-                        vector_score = vector_doc["score"] if vector_doc else 0.0
-                        
-                        # BM25 점수 찾기
-                        bm25_score = bm25_scores_dict.get(content, 0.0)
-                        
-                        # 가중치 결합 (원본 점수 사용)
-                        combined_score = (
-                            vector_score * settings.vector_search_weight +
-                            bm25_score * settings.bm25_search_weight
-                        )
-                        
-                        combined_scores.append({
-                            "content": content,
-                            "source": rrf_item["source"],
-                            "page": rrf_item["page"],
-                            "score": round(combined_score, 4)
-                        })
-                    
-                    combined_results = combined_scores
-                else:
-                    # 가중치 결합 방식 (기존 로직)
-                    # 벡터 점수와 BM25 점수 계산
-                    bm25_doc_list = [Document(page_content=doc["content"], metadata={"source": doc["source"], "page": doc["page"]}) 
-                                    for doc in bm25_results]
-                    bm25_scores_dict = _get_bm25_scores(search_query, bm25_doc_list)
-                    
-                    # 모든 문서 수집 및 가중치 결합
-                    all_contents = set(doc["content"] for doc in vector_results) | set(doc["content"] for doc in bm25_results)
-                    combined_scores = []
-                    
-                    for content in all_contents:
-                        # 벡터 점수 찾기
-                        vector_doc = next((d for d in vector_results if d["content"] == content), None)
-                        vector_score = vector_doc["score"] if vector_doc else 0.0
-                        
-                        # BM25 점수 찾기
-                        bm25_score = bm25_scores_dict.get(content, 0.0)
-                        
-                        # 가중치 결합
-                        combined_score = (
-                            vector_score * settings.vector_search_weight +
-                            bm25_score * settings.bm25_search_weight
-                        )
-                        
-                        # 메타데이터 가져오기
-                        metadata = vector_doc or next((d for d in bm25_results if d["content"] == content), {})
-                        
-                        combined_scores.append({
-                            "content": content,
-                            "source": metadata.get("source", "unknown"),
-                            "page": metadata.get("page", 0),
-                            "score": round(combined_score, 4)
-                        })
-                    
-                    # 점수 순으로 정렬
-                    combined_results = sorted(combined_scores, key=lambda x: x["score"], reverse=True)
+                # 벡터 점수 순으로 정렬 (BM25 보정 후에도 벡터 점수가 주가 되므로)
+                combined_results = sorted(combined_scores, key=lambda x: x["score"], reverse=True)
                 
                 # score_threshold 적용 (threshold를 넘지 못하면 빈 결과 반환)
                 filtered_results = [
@@ -383,18 +343,27 @@ def search_documents(
                     if result["score"] >= score_threshold
                 ]
                 
-                # 디버깅: 결합 후 결과 로깅
+                # 결합 후 결과 로깅
                 if combined_results:
-                    logger.debug(f"결합 후 결과: {len(combined_results)}개, 최고 점수: {combined_results[0]['score']:.4f}, 필터링 후: {len(filtered_results)}개")
+                    max_score = combined_results[0]['score']
+                    logger.info(f"[4단계: Hybrid Search 결합 완료] 총 {len(combined_results)}개 문서, 최고 점수: {max_score:.4f}")
+                    # 상위 3개 점수 로깅
+                    top_3_scores = [f"{doc['score']:.4f}" for doc in combined_results[:3]]
+                    logger.info(f"[4단계: Hybrid Search] 상위 3개 점수: {', '.join(top_3_scores)}")
                 
                 # threshold를 넘지 못하면 빈 결과 반환 (상담원 이관)
                 if len(filtered_results) == 0:
-                    logger.info(f"Hybrid Search 결과가 threshold({score_threshold})를 넘지 못함 - 빈 결과 반환")
+                    max_score = combined_results[0]['score'] if combined_results else 0.0
+                    logger.warning(f"[5단계: Threshold 체크] 실패 - 최고 점수 {max_score:.4f} < threshold {score_threshold} → 빈 결과 반환 (상담원 이관)")
                     return []
+                else:
+                    max_score = filtered_results[0]['score']
+                    logger.info(f"[5단계: Threshold 체크] 통과 - 최고 점수 {max_score:.4f} >= threshold {score_threshold}, {len(filtered_results)}개 문서 통과")
                 
                 # threshold를 넘은 경우에만 Reranking 적용 (순위 재정렬만)
                 if settings.enable_reranking and len(filtered_results) > 0:
                     rerank_candidates = filtered_results[:settings.rerank_top_k]
+                    logger.info(f"[6단계: Reranking] 시작 - 상위 {len(rerank_candidates)}개 문서 재정렬 (모델: {settings.reranker_model})")
                     
                     # 원본 점수 저장 (Reranking 후에도 원본 점수 유지)
                     original_scores = {doc["content"]: doc["score"] for doc in rerank_candidates}
@@ -414,12 +383,16 @@ def search_documents(
                         result["score"] = round(original_score, 4)
                     
                     formatted_results = reranked_results
+                    logger.info(f"[6단계: Reranking] 완료 - 최종 {len(formatted_results)}개 문서 반환 (점수는 원본 유지)")
+                    # 최종 상위 3개 점수 로깅
+                    top_3_final = [f"{doc['score']:.4f}" for doc in formatted_results[:3]]
+                    logger.info(f"[6단계: Reranking] 최종 상위 3개 점수: {', '.join(top_3_final)}")
                 else:
                     # Reranking 비활성화 시 top_k만큼만 반환
                     formatted_results = filtered_results[:top_k]
+                    logger.info(f"[6단계: Reranking] 비활성화 - 상위 {len(formatted_results)}개 문서 반환")
                 
-                method = "RRF" if settings.use_rrf else "가중치 결합"
-                logger.info(f"Hybrid Search ({method}) 완료: query='{query}', found={len(formatted_results)} documents")
+                logger.info(f"[RAG 검색 완료] Hybrid Search (벡터 주 점수 + BM25 보정) + Reranking: query='{query}', 최종 결과 {len(formatted_results)}개 문서")
                 return formatted_results
             else:
                 logger.warning("BM25Retriever를 사용할 수 없어 벡터 검색만 사용합니다.")
@@ -427,12 +400,15 @@ def search_documents(
             logger.warning(f"Hybrid Search 실패, 벡터 검색으로 fallback: {e}", exc_info=True)
     
     # 벡터 검색만 사용 (Hybrid Search 비활성화 또는 실패 시)
+    logger.info(f"[Fallback: 벡터 검색만 사용] Hybrid Search 비활성화 또는 실패")
     vector_store = get_vector_store()
     
     # 유사도 검색 수행 (Reranking을 위해 더 많이 가져오기)
+    # 벡터 검색은 항상 원본 쿼리 사용 (임베딩 모델이 의미적 유사도 처리)
     search_k = settings.rerank_top_k if settings.enable_reranking else top_k
+    logger.info(f"[Fallback: 벡터 검색] 시작 - search_k={search_k}, 원본 쿼리 사용")
     results = vector_store.similarity_search_with_score(
-        search_query,
+        query,  # 원본 쿼리 사용
         k=search_k
     )
     
@@ -455,6 +431,10 @@ def search_documents(
             "score": round(similarity_score, 4)
         })
     
+    if formatted_results:
+        max_score = max(doc['score'] for doc in formatted_results)
+        logger.info(f"[Fallback: 벡터 검색] 결과: {len(formatted_results)}개, 최고 점수: {max_score:.4f}")
+    
     # score_threshold 적용 (threshold를 넘지 못하면 빈 결과 반환)
     filtered_results = [
         result for result in formatted_results
@@ -463,8 +443,12 @@ def search_documents(
     
     # threshold를 넘지 못하면 빈 결과 반환 (상담원 이관)
     if len(filtered_results) == 0:
-        logger.info(f"벡터 검색 결과가 threshold({score_threshold})를 넘지 못함 - 빈 결과 반환")
+        max_score = formatted_results[0]['score'] if formatted_results else 0.0
+        logger.warning(f"[Fallback: Threshold 체크] 실패 - 최고 점수 {max_score:.4f} < threshold {score_threshold} → 빈 결과 반환 (상담원 이관)")
         return []
+    else:
+        max_score = filtered_results[0]['score']
+        logger.info(f"[Fallback: Threshold 체크] 통과 - 최고 점수 {max_score:.4f} >= threshold {score_threshold}, {len(filtered_results)}개 문서 통과")
     
     # threshold를 넘은 경우에만 Reranking 적용 (순위 재정렬만)
     if settings.enable_reranking and len(filtered_results) > 0:
@@ -891,6 +875,9 @@ def _rerank_documents(
     Returns:
         재정렬된 문서 리스트
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not documents or not settings.enable_reranking:
         return documents[:top_k]
     
@@ -899,16 +886,24 @@ def _rerank_documents(
         
         # Cross-Encoder 모델 로드 (싱글톤)
         if not hasattr(_rerank_documents, '_model'):
+            logger.info(f"[Reranking 내부] 모델 로드 중: {settings.reranker_model}")
             _rerank_documents._model = CrossEncoder(settings.reranker_model)
+            logger.info(f"[Reranking 내부] 모델 로드 완료")
         
         model = _rerank_documents._model
         
         # 쿼리-문서 쌍 생성
         pairs = [[query, doc["content"]] for doc in documents]
+        logger.debug(f"[Reranking 내부] {len(pairs)}개 쿼리-문서 쌍 생성")
         
         # 점수 계산 (원본 점수)
         raw_scores = model.predict(pairs)
         scores_array = [float(score) for score in raw_scores]
+        
+        if scores_array:
+            min_score = min(scores_array)
+            max_score = max(scores_array)
+            logger.debug(f"[Reranking 내부] Cross-Encoder 점수 범위: {min_score:.4f} ~ {max_score:.4f}")
         
         # 점수와 문서 결합
         if return_raw_scores:
@@ -943,6 +938,11 @@ def _rerank_documents(
         # 점수 순으로 정렬 (rerank_score 또는 score 기준)
         sort_key = "rerank_score" if return_raw_scores else "score"
         scored_docs.sort(key=lambda x: x.get(sort_key, 0), reverse=True)
+        
+        # 정렬 후 상위 점수 로깅
+        if scored_docs:
+            top_scores = [f"{doc.get(sort_key, 0):.4f}" for doc in scored_docs[:3]]
+            logger.debug(f"[Reranking 내부] 정렬 후 상위 3개 점수: {', '.join(top_scores)}")
         
         # top_k만큼 반환
         return scored_docs[:top_k]

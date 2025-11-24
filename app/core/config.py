@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     embedding_model: str = "jhgan/ko-sroberta-multitask"  # 한국어 특화 모델
     # 다른 옵션: "BM-K/KoSimCSE-roberta-multitask" 또는 "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     collection_name: str = "financial_documents"  # ChromaDB 컬렉션 이름
-    similarity_threshold: float = 0.25  # RAG 검색 유사도 임계값 (0.0 ~ 1.0, 이 값 이상이어야 챗봇으로 처리)
+    similarity_threshold: float = 0.2  # RAG 검색 유사도 임계값 (0.0 ~ 1.0, 이 값 이상이어야 챗봇으로 처리)
     enable_query_expansion: bool = True  # 쿼리 확장 활성화 (동의어, 관련어 추가)
     
     # Hybrid Search 설정 (벡터 검색 + BM25)

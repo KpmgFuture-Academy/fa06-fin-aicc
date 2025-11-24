@@ -273,6 +273,6 @@ def triage_agent_node(state: GraphState) -> GraphState:
         if "metadata" not in state:
             state["metadata"] = {}
         state["metadata"]["decision_error"] = error_msg
-    0.2
+    
     return state
 
