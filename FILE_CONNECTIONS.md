@@ -59,12 +59,9 @@ ai_engine/graph/nodes/triage_agent.py
     │   │       │
     │   │       └─> ai_engine/graph/tools/intent_classification_tool.py
     │   │               │
-    │   │               ├─> KoBERT 모델
-    │   │               │   └─> ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
-    │   │               │       └─> models/bert_intent_classifier/ (모델 파일)
-    │   │               │
-    │   │               └─> Fallback: 키워드 기반
-    │   │                   └─> data/kb_finance_insurance_60items_v1.json
+    │   │               └─> Hana Card 모델
+    │   │                   └─> ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
+    │   │                       └─> models/hana_card_model/ (모델 파일)
     │   │
     │   ├─> rag_search_tool.invoke()
     │   │       │

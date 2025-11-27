@@ -1,12 +1,12 @@
 """
-BERT 의도 분류 추론
+Hana Card 의도 분류 추론
 학습된 모델로 실시간 예측
 
 사용법:
     # 기본 사용 (자동 경로 탐색)
     from scripts.inference import IntentClassifier
     classifier = IntentClassifier()
-    intent, confidence = classifier.predict_single("신용카드 발급하고 싶어요")
+    intent, confidence = classifier.predict_single("카드 한도 상향 신청하고 싶어요")
 
     # 커스텀 경로 지정
     classifier = IntentClassifier(model_path='/path/to/model')
@@ -20,7 +20,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 class IntentClassifier:
-    """BERT 기반 의도 분류기"""
+    """Hana Card 기반 의도 분류기 (Electra 모델)"""
 
     def __init__(self, model_path=None):
         """모델 초기화
@@ -41,10 +41,9 @@ class IntentClassifier:
                 f"\n{'='*80}\n"
                 f"[ERROR] 모델을 찾을 수 없습니다: {model_path}\n\n"
                 f"다음을 확인하세요:\n"
-                f"  1. 모델 다운로드: MODEL_DOWNLOAD.md 참조\n"
-                f"  2. 모델 위치: models/bert_intent_classifier/ 폴더에 배치\n"
-                f"  3. 현재 작업 디렉토리: {os.getcwd()}\n"
-                f"  4. 또는 IntentClassifier(model_path='경로')로 직접 지정\n"
+                f"  1. 모델 위치: models/hana_card_model/ 폴더에 배치\n"
+                f"  2. 현재 작업 디렉토리: {os.getcwd()}\n"
+                f"  3. 또는 IntentClassifier(model_path='경로')로 직접 지정\n"
                 f"{'='*80}\n"
             )
 
@@ -60,30 +59,50 @@ class IntentClassifier:
         self.model.to(self.device)
         self.model.eval()
 
-        # 라벨 매핑 로드
-        id2intent_path = os.path.join(model_path, 'id2intent.json')
-        with open(id2intent_path, 'r', encoding='utf-8') as f:
-            id2intent = json.load(f)
-            self.id2intent = {int(k): v for k, v in id2intent.items()}
+        # 라벨 매핑 로드 (hana_card_model은 label_mapping.json 사용)
+        label_mapping_path = os.path.join(model_path, 'label_mapping.json')
+        if os.path.exists(label_mapping_path):
+            with open(label_mapping_path, 'r', encoding='utf-8') as f:
+                label_mapping = json.load(f)
+                self.id2intent = {int(k): v for k, v in label_mapping['id2label'].items()}
+        else:
+            # fallback: config.json의 id2label 사용
+            config_path = os.path.join(model_path, 'config.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                # config.json의 id2label은 LABEL_0 형식이므로 실제 라벨 매핑은 label_mapping.json 필요
+                raise FileNotFoundError(
+                    f"label_mapping.json 파일을 찾을 수 없습니다: {label_mapping_path}"
+                )
 
         print(f"[OK] 모델 로드 완료 ({self.device})")
         print(f"[OK] 의도 종류: {len(self.id2intent):,}개\n")
 
     def _find_model_path(self):
         """모델 경로 자동 탐색"""
+        # 현재 스크립트 경로 기준으로 프로젝트 루트 찾기
+        current_file = os.path.abspath(__file__)
+        # ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
+        # -> fa06-fin-aicc/
+        script_dir = os.path.dirname(current_file)  # scripts/
+        ingestion_dir = os.path.dirname(script_dir)  # bert_financial_intent_classifier/
+        ingestion_parent = os.path.dirname(ingestion_dir)  # ingestion/
+        ai_engine_dir = os.path.dirname(ingestion_parent)  # ai_engine/
+        project_root = os.path.dirname(ai_engine_dir)  # fa06-fin-aicc/
+        
         # 탐색할 경로 후보들
         candidates = [
-            # 1. 현재 스크립트 위치 기준 (scripts/에서 실행)
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models/bert_intent_classifier'),
-
+            # 1. 프로젝트 루트 기준 (가장 가능성 높음)
+            os.path.join(project_root, 'models/hana_card_model'),
+            
             # 2. 현재 작업 디렉토리 기준
-            os.path.join(os.getcwd(), 'models/bert_intent_classifier'),
+            os.path.join(os.getcwd(), 'models/hana_card_model'),
 
             # 3. 상위 디렉토리 기준
-            os.path.join(os.getcwd(), '../models/bert_intent_classifier'),
+            os.path.join(os.getcwd(), '../models/hana_card_model'),
 
-            # 4. 프로젝트 루트로 추정되는 위치
-            os.path.join(os.path.dirname(os.getcwd()), 'models/bert_intent_classifier'),
+            # 4. 절대 경로로 시도
+            os.path.abspath('models/hana_card_model'),
         ]
 
         # 첫 번째로 존재하는 경로 반환
@@ -93,7 +112,7 @@ class IntentClassifier:
                 return abs_path
 
         # 못 찾으면 기본 경로 반환 (에러 메시지용)
-        return os.path.abspath('models/bert_intent_classifier')
+        return os.path.join(project_root, 'models/hana_card_model')
 
     def predict(self, text, top_k=1):
         """텍스트의 의도 예측 (Top-K)
@@ -152,7 +171,7 @@ if __name__ == "__main__":
     import argparse
 
     # 인자 파싱
-    parser = argparse.ArgumentParser(description='BERT 의도 분류 추론')
+    parser = argparse.ArgumentParser(description='Hana Card 의도 분류 추론')
     parser.add_argument('--model', type=str, default=None, help='모델 경로 (기본: 자동 탐색)')
     parser.add_argument('--text', type=str, default=None, help='분류할 텍스트 (기본: 대화형 모드)')
     parser.add_argument('--top-k', type=int, default=3, help='Top-K 결과 개수 (기본: 3)')
@@ -163,7 +182,7 @@ if __name__ == "__main__":
         classifier = IntentClassifier(model_path=args.model)
     except FileNotFoundError as e:
         print(e)
-        print("\n[도움말] 모델 다운로드 방법은 MODEL_DOWNLOAD.md를 참조하세요.")
+        print("\n[도움말] 모델은 models/hana_card_model/ 폴더에 위치해야 합니다.")
         sys.exit(1)
 
     # 단일 텍스트 모드
@@ -181,18 +200,18 @@ if __name__ == "__main__":
 
     # 대화형 모드
     print("=" * 80)
-    print("BERT 의도 분류 - 대화형 모드")
+    print("Hana Card 의도 분류 - 대화형 모드")
     print("=" * 80)
     print("종료: 'quit', 'exit', '종료' 입력")
     print("=" * 80)
 
     # 테스트 샘플
     test_texts = [
-        "신용카드를 만들고 싶어요",
-        "보험 청구는 어떻게 하나요?",
-        "계좌 잔고를 확인하고 싶습니다",
-        "대출 금리가 궁금합니다",
-        "비밀번호를 변경하고 싶어요",
+        "카드 한도 상향 신청하고 싶어요",
+        "결제일 변경하고 싶습니다",
+        "포인트를 확인하고 싶어요",
+        "카드 연회비가 궁금합니다",
+        "이용내역을 확인하고 싶습니다",
     ]
 
     print("\n[테스트 샘플]")

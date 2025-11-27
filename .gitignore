@@ -15,6 +15,7 @@ __pycache__/
 
 # 모델 파일
 models/bert_intent_classifier/
+models/hana_card_model/
 
 # 로컬 DB/벡터 저장소
 chroma_db/

@@ -260,14 +260,12 @@ frontend/
 ```
 ai_engine/graph/tools/intent_classification_tool.py
     │
-    ├─> KoBERT 모델 사용
-    │   └─> ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
-    │
-    └─> Fallback: 키워드 기반 분류
+    └─> Hana Card 모델 사용
+        └─> ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
 ```
 
 **연결 관계:**
-- `intent_classification_tool.py` → `models/bert_intent_classifier/` (모델 로드)
+- `intent_classification_tool.py` → `models/hana_card_model/` (모델 로드)
 - `intent_classification_tool.py` → `data/kb_finance_insurance_60items_v1.json` (키워드)
 
 ##### 5.2 RAG Search Tool
@@ -406,7 +404,7 @@ Frontend (React)
                     │                       │       ├─> Hybrid Search (BM25)
                     │                       │       └─> Reranking (Cross-Encoder)
                     │                       │
-                    │                       └─> Intent Classifier (KoBERT)
+                    │                       └─> Intent Classifier (Hana Card)
                     │
                     └─> Database Layer (SQLAlchemy)
                             │
@@ -440,7 +438,7 @@ intent_classification_tool
     ↓
 bert_intent_classifier/inference.py
     ↓
-KoBERT 모델 (models/bert_intent_classifier/)
+Hana Card 모델 (models/hana_card_model/)
     ↓
 의도 분류 결과 반환
 ```

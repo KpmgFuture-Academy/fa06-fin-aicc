@@ -32,15 +32,29 @@ except:
 
 def find_model_path():
     """모델 경로 자동 탐색"""
+    # 현재 스크립트 경로 기준으로 프로젝트 루트 찾기
+    current_file = os.path.abspath(__file__)
+    script_dir = os.path.dirname(current_file)  # scripts/
+    ingestion_dir = os.path.dirname(script_dir)  # bert_financial_intent_classifier/
+    ingestion_parent = os.path.dirname(ingestion_dir)  # ingestion/
+    ai_engine_dir = os.path.dirname(ingestion_parent)  # ai_engine/
+    project_root = os.path.dirname(ai_engine_dir)  # fa06-fin-aicc/
+    
     candidates = [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models/bert_intent_classifier'),
-        os.path.join(os.getcwd(), 'models/bert_intent_classifier'),
-        os.path.join(os.getcwd(), '../models/bert_intent_classifier'),
+        # 프로젝트 루트 기준
+        os.path.join(project_root, 'models/hana_card_model'),
+        # 현재 작업 디렉토리 기준
+        os.path.join(os.getcwd(), 'models/hana_card_model'),
+        os.path.join(os.getcwd(), '../models/hana_card_model'),
     ]
 
     for path in candidates:
-        if os.path.exists(path):
-            return os.path.abspath(path)
+        abs_path = os.path.abspath(path)
+        if os.path.exists(abs_path):
+            return abs_path
+    
+    # 못 찾으면 기본 경로 반환
+    return os.path.join(project_root, 'models/hana_card_model')
 
     return None
 

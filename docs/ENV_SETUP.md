@@ -58,13 +58,13 @@ COLLECTION_NAME=financial_documents
 
 ## 선택적 설정
 
-### KoBERT 모델 경로
+### Hana Card 모델 경로
 
-KoBERT 모델은 자동으로 다음 경로에서 탐색됩니다:
-- `models/bert_intent_classifier/`
+Hana Card 의도 분류 모델은 자동으로 다음 경로에서 탐색됩니다:
+- `models/hana_card_model/`
 - 프로젝트 루트 기준 상대 경로
 
-모델이 없으면 키워드 기반 fallback을 사용합니다.
+모델이 없으면 의도 분류가 실패하며 예외가 발생합니다.
 
 ## 전체 .env 파일 예시
 
