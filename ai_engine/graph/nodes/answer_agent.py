@@ -10,7 +10,6 @@ from ai_engine.graph.state import GraphState
 from app.schemas.chat import SourceDocument
 from app.core.config import settings
 from app.schemas.common import TriageDecisionType
-from ai_engine.prompts.templates import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -42,247 +41,131 @@ else:
     logger.info(f"✅ OpenAI API 사용 - .env 파일에서 API 키 로드: {settings.openai_api_key[:20]}... (길이: {len(settings.openai_api_key)} 문자)")
 
 
-# ============================================================================
-# 프롬프트 생성 헬퍼 함수들
-# ============================================================================
-
-def _create_question_generation_prompt(user_message: str, context_intent: str, retrieved_docs: list) -> tuple[SystemMessage, HumanMessage]:
-    """NEED_MORE_INFO 케이스: 추가 정보 요청 질문 생성 프롬프트"""
-    system_message = SystemMessage(content="""당신은 고객에게 추가 정보를 요청하는 챗봇 어시스턴트입니다.
-고객의 질문이 모호하거나 불완전한 경우, 답변을 위해 필요한 추가 정보를 정중하게 질문하세요.
-
-질문 생성 시 주의사항:
-- 한 번에 하나의 구체적인 질문만 하세요
-- 예의바르고 친절한 톤을 유지하세요
-- 고객이 쉽게 답변할 수 있는 질문으로 하세요
-- 불필요한 정보를 요청하지 마세요""")
+def _handle_error(error_msg: str, state: GraphState) -> None:
+    """공통 에러 처리"""
+    if "quota" in error_msg.lower() or "429" in error_msg:
+        state["ai_message"] = "죄송합니다. 현재 서비스 사용량이 초과되어 일시적으로 답변을 생성할 수 없습니다. 잠시 후 다시 시도해주세요."
+        logger.warning(f"API 할당량 초과 - 세션: {state.get('session_id', 'unknown')}")
+    elif "api_key" in error_msg.lower() or "401" in error_msg:
+        state["ai_message"] = "죄송합니다. API 설정 오류가 발생했습니다. 관리자에게 문의해주세요."
+        logger.error(f"API 키 오류 - 세션: {state.get('session_id', 'unknown')}")
+    elif "connection" in error_msg.lower() or "refused" in error_msg.lower():
+        state["ai_message"] = "죄송합니다. LM Studio 서버에 연결할 수 없습니다. LM Studio가 실행 중인지 확인해주세요."
+        logger.error(f"LM Studio 연결 오류 - 세션: {state.get('session_id', 'unknown')}, 오류: {error_msg}")
+    elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+        state["ai_message"] = "죄송합니다. 응답 생성에 시간이 오래 걸려 타임아웃이 발생했습니다. 더 간단한 질문으로 다시 시도해주세요."
+        logger.warning(f"답변 생성 타임아웃 - 세션: {state.get('session_id', 'unknown')}, 타임아웃: {settings.llm_timeout}초")
+    else:
+        state["ai_message"] = "죄송합니다. 답변 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        logger.error(f"답변 생성 기타 오류 - 세션: {state.get('session_id', 'unknown')}, 오류: {error_msg}")
     
-    # 검색된 문서가 있으면 참고하여 질문 생성
-    context = ""
-    if retrieved_docs:
-        context = "\n\n[참고 문서]\n" + "\n\n".join([
-            f"[문서 {i+1}] {doc['content'][:300]}..." 
-            for i, doc in enumerate(retrieved_docs[:2])
-        ])
-    
-    human_message = HumanMessage(content=f"""고객의 질문을 분석하여 추가 정보가 필요한 경우, 정중하게 질문을 생성해주세요.
+    if "metadata" not in state:
+        state["metadata"] = {}
+    state["metadata"]["answer_error"] = error_msg
 
-[고객 질문]
-{user_message}
-{context}
-
-[문맥 의도]
-{context_intent if context_intent else "알 수 없음"}
-
-위 정보를 바탕으로 답변을 위해 필요한 추가 정보를 정중하게 질문해주세요.""")
-    
-    return system_message, human_message
-
-
-def _create_answer_generation_prompt(user_message: str, context_intent: str, retrieved_docs: list) -> tuple[SystemMessage, HumanMessage]:
-    """AUTO_HANDLE_OK 케이스: RAG 문서 기반 답변 생성 프롬프트"""
-    system_message = SystemMessage(content=f"""{SYSTEM_PROMPT}
-
-당신은 고객 질문에 답변하는 챗봇 어시스턴트입니다.
-제공된 참고 문서를 기반으로 정확하고 예의바른 답변을 제공하세요.""")
-    
-    # context_intent 정보를 포함한 프롬프트 구성
-    intent_hint = f"\n[문맥 의도: {context_intent}]" if context_intent else ""
-    
-    # 검색된 문서를 프롬프트에 포함
-    context = "\n\n".join([
-        f"[문서 {i+1}] {doc['content']} (출처: {doc['source']}, 페이지: {doc['page']}, 유사도: {doc['score']:.2f})"
-        for i, doc in enumerate(retrieved_docs)
-    ])
-    
-    human_message = HumanMessage(content=f"""다음 문서를 참고하여 고객의 질문에 답변해주세요.
-
-[참고 문서]
-{context}
-{intent_hint}
-
-[고객 질문]
-{user_message}
-
-위 문서를 기반으로 답변해주세요.""")
-    
-    return system_message, human_message
-
-
-# ============================================================================
-# 메인 노드 함수
-# ============================================================================
 
 def answer_agent_node(state: GraphState) -> GraphState:
     """프롬프트를 구성해 LLM에게 답변 생성을 요청하고 상태를 갱신한다.
     
-    triage_decision 값에 따라 다른 방식으로 처리:
-    - AUTO_HANDLE_OK: RAG 문서 기반 답변 생성
-    - NEED_MORE_INFO: 추가 정보를 위한 질문 생성
-      * 일반적인 추가 정보 요청: 질문을 더 구체화해서 답변하기 위함 (RAG 검색 결과가 낮을 때)
-      * 정보 수집 단계: 상담사 연결 전까지 고객 정보 수집용 (is_collecting_info=True일 때)
-    - HUMAN_REQUIRED: 상담사 연결 안내 메시지
+    triage_decision 값에 따라 다른 프롬프트를 사용하여 처리:
+    - SIMPLE_ANSWER: 간단한 자연어 답변 생성
+    - AUTO_ANSWER: RAG 문서 기반 답변 생성
+    - NEED_MORE_INFO: 추가 정보 요청 질문 생성
+    - HUMAN_REQUIRED: 상담사 연결 안내 메시지 생성
     """
     user_message = state["user_message"]
     triage_decision = state.get("triage_decision")
-    context_intent = state.get("context_intent")  # triage_agent에서 설정된 문맥 의도
     retrieved_docs = state.get("retrieved_documents", [])
-    
-    # 상담사 연결 긍정/부정 응답 감지 (이전 턴에서 HUMAN_REQUIRED였고, 사용자가 응답한 경우)
-    conversation_history = state.get("conversation_history", [])
-    is_handover_confirmation = False
-    is_handover_rejection = False
-    if conversation_history:
-        # 최근 메시지 확인 (상담사 연결 안내 후 사용자 응답)
-        recent_messages = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
-        if any("상담사 연결하시겠습니까" in msg.get("message", "") for msg in recent_messages if msg.get("role") == "assistant"):
-            # 사용자의 긍정/부정 응답 키워드 확인
-            positive_keywords = ["예", "네", "응", "연결", "좋아요", "좋아", "좋습니다", "연결해", "연결해주세요", "연결해줘", "연결요", "부탁", "부탁해", "부탁드려요"]
-            negative_keywords = ["아니오", "아니요", "아니", "싫어", "싫어요", "싫습니다", "안 해", "안해", "안 할래", "안 할게", "안 할게요", "괜찮아", "괜찮아요", "필요 없어", "필요없어", "필요 없어요", "필요없어요", "안 해요", "안해요", "거절", "거절해", "거절할게", "안 할게요"]
-            user_response = user_message.strip()
-            is_handover_confirmation = any(keyword in user_response for keyword in positive_keywords)
-            is_handover_rejection = any(keyword in user_response for keyword in negative_keywords)
+    customer_intent_summary = state.get("customer_intent_summary")
     
     # ========================================================================
-    # 분기 처리: triage_decision에 따라 다른 방식으로 처리
+    # 티켓별 프롬프트 생성 및 LLM 호출
     # ========================================================================
-    
-    # ------------------------------------------------------------------------
-    # 케이스 1: HUMAN_REQUIRED - 상담사 연결 안내
-    # ------------------------------------------------------------------------
-    if triage_decision == TriageDecisionType.HUMAN_REQUIRED:
-        if is_handover_confirmation:
-            # 사용자가 상담사 연결에 긍정 응답한 경우: 정보 수집 시작
-            state["is_collecting_info"] = True
-            state["info_collection_count"] = 0
-            state["ai_message"] = "상담사 연결 전, 빠른 업무 처리를 도와드리기 위해 추가적인 질문을 드리겠습니다."
-            logger.info(f"상담사 연결 긍정 응답 감지 - 정보 수집 시작: 세션={state.get('session_id', 'unknown')}, info_collection_count={state['info_collection_count']}")
-            state["source_documents"] = []
-            return state
-        elif is_handover_rejection:
-            # 사용자가 상담사 연결을 거절한 경우: 상담 종료
-            state["ai_message"] = "상담사를 연결하지 않아 상담이 종료됩니다."
-            logger.info(f"상담사 연결 부정 응답 감지 - 상담 종료: 세션={state.get('session_id', 'unknown')}")
-            state["source_documents"] = []
-            return state
-        else:
-            # 기본 안내 메시지 (첫 번째 상담사 연결 제안)
-            state["ai_message"] = "상담사가 필요한 업무입니다. 상담사 연결하시겠습니까?"
-            logger.info(f"HUMAN_REQUIRED 처리 - 상담사 연결 안내: 세션={state.get('session_id', 'unknown')}")
-            state["source_documents"] = []
-            return state
-    
-    # ------------------------------------------------------------------------
-    # 케이스 2: NEED_MORE_INFO - 추가 정보 요청 질문 생성
-    # ------------------------------------------------------------------------
-    elif triage_decision == TriageDecisionType.NEED_MORE_INFO:
-        try:
-            # 정보 수집 단계인지 확인
-            is_collecting = state.get("is_collecting_info", False)
-            current_count = state.get("info_collection_count", 0)
-            logger.info(f"정보 수집 단계 확인 - 세션: {state.get('session_id', 'unknown')}, is_collecting={is_collecting}, current_count={current_count}")
+    try:
+        # ------------------------------------------------------------------------
+        # 티켓 1: SIMPLE_ANSWER - 간단한 자연어 답변 생성
+        # 사용 정보: user_message, customer_intent_summary
+        # RAG 검색 결과: 사용 안 함
+        # ------------------------------------------------------------------------
+        if triage_decision == TriageDecisionType.SIMPLE_ANSWER:
+            # customer_intent_summary 정보 포함
+            intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
             
-            # 정보 수집 6번째 턴 (count가 5에서 6으로 증가한 후)
-            if is_collecting and current_count >= 6:
-                # 질문 생성 대신 고정 메시지 출력
-                state["ai_message"] = "상담사 연결 예정입니다. 잠시만 기다려주세요."
+            system_message = SystemMessage(content="""당신은 고객의 단순한 반응이나 인사에 응답하는 챗봇 어시스턴트입니다.
+간단하고 자연스러운 응답만 생성하세요.
+
+응답 규칙:
+1) 단순 확인/동의/짧은 반응인 경우
+   - 예: "네", "넵", "맞아요", "그거요", "알겠어요", "계속 해주세요"
+   - → 이전 답변을 인정/확인하는 짧은 응답만 생성
+   - 예: "네, 알겠습니다. 계속 진행하겠습니다."
+
+2) 감사 인사/끝맺음인 경우
+   - 예: "감사합니다", "덕분에 해결됐어요", "수고하세요", "고마워요"
+   - → 간단한 인사로 대답
+   - 예: "도움이 되어서 다행입니다. 추가 요청사항이 있으신가요?"
+
+3) 시스템/잡음/의미 없는 입력인 경우
+   - 예: "", "…", "음", "아아", STT 오류로 보이는 텍스트
+   - → 재입력을 요청하는 간단한 문장만 생성
+   - 예: "죄송하지만, 한 번 더 또렷하게 말씀해 주실 수 있을까요?"
+
+4) 직전 턴에 이미 충분히 답변이 끝난 경우
+   - 추가 질문이 전혀 없는 단순 리액션
+   - → 대화를 마무리하거나 짧게 응답
+   - 예: "추가 질문이 없으시면, 대화를 종료하겠습니다.""")
+            
+            human_message = HumanMessage(content=f"""간단하고 자연스러운 응답을 생성해주세요.
+
+[고객 메시지]
+{user_message}
+{intent_summary_hint}""")
+            
+            logger.info(f"SIMPLE_ANSWER 답변 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
+            response = llm.invoke([system_message, human_message])
+            state["ai_message"] = response.content
+            state["source_documents"] = []
+            logger.info(f"SIMPLE_ANSWER 답변 생성 완료 - 세션: {state.get('session_id', 'unknown')}")
+        
+        # ------------------------------------------------------------------------
+        # 티켓 2: AUTO_ANSWER - RAG 문서 기반 답변 생성
+        # 사용 정보: user_message, customer_intent_summary, retrieved_docs
+        # RAG 검색 결과: 사용 (필수)
+        # ------------------------------------------------------------------------
+        elif triage_decision == TriageDecisionType.AUTO_ANSWER:
+            if not retrieved_docs:
+                state["ai_message"] = "죄송합니다. 관련 문서를 찾을 수 없어 답변을 생성할 수 없습니다."
                 state["source_documents"] = []
-                logger.info(f"정보 수집 완료 - 상담사 연결 안내 메시지 출력: 세션={state.get('session_id', 'unknown')}, 횟수: {current_count}")
                 return state
             
-            # 정보 수집 단계 첫 번째 질문 전 안내 메시지 출력
-            # conversation_history에 이미 해당 메시지가 있는지 확인 (중복 방지)
-            if is_collecting and current_count == 0:
-                # conversation_history의 마지막 assistant 메시지 확인
-                conversation_history = state.get("conversation_history", [])
-                last_assistant_msg = None
-                for msg in reversed(conversation_history):
-                    if msg.get("role") == "assistant":
-                        last_assistant_msg = msg.get("message", "")
-                        break
-                
-                # 이미 "추가적인 질문을 드리겠습니다" 메시지가 있으면 출력하지 않고 바로 질문 생성
-                if last_assistant_msg and "추가적인 질문을 드리겠습니다" in last_assistant_msg:
-                    logger.info(f"정보 수집 시작 메시지 이미 존재 - 바로 질문 생성: 세션={state.get('session_id', 'unknown')}")
-                    # continue to question generation below
-                else:
-                    # 메시지가 없으면 출력 (상태 복원 실패 등 예외 상황 대비)
-                    state["ai_message"] = "상담사 연결 전, 빠른 업무 처리를 도와드리기 위해 추가적인 질문을 드리겠습니다."
-                    logger.info(f"정보 수집 시작 안내 메시지 출력 - 세션: {state.get('session_id', 'unknown')}")
-                    state["source_documents"] = []
-                    return state
+            # customer_intent_summary 정보 포함
+            intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
             
-            # 1~5번째 질문 생성 (기존 로직)
-            # 프롬프트 생성 (헬퍼 함수 사용)
-            system_message, human_message = _create_question_generation_prompt(
-                user_message, context_intent, retrieved_docs
-            )
+            # 검색된 문서를 프롬프트에 포함
+            context = "\n\n".join([
+                f"[문서 {i+1}] {doc['content']} (출처: {doc['source']}, 페이지: {doc['page']}, 유사도: {doc['score']:.2f})"
+                for i, doc in enumerate(retrieved_docs)
+            ])
             
-            # LLM 호출하여 질문 생성
-            logger.info(f"추가 정보 질문 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
-            response = llm.invoke([system_message, human_message])
-            question = response.content
-            state["ai_message"] = question
-            logger.info(f"추가 정보 질문 생성 완료 - 세션: {state.get('session_id', 'unknown')}, 질문 길이: {len(question)}")
+            system_message = SystemMessage(content="""당신은 고객 질문에 답변하는 챗봇 어시스턴트입니다.
+제공된 참고 문서를 기반으로 정확하고 예의바른 답변을 생성하세요.
+근거 문서에 없는 내용은 추측하지 말고, 정확한 정보만 제공하세요.""")
             
-            # 정보 수집 단계면 카운트 증가
-            if is_collecting:
-                state["info_collection_count"] = current_count + 1
-                logger.info(f"정보 수집 질문 생성 - 세션: {state.get('session_id', 'unknown')}, 횟수: {state['info_collection_count']}/6 (1~5: 질문, 6: 연결 안내)")
-            
-            # source_documents 설정 (있는 경우)
-            if retrieved_docs:
-                source_docs = [
-                    SourceDocument(
-                        source=doc.get("source", "unknown"),
-                        page=doc.get("page", 0),
-                        score=doc.get("score", 0.0)
-                    )
-                    for doc in retrieved_docs
-                ]
-                state["source_documents"] = source_docs
-            else:
-                state["source_documents"] = []
-                
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"추가 정보 질문 생성 중 오류 - 세션: {state.get('session_id', 'unknown')}, 오류: {error_msg}", exc_info=True)
-            state["ai_message"] = "추가 정보가 필요합니다. 좀 더 구체적으로 질문해주시면 도와드리겠습니다."
-            state["source_documents"] = []
-            if "metadata" not in state:
-                state["metadata"] = {}
-            state["metadata"]["answer_error"] = error_msg
-        
-        return state
-    
-    # ------------------------------------------------------------------------
-    # 케이스 3: AUTO_HANDLE_OK - RAG 문서 기반 답변 생성
-    # ------------------------------------------------------------------------
-    elif triage_decision == TriageDecisionType.AUTO_HANDLE_OK:
-        # 문서 검증
-        if not retrieved_docs:
-            state["ai_message"] = "죄송합니다. 관련 문서를 찾을 수 없어 답변을 생성할 수 없습니다."
-            state["source_documents"] = []
-            if "metadata" not in state:
-                state["metadata"] = {}
-            state["metadata"]["answer_error"] = "retrieved_documents가 없습니다"
-            return state
-        
-        try:
-            # 프롬프트 생성 (헬퍼 함수 사용)
-            system_message, human_message = _create_answer_generation_prompt(
-                user_message, context_intent, retrieved_docs
-            )
+            human_message = HumanMessage(content=f"""참고 문서를 기반으로 고객 질문에 대한 답변을 생성해주세요.
 
-            # LLM 호출하여 답변 생성
-            logger.info(f"답변 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
+[참고 문서]
+{context}
+{intent_summary_hint}
+
+[고객 질문]
+{user_message}""")
+            
+            logger.info(f"AUTO_ANSWER 답변 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
             response = llm.invoke([system_message, human_message])
-            answer = response.content
-            state["ai_message"] = answer
-            logger.info(f"답변 생성 완료 - 세션: {state.get('session_id', 'unknown')}, 답변 길이: {len(answer)}")
+            state["ai_message"] = response.content
             
             # retrieved_documents를 source_documents로 변환
-            source_docs = [
+            state["source_documents"] = [
                 SourceDocument(
                     source=doc.get("source", "unknown"),
                     page=doc.get("page", 0),
@@ -290,47 +173,104 @@ def answer_agent_node(state: GraphState) -> GraphState:
                 )
                 for doc in retrieved_docs
             ]
-            state["source_documents"] = source_docs
+            logger.info(f"AUTO_ANSWER 답변 생성 완료 - 세션: {state.get('session_id', 'unknown')}")
         
-        except Exception as e:
-            # 에러 처리
-            error_msg = str(e)
-            logger.error(f"답변 생성 중 오류 발생 - 세션: {state.get('session_id', 'unknown')}, 오류: {error_msg}", exc_info=True)
+        # ------------------------------------------------------------------------
+        # 티켓 3: NEED_MORE_INFO - 추가 정보 요청 질문 생성
+        # 사용 정보: user_message, customer_intent_summary
+        # RAG 검색 결과: 사용 안 함
+        # ------------------------------------------------------------------------
+        elif triage_decision == TriageDecisionType.NEED_MORE_INFO:
+            # customer_intent_summary 정보 포함
+            intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
             
-            if "quota" in error_msg.lower() or "429" in error_msg:
-                state["ai_message"] = "죄송합니다. 현재 서비스 사용량이 초과되어 일시적으로 답변을 생성할 수 없습니다. 잠시 후 다시 시도해주세요."
-                logger.warning(f"API 할당량 초과 - 세션: {state.get('session_id', 'unknown')}")
-            elif "api_key" in error_msg.lower() or "401" in error_msg:
-                state["ai_message"] = "죄송합니다. API 설정 오류가 발생했습니다. 관리자에게 문의해주세요."
-                logger.error(f"API 키 오류 - 세션: {state.get('session_id', 'unknown')}")
-            elif "connection" in error_msg.lower() or "refused" in error_msg.lower():
-                state["ai_message"] = "죄송합니다. LM Studio 서버에 연결할 수 없습니다. LM Studio가 실행 중인지 확인해주세요."
-                logger.error(f"LM Studio 연결 오류 - 세션: {state.get('session_id', 'unknown')}, 오류: {error_msg}")
-            elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-                state["ai_message"] = "죄송합니다. 응답 생성에 시간이 오래 걸려 타임아웃이 발생했습니다. 더 간단한 질문으로 다시 시도해주세요."
-                logger.warning(f"답변 생성 타임아웃 - 세션: {state.get('session_id', 'unknown')}, 타임아웃: {settings.llm_timeout}초")
-            else:
-                state["ai_message"] = f"죄송합니다. 답변 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-                logger.error(f"답변 생성 기타 오류 - 세션: {state.get('session_id', 'unknown')}, 오류: {error_msg}")
+            system_message = SystemMessage(content="""당신은 고객에게 추가 정보를 요청하는 챗봇 어시스턴트입니다.
+답변을 위해 필요한 추가 정보를 정중하게 질문하세요.
+
+질문 생성 시 주의사항:
+- 한 번에 하나의 구체적인 질문만 하세요
+- 예의바르고 친절한 톤을 유지하세요
+- 고객이 쉽게 답변할 수 있는 질문으로 하세요
+- 불필요한 정보를 요청하지 마세요""")
             
-            # 에러 정보 저장
+            human_message = HumanMessage(content=f"""답변을 위해 필요한 추가 정보를 정중하게 질문해주세요.
+
+[고객 질문]
+{user_message}
+{intent_summary_hint}""")
+            
+            logger.info(f"NEED_MORE_INFO 질문 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
+            response = llm.invoke([system_message, human_message])
+            state["ai_message"] = response.content
             state["source_documents"] = []
-            if "metadata" not in state:
-                state["metadata"] = {}
-            state["metadata"]["answer_error"] = error_msg
-    
-    # ------------------------------------------------------------------------
-    # 케이스 4: Fallback - triage_decision이 없거나 예상치 못한 값
-    # ------------------------------------------------------------------------
-    else:
-        logger.warning(f"triage_decision이 없거나 예상치 못한 값: {triage_decision}, 기본 처리: 세션={state.get('session_id', 'unknown')}")
+            logger.info(f"NEED_MORE_INFO 질문 생성 완료 - 세션: {state.get('session_id', 'unknown')}")
         
-        if retrieved_docs:
-            # 문서가 있으면 기본 로직으로 답변 생성 시도
-            try:
-                system_message, human_message = _create_answer_generation_prompt(
-                    user_message, context_intent, retrieved_docs
-                )
+        # ------------------------------------------------------------------------
+        # 티켓 4: HUMAN_REQUIRED - 상담사 연결 안내 메시지 생성
+        # 사용 정보: user_message, customer_intent_summary
+        # RAG 검색 결과: 사용 안 함
+        # ------------------------------------------------------------------------
+        elif triage_decision == TriageDecisionType.HUMAN_REQUIRED:
+            # customer_intent_summary 정보 포함
+            intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
+            
+            system_message = SystemMessage(content="""당신은 상담사 연결을 안내하는 챗봇 어시스턴트입니다.
+상담사가 이어받을 수 있도록 정중하고 공감 어린 어조로 안내 문장을 생성하세요.
+
+안내 메시지 규칙:
+- "상담사에게 연결해 드리겠다"는 내용을 포함
+- 정중하고 공감 어린 어조 사용
+- 예시:
+  - "정확한 확인을 위해 상담사에게 연결해 드리겠습니다."
+  - "불편을 겪으셔서 죄송합니다. 자세한 확인을 위해 담당 상담사가 이어서 도와드리겠습니다."
+  - "복잡한 사안이므로 전문 상담사에게 연결해 드리겠습니다."
+
+중요: 추가 정보 요청이나 문제 해결 시도 없이, 상담사 연결 안내만 생성하세요.""")
+            
+            human_message = HumanMessage(content=f"""정중하고 공감 어린 상담사 연결 안내 메시지를 생성해주세요.
+
+[고객 메시지]
+{user_message}
+{intent_summary_hint}""")
+            
+            logger.info(f"HUMAN_REQUIRED 안내 메시지 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
+            response = llm.invoke([system_message, human_message])
+            # 상담사 연결 안내 메시지 뒤에 고정 메시지 추가
+            fixed_message = "\n\n상담사 연결을 원하시지 않는다면, 대화를 종료해주세요. 고객님의 문의를 빠르게 해결해드리기 위해 상담사 연결 전까지 정보를 수집하겠습니다."
+            state["ai_message"] = response.content + fixed_message
+            state["source_documents"] = []
+            
+            # 다음 턴부터 정보 수집 시작 플래그 설정 (명시적 플래그 방식)
+            state["next_turn_start_collecting"] = True
+            logger.info(f"HUMAN_REQUIRED 안내 메시지 생성 완료 - 세션: {state.get('session_id', 'unknown')}, 다음 턴 정보 수집 시작 플래그 설정")
+        
+        # ------------------------------------------------------------------------
+        # Fallback: triage_decision이 없거나 예상치 못한 값
+        # 문서가 있으면 AUTO_ANSWER 로직, 없으면 SIMPLE_ANSWER 로직 사용
+        # ------------------------------------------------------------------------
+        else:
+            logger.warning(f"triage_decision이 없거나 예상치 못한 값: {triage_decision}, 기본 처리: 세션={state.get('session_id', 'unknown')}")
+            if retrieved_docs:
+                # AUTO_ANSWER 로직 사용
+                intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
+                context = "\n\n".join([
+                    f"[문서 {i+1}] {doc['content']} (출처: {doc['source']}, 페이지: {doc['page']}, 유사도: {doc['score']:.2f})"
+                    for i, doc in enumerate(retrieved_docs)
+                ])
+                
+                system_message = SystemMessage(content="""당신은 고객 질문에 답변하는 챗봇 어시스턴트입니다.
+제공된 참고 문서를 기반으로 정확하고 예의바른 답변을 생성하세요.
+근거 문서에 없는 내용은 추측하지 말고, 정확한 정보만 제공하세요.""")
+                
+                human_message = HumanMessage(content=f"""참고 문서를 기반으로 고객 질문에 대한 답변을 생성해주세요.
+
+[참고 문서]
+{context}
+{intent_summary_hint}
+
+[고객 질문]
+{user_message}""")
+                
                 response = llm.invoke([system_message, human_message])
                 state["ai_message"] = response.content
                 state["source_documents"] = [
@@ -341,11 +281,27 @@ def answer_agent_node(state: GraphState) -> GraphState:
                     )
                     for doc in retrieved_docs
                 ]
-            except Exception as e:
-                state["ai_message"] = "죄송합니다. 답변 생성 중 오류가 발생했습니다."
+            else:
+                # SIMPLE_ANSWER 로직 사용
+                intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
+                
+                system_message = SystemMessage(content="""당신은 고객의 단순한 반응이나 인사에 응답하는 챗봇 어시스턴트입니다.
+간단하고 자연스러운 응답만 생성하세요.""")
+                
+                human_message = HumanMessage(content=f"""간단하고 자연스러운 응답을 생성해주세요.
+
+[고객 메시지]
+{user_message}
+{intent_summary_hint}""")
+                
+                response = llm.invoke([system_message, human_message])
+                state["ai_message"] = response.content
                 state["source_documents"] = []
-        else:
-            state["ai_message"] = "죄송합니다. 관련 문서를 찾을 수 없어 답변을 생성할 수 없습니다."
-            state["source_documents"] = []
+    
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"답변 생성 중 오류 발생 - 세션: {state.get('session_id', 'unknown')}, 티켓: {triage_decision}, 오류: {error_msg}", exc_info=True)
+        _handle_error(error_msg, state)
+        state["source_documents"] = []
     
     return state

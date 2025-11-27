@@ -284,6 +284,7 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
             "triage_decision": TriageDecisionType.HUMAN_REQUIRED,  # 상담원 이관 요청
             "requires_consultant": True,
             "handover_reason": request.trigger_reason,
+            "customer_intent_summary": None,  # triage_agent를 거치지 않으므로 None
             "intent": IntentType.HUMAN_REQ,
             "processing_start_time": datetime.now().isoformat(),
             "is_collecting_info": False,  # 상담원 이관 요청은 정보 수집과 별개

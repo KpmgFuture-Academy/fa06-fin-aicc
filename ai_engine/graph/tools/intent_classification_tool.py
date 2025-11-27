@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from functools import lru_cache
 from typing import Optional
@@ -20,17 +21,19 @@ def classify_intent(user_message: str) -> str:
     
     문맥 의도는 질문의 주제나 도메인을 나타냅니다 (예: 결제일 안내/변경/취소, 한도 안내 등).
     감정이나 요청 타입이 아니라 문맥 그 자체의 의도를 분류합니다.
+    상위 3개의 의도와 신뢰도를 반환합니다.
     
     Args:
         user_message: 고객이 입력한 메시지
         
     Returns:
-        문맥 의도 분류 결과 문자열 (예: "결제일 안내/변경/취소", "한도 안내", "포인트/마일리지 안내" 등)
+        JSON 문자열: 상위 3개 의도 분류 결과 리스트
+        각 항목은 {"intent": str, "confidence": float} 형태
+        예: '[{"intent": "결제일 안내/변경/취소", "confidence": 0.95}, ...]'
         
     Examples:
-        classify_intent("결제일 변경하고 싶어요") -> "결제일 안내/변경/취소"
-        classify_intent("카드 한도 확인") -> "한도 안내"
-        classify_intent("포인트 확인하고 싶습니다") -> "포인트/마일리지 안내"
+        classify_intent("결제일 변경하고 싶어요") 
+        -> '[{"intent": "결제일 안내/변경/취소", "confidence": 0.95}, ...]'
     """
     classifier = _get_classifier()
     if classifier is None:
@@ -40,9 +43,14 @@ def classify_intent(user_message: str) -> str:
         )
 
     try:
-        intent, confidence = classifier.predict_single(user_message)
-        logger.debug("Intent classified via Hana Card model: %s (%.2f)", intent, confidence)
-        return intent
+        # Top 3 결과 반환
+        results = classifier.predict(user_message, top_k=3)
+        logger.debug(
+            "Intent classified via Hana Card model (top 3): %s",
+            [(r["intent"], f"{r['confidence']:.2f}") for r in results]
+        )
+        # JSON 문자열로 반환 (LangChain tool은 문자열을 반환해야 함)
+        return json.dumps(results, ensure_ascii=False)
     except Exception as exc:  # pragma: no cover - 방어적 처리
         logger.error("IntentClassifier inference failed: %s", exc, exc_info=True)
         raise

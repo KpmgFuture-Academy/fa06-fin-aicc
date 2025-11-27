@@ -4,7 +4,8 @@
 1. 고객 채팅 Input → triage_agent
    (triage_agent 내부에서 intent_classification_tool과 rag_search_tool을 사용)
 2. triage_agent 분기 (triage_decision 기반):
-   - AUTO_HANDLE_OK → answer_agent (답변 생성) → chat_db_storage → END
+   - SIMPLE_ANSWER → answer_agent (간단한 답변 생성) → chat_db_storage → END
+   - AUTO_ANSWER → answer_agent (RAG 기반 답변 생성) → chat_db_storage → END
    - NEED_MORE_INFO → answer_agent (질문 생성) → chat_db_storage → END
    - HUMAN_REQUIRED → answer_agent (상담사 연결 안내) → chat_db_storage → END
 
@@ -13,7 +14,7 @@
 - 정보 수집 중 (is_collecting_info=True):
   - triage_agent에서 Tool 사용 건너뛰고 NEED_MORE_INFO 반환
   - answer_agent에서 정보 수집 질문 생성 (info_collection_count 증가)
-  - 6회 도달 시: answer_agent → summary_agent → human_transfer → chat_db_storage → END
+  - 10회 도달 시: answer_agent → summary_agent → human_transfer → chat_db_storage → END
 
 한 사용자(세션)에 대해 여러 턴의 대화가 가능하며, 상담사 이관이 결정된 시점에만
 전체 대화를 요약하여 대시보드에 표시합니다.
@@ -45,7 +46,8 @@ def _route_after_triage(state: GraphState) -> str:
     """Triage 에이전트 이후 분기.
 
     triage_decision 값에 따라 분기:
-    - AUTO_HANDLE_OK: answer_agent (답변 생성)
+    - SIMPLE_ANSWER: answer_agent (간단한 답변 생성)
+    - AUTO_ANSWER: answer_agent (RAG 기반 답변 생성)
     - NEED_MORE_INFO: answer_agent (질문 생성)
     - HUMAN_REQUIRED: answer_agent (상담사 연결 안내)
     
@@ -55,7 +57,8 @@ def _route_after_triage(state: GraphState) -> str:
     triage_decision = state.get("triage_decision")
     
     # triage_decision이 없거나 예상치 못한 값인 경우 answer_agent로 (fallback)
-    if triage_decision not in [TriageDecisionType.AUTO_HANDLE_OK, 
+    if triage_decision not in [TriageDecisionType.SIMPLE_ANSWER,
+                                TriageDecisionType.AUTO_ANSWER,
                                 TriageDecisionType.NEED_MORE_INFO, 
                                 TriageDecisionType.HUMAN_REQUIRED]:
         return "answer_agent"
@@ -67,15 +70,15 @@ def _route_after_triage(state: GraphState) -> str:
 def _route_after_answer(state: GraphState) -> str:
     """answer_agent 이후 분기.
     
-    정보 수집 6번째 턴 (고정 메시지 출력 후) summary_agent로 이동,
+    정보 수집 10번째 턴 도달 시 summary_agent로 이동,
     그 외에는 chat_db_storage로 이동.
     """
     info_collection_count = state.get("info_collection_count", 0)
     
-    # 6번째 턴 (고정 메시지 출력 후, count >= 6) summary_agent로 이동
-    if info_collection_count >= 6:
+    # 10번째 턴 도달 시 summary_agent로 이동
+    if info_collection_count >= 10:
         return "summary_agent"  # 정보 수집 완료 → 요약
-    return "chat_db_storage"  # 일반 케이스 (1~5번째 질문 또는 일반 대화)
+    return "chat_db_storage"  # 일반 케이스 (1~9번째 질문 또는 일반 대화)
 
 
 def build_workflow() -> Any:
@@ -116,7 +119,7 @@ def build_workflow() -> Any:
     )
 
     # answer_agent 이후 조건부 분기
-    # 정보 수집 6회 완료 시 summary_agent로, 그 외에는 chat_db_storage로 이동
+    # 정보 수집 10회 완료 시 summary_agent로, 그 외에는 chat_db_storage로 이동
     graph.add_conditional_edges(
         "answer_agent",
         _route_after_answer,

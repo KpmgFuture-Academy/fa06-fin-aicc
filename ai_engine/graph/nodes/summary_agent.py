@@ -42,6 +42,7 @@ else:
 def summary_agent_node(state: GraphState) -> GraphState:
     """상담 내용을 요약하고 감정/키워드를 추출하는 노드"""
     conversation_history = state.get("conversation_history", [])
+    customer_intent_summary = state.get("customer_intent_summary")
     
     if not conversation_history:
         # 대화 이력이 없으면 기본값 설정
@@ -56,11 +57,15 @@ def summary_agent_node(state: GraphState) -> GraphState:
         for msg in conversation_history
     ])
     
+    # customer_intent_summary가 있으면 프롬프트에 포함
+    intent_summary_hint = f"\n[고객 의도 요약 (triage_agent에서 생성)]: {customer_intent_summary}" if customer_intent_summary else ""
+    
     # LLM에게 요약/감정/키워드 추출 요청
     prompt = f"""다음은 고객과 챗봇의 상담 대화 기록입니다. 다음을 분석해주세요:
 
 [대화 기록]
 {conversation_text}
+{intent_summary_hint}
 
 다음 형식으로 답변해주세요:
 1. 감정 상태: POSITIVE, NEGATIVE, NEUTRAL 중 하나

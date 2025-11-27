@@ -6,7 +6,8 @@ FastAPI 'app/schemas'에서 선언한 데이터 계약을 그대로 충족할 �
 1. 고객 채팅 Input → triage_agent
    (triage_agent 내부에서 intent_classification_tool과 rag_search_tool 사용)
 2. triage_agent 분기 (triage_decision 기반):
-   - AUTO_HANDLE_OK → answer_agent (답변 생성) → chat_db_storage → END
+   - SIMPLE_ANSWER → answer_agent (간단한 답변 생성) → chat_db_storage → END
+   - AUTO_ANSWER → answer_agent (RAG 기반 답변 생성) → chat_db_storage → END
    - NEED_MORE_INFO → answer_agent (질문 생성) → chat_db_storage → END
    - HUMAN_REQUIRED → answer_agent (상담사 연결 안내) → chat_db_storage → END
 
@@ -15,8 +16,8 @@ FastAPI 'app/schemas'에서 선언한 데이터 계약을 그대로 충족할 �
 - 정보 수집 중 (is_collecting_info=True):
   - triage_agent에서 Tool 사용 건너뛰고 NEED_MORE_INFO 반환
   - answer_agent에서 정보 수집 질문 생성 (info_collection_count 증가)
-  - 1~5번째 질문: chat_db_storage → END
-  - 6번째 턴: 고정 메시지 출력 후 summary_agent → human_transfer → chat_db_storage → END
+  - 1~9번째 질문: chat_db_storage → END (다음 턴에 triage_agent를 거쳐서 계속 처리)
+  - 10번째 턴: summary_agent → human_transfer → chat_db_storage → END
 - 상태 복원: conversation_history를 분석하여 정보 수집 상태 복원
 
 피드백 루프:
@@ -64,14 +65,16 @@ class GraphState(TypedDict, total=False):
     previous_turn_state: Optional[Dict[str, Any]]  # 이전 턴의 주요 상태 정보 (선택적)
     
     # ========== 의도 분류 노드 (intent_classification) ==========
-    context_intent: str       # Hana Card 모델이 분류한 문맥 의도 (도메인 분류, 예: "결제일 안내/변경/취소", "한도 안내" 등)
+    context_intent: str       # Hana Card 모델이 분류한 문맥 의도 (도메인 분류, 예: "결제일 안내/변경/취소", "한도 안내" 등) - 첫 번째 결과
     intent: IntentType        # 상담사 연결 필요 여부 판단을 위한 의도 타입 (INFO_REQ, COMPLAINT, HUMAN_REQ)
-    intent_confidence: float  # 의도 분류 신뢰도 (0.0 ~ 1.0)
+    intent_confidence: float  # 의도 분류 신뢰도 (0.0 ~ 1.0) - 첫 번째 결과의 confidence
+    intent_classifications: Optional[List[Dict[str, Any]]]  # Top 3 의도 분류 결과 리스트 [{"intent": str, "confidence": float}, ...]
     
     # ========== 판단 에이전트 노드 (triage_agent) ==========
-    triage_decision: Optional[TriageDecisionType]  # Triage 의사결정 결과 (AUTO_HANDLE_OK, NEED_MORE_INFO, HUMAN_REQUIRED)
+    triage_decision: Optional[TriageDecisionType]  # Triage 티켓 (SIMPLE_ANSWER, AUTO_ANSWER, NEED_MORE_INFO, HUMAN_REQUIRED)
     requires_consultant: bool  # 상담사 연결 필요 여부
     handover_reason: Optional[str]  # 이관 사유
+    customer_intent_summary: Optional[str]  # 고객 의도 요약 (triage_agent에서 생성)
     
     # ========== RAG 검색 노드 (rag_search) ==========
     retrieved_documents: List[RetrievedDocument]  # 벡터 DB에서 검색한 문서들
@@ -84,7 +87,7 @@ class GraphState(TypedDict, total=False):
     
     # ========== 정보 수집 단계 관련 ==========
     is_collecting_info: bool  # 정보 수집 단계 여부 (False: 일반 대화, True: 정보 수집 중)
-    info_collection_count: int  # 정보 수집 질문 횟수 (0~6, 6회 도달 시 summary_agent로 이동)
+    info_collection_count: int  # 정보 수집 질문 횟수 (0~10, 10회 도달 시 summary_agent로 이동)
     
     # ========== 상담 DB 저장 노드 (chat_db_storage) ==========
     # DB 저장은 별도 처리, 상태는 그대로 유지

@@ -18,7 +18,8 @@ class SentimentType(str, Enum): # 고객 감정 상태
     NEGATIVE = "NEGATIVE"
     NEUTRAL = "NEUTRAL"
 
-class TriageDecisionType(str, Enum):  # Triage 에이전트 의사결정 타입
-    AUTO_HANDLE_OK = "AUTO_HANDLE_OK"      # 자동 처리 가능 (답변 생성)
-    NEED_MORE_INFO = "NEED_MORE_INFO"     # 추가 정보 필요 (질문 생성)
-    HUMAN_REQUIRED = "HUMAN_REQUIRED"      # 상담사 연결 필요
+class TriageDecisionType(str, Enum):  # Triage 티켓 타입 (LLM이 생성하는 티켓)
+    SIMPLE_ANSWER = "SIMPLE_ANSWER"       # 단순 반응/감사/잡음 등
+    AUTO_ANSWER = "AUTO_ANSWER"           # 자동 답변 가능 (RAG/의도 분석 기반)
+    NEED_MORE_INFO = "NEED_MORE_INFO"     # 추가 정보 필요
+    HUMAN_REQUIRED = "HUMAN_REQUIRED"     # 상담사 연결 필요
