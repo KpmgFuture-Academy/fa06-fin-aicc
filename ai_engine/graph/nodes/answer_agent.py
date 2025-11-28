@@ -236,13 +236,16 @@ def answer_agent_node(state: GraphState) -> GraphState:
             logger.info(f"HUMAN_REQUIRED 안내 메시지 생성 시작 - 세션: {state.get('session_id', 'unknown')}")
             response = llm.invoke([system_message, human_message])
             # 상담사 연결 안내 메시지 뒤에 고정 메시지 추가
-            fixed_message = "\n\n상담사 연결을 원하시지 않는다면, 대화를 종료해주세요. 고객님의 문의를 빠르게 해결해드리기 위해 상담사 연결 전까지 정보를 수집하겠습니다."
+            fixed_message = "\n\n고객님의 문의를 빠르게 해결해드리기 위해 상담사 연결 전까지 정보를 수집할 예정입니다. 상담사 연결을 원하시면 '네'라고 말씀해주세요. 상담사 연결을 원하지 않으시면 '아니오'라고 말씀해주세요."
             state["ai_message"] = response.content + fixed_message
             state["source_documents"] = []
             
-            # 다음 턴부터 정보 수집 시작 플래그 설정 (명시적 플래그 방식)
-            state["next_turn_start_collecting"] = True
-            logger.info(f"HUMAN_REQUIRED 안내 메시지 생성 완료 - 세션: {state.get('session_id', 'unknown')}, 다음 턴 정보 수집 시작 플래그 설정")
+            # HUMAN_REQUIRED 플로우 진입 플래그 설정
+            state["is_human_required_flow"] = True
+            state["customer_consent_received"] = False
+            state["collected_info"] = {}
+            state["info_collection_complete"] = False
+            logger.info(f"HUMAN_REQUIRED 안내 메시지 생성 완료 - 세션: {state.get('session_id', 'unknown')}, HUMAN_REQUIRED 플로우 진입")
         
         # ------------------------------------------------------------------------
         # Fallback: triage_decision이 없거나 예상치 못한 값

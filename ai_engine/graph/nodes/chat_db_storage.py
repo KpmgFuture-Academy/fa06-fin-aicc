@@ -19,6 +19,13 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
     suggested_action = state.get("suggested_action")
     source_documents = state.get("source_documents", [])
     
+    # HUMAN_REQUIRED 플로우 상태 필드
+    is_human_required_flow = state.get("is_human_required_flow", False)
+    customer_consent_received = state.get("customer_consent_received", False)
+    collected_info = state.get("collected_info", {})
+    info_collection_complete = state.get("info_collection_complete", False)
+    triage_decision = state.get("triage_decision")
+    
     if not session_id:
         # 세션 ID가 없으면 에러
         state["error_message"] = "세션 ID가 없습니다."
@@ -36,10 +43,23 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
             # 새 세션 생성
             chat_session = ChatSession(
                 session_id=session_id,
-                is_active=1
+                is_active=1,
+                is_human_required_flow=1 if is_human_required_flow else 0,
+                customer_consent_received=1 if customer_consent_received else 0,
+                collected_info=json.dumps(collected_info, ensure_ascii=False) if collected_info else None,
+                info_collection_complete=1 if info_collection_complete else 0,
+                triage_decision=triage_decision.value if triage_decision else None
             )
             db.add(chat_session)
             db.flush()  # ID를 얻기 위해 flush
+        else:
+            # 기존 세션 업데이트 - HUMAN_REQUIRED 플로우 상태 저장
+            chat_session.is_human_required_flow = 1 if is_human_required_flow else 0
+            chat_session.customer_consent_received = 1 if customer_consent_received else 0
+            chat_session.collected_info = json.dumps(collected_info, ensure_ascii=False) if collected_info else None
+            chat_session.info_collection_complete = 1 if info_collection_complete else 0
+            if triage_decision:
+                chat_session.triage_decision = triage_decision.value if hasattr(triage_decision, 'value') else str(triage_decision)
         
         # 사용자 메시지 저장
         if user_message:

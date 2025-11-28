@@ -167,16 +167,6 @@ def triage_agent_node(state: GraphState) -> GraphState:
     """
     user_message = state["user_message"]
     
-    # 다음 턴 정보 수집 시작 플래그 확인 (명시적 플래그 방식)
-    next_turn_start_collecting = state.get("next_turn_start_collecting", False)
-    if next_turn_start_collecting:
-        # 다음 턴부터 정보 수집 시작
-        state["is_collecting_info"] = True
-        state["info_collection_count"] = 0
-        # 플래그 제거 (한 번만 사용)
-        state["next_turn_start_collecting"] = False
-        logger.info(f"정보 수집 시작 - 세션: {state.get('session_id', 'unknown')}, next_turn_start_collecting 플래그 확인")
-    
     try:
         # 1. GraphState -> LangChain messages 변환
         lc_messages: List[Any] = []
@@ -333,14 +323,6 @@ def triage_agent_node(state: GraphState) -> GraphState:
 
         # intent 필드 설정 (기본값만 설정, 나중에 감성분석 완료 후 구현 예정)
         state["intent"] = IntentType.INFO_REQ
-        
-        # 정보 수집 카운트: is_collecting_info=True일 때 고객 메시지가 들어올 때마다 카운트 증가
-        # (HUMAN_REQUIRED 메시지 이후부터 고객 채팅이 들어올 때마다 카운트)
-        is_collecting_info = state.get("is_collecting_info", False)
-        if is_collecting_info:
-            current_count = state.get("info_collection_count", 0)
-            state["info_collection_count"] = current_count + 1
-            logger.info(f"정보 수집 카운트 증가 - 세션: {state.get('session_id', 'unknown')}, 카운트: {state['info_collection_count']}")
 
     except Exception as e:
         # 에러 발생 시 기본값 (챗봇으로 처리)

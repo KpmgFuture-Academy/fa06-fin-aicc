@@ -27,47 +27,6 @@ def get_workflow():
     return _workflow
 
 
-def _restore_info_collection_state(conversation_history: list[ConversationMessage]) -> tuple[bool, int]:
-    """conversation_history를 분석하여 정보 수집 상태 복원
-    
-    Returns:
-        tuple[bool, int]: (is_collecting_info, info_collection_count)
-    """
-    if not conversation_history:
-        return False, 0
-    
-    is_collecting = False
-    count = 0
-    found_start_message = False
-    
-    # 시간순으로 확인 (정순)
-    for msg in conversation_history:
-        if msg.get("role") == "assistant":
-            message = msg.get("message", "")
-            
-            # 정보 수집 완료 메시지 확인 ("상담사 연결 예정입니다")
-            if "상담사 연결 예정입니다" in message:
-                # 정보 수집이 완료되었으므로 상태 리셋
-                return False, 0
-            
-            # 정보 수집 시작 메시지 확인
-            if "추가적인 질문을 드리겠습니다" in message:
-                is_collecting = True
-                found_start_message = True
-                # 이 메시지 이후의 질문들을 카운트해야 하므로 continue
-                continue
-            
-            # 정보 수집 시작 후 질문 카운트
-            # "추가적인 질문을 드리겠습니다" 이후의 assistant 메시지는 모두 정보 수집 질문
-            # 질문 패턴 체크 없이 카운트 (일반 NEED_MORE_INFO 질문과 구분하기 위해)
-            if found_start_message and is_collecting:
-                # "상담사 연결 예정입니다" 메시지는 제외 (위에서 처리됨)
-                # 그 외의 assistant 메시지는 모두 정보 수집 질문으로 카운트
-                count += 1
-    
-    return is_collecting, count
-
-
 def chat_request_to_state(request: ChatRequest) -> GraphState:
     """ChatRequest를 GraphState로 변환"""
     # 이전 대화 이력 로드
@@ -76,8 +35,8 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
     # 턴 수 계산
     conversation_turn = len([msg for msg in conversation_history if msg.get("role") == "user"])
     
-    # conversation_history를 분석하여 정보 수집 상태 복원
-    is_collecting_info, info_collection_count = _restore_info_collection_state(conversation_history)
+    # DB에서 세션 상태 직접 로드 (추론 대신 정확한 값)
+    session_state = session_manager.get_session_state(request.session_id)
     
     state: GraphState = {
         "session_id": request.session_id,
@@ -86,8 +45,13 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
         "conversation_turn": conversation_turn + 1,  # 현재 턴 포함
         "is_new_turn": True,
         "processing_start_time": datetime.now().isoformat(),
-        "is_collecting_info": is_collecting_info,  # conversation_history에서 복원
-        "info_collection_count": info_collection_count,  # conversation_history에서 복원
+        # HUMAN_REQUIRED 플로우 관련 상태 (DB에서 직접 로드)
+        "is_human_required_flow": session_state["is_human_required_flow"],
+        "customer_consent_received": session_state["customer_consent_received"],
+        "collected_info": session_state["collected_info"],
+        "info_collection_complete": session_state["info_collection_complete"],
+        # triage_decision도 이전 턴 값 복원 (참고용)
+        "triage_decision": session_state["triage_decision"],
     }
     
     return state
@@ -287,8 +251,11 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
             "customer_intent_summary": None,  # triage_agent를 거치지 않으므로 None
             "intent": IntentType.HUMAN_REQ,
             "processing_start_time": datetime.now().isoformat(),
-            "is_collecting_info": False,  # 상담원 이관 요청은 정보 수집과 별개
-            "info_collection_count": 0,  # 상담원 이관 요청은 정보 수집과 별개
+            # 상담원 이관 요청은 정보 수집 플로우와 별개 (직접 이관)
+            "is_human_required_flow": False,
+            "customer_consent_received": False,
+            "collected_info": {},
+            "info_collection_complete": False,
         }
         
         # 워크플로우 실행

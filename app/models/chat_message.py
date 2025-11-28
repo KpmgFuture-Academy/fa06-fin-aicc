@@ -23,6 +23,13 @@ class ChatSession(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     is_active = Column(Integer, default=1, nullable=False)  # 1: 활성, 0: 비활성
     
+    # ========== HUMAN_REQUIRED 플로우 상태 저장 ==========
+    is_human_required_flow = Column(Integer, default=0, nullable=False)  # 1: True, 0: False
+    customer_consent_received = Column(Integer, default=0, nullable=False)  # 1: True, 0: False
+    collected_info = Column(Text, nullable=True)  # JSON 형태로 저장 (예: {"customer_name": "홍길동"})
+    info_collection_complete = Column(Integer, default=0, nullable=False)  # 1: True, 0: False
+    triage_decision = Column(String(50), nullable=True)  # SIMPLE_ANSWER, AUTO_ANSWER, NEED_MORE_INFO, HUMAN_REQUIRED
+    
     # 관계
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
 

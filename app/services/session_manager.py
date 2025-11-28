@@ -2,11 +2,13 @@
 DB에서 conversation_history를 로드하는 기능 제공
 """
 
+import json
 import logging
-from typing import List
+from typing import List, Dict, Any, Optional
 from ai_engine.graph.state import ConversationMessage
 from app.core.database import SessionLocal
 from app.models.chat_message import ChatSession, ChatMessage
+from app.schemas.common import TriageDecisionType
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,69 @@ class SessionManager:
             # 에러 발생 시 빈 리스트 반환
             logger.error(f"세션 이력 조회 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
             return []
+        finally:
+            db.close()
+    
+    def get_session_state(self, session_id: str) -> Dict[str, Any]:
+        """세션의 HUMAN_REQUIRED 플로우 상태를 DB에서 조회
+        
+        Returns:
+            Dict with keys:
+            - is_human_required_flow: bool
+            - customer_consent_received: bool
+            - collected_info: dict
+            - info_collection_complete: bool
+            - triage_decision: Optional[TriageDecisionType]
+        """
+        db = SessionLocal()
+        try:
+            chat_session = db.query(ChatSession).filter(
+                ChatSession.session_id == session_id,
+                ChatSession.is_active == 1
+            ).first()
+            
+            if not chat_session:
+                return {
+                    "is_human_required_flow": False,
+                    "customer_consent_received": False,
+                    "collected_info": {},
+                    "info_collection_complete": False,
+                    "triage_decision": None
+                }
+            
+            # collected_info JSON 파싱
+            collected_info = {}
+            if chat_session.collected_info:
+                try:
+                    collected_info = json.loads(chat_session.collected_info)
+                except json.JSONDecodeError:
+                    collected_info = {}
+            
+            # triage_decision 변환
+            triage_decision = None
+            if chat_session.triage_decision:
+                try:
+                    triage_decision = TriageDecisionType(chat_session.triage_decision)
+                except ValueError:
+                    triage_decision = None
+            
+            return {
+                "is_human_required_flow": bool(chat_session.is_human_required_flow),
+                "customer_consent_received": bool(chat_session.customer_consent_received),
+                "collected_info": collected_info,
+                "info_collection_complete": bool(chat_session.info_collection_complete),
+                "triage_decision": triage_decision
+            }
+            
+        except Exception as e:
+            logger.error(f"세션 상태 조회 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+            return {
+                "is_human_required_flow": False,
+                "customer_consent_received": False,
+                "collected_info": {},
+                "info_collection_complete": False,
+                "triage_decision": None
+            }
         finally:
             db.close()
     
