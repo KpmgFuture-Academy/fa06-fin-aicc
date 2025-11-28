@@ -44,7 +44,7 @@ def search_rag_documents(query: str, top_k: int = 5) -> str:
         results = search_documents(
             query=query,
             top_k=top_k,
-            score_threshold=0.0  # 최소 점수 임계값 (필요시 조정)
+            score_threshold=0.3  # 최소 점수 임계값 (필요시 조정)
         )
         
         # 검색 결과가 없는 경우

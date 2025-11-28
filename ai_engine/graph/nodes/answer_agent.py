@@ -134,7 +134,7 @@ def answer_agent_node(state: GraphState) -> GraphState:
         # ------------------------------------------------------------------------
         elif triage_decision == TriageDecisionType.AUTO_ANSWER:
             if not retrieved_docs:
-                state["ai_message"] = "죄송합니다. 관련 문서를 찾을 수 없어 답변을 생성할 수 없습니다."
+                state["ai_message"] = "죄송합니다. 해당 업무는 상담원에게 문의해주세요."
                 state["source_documents"] = []
                 return state
             
