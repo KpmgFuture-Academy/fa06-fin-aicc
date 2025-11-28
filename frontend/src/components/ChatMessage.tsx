@@ -13,6 +13,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
       <div className="message-content">
         <div className="message-text">{message.content}</div>
+        {/* RAG 검색 결과 출력 (주석처리됨)
         {!isUser && message.source_documents && message.source_documents.length > 0 && (
           <div className="source-documents">
             <div className="source-title">참고 문서:</div>
@@ -23,6 +24,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             ))}
           </div>
         )}
+        */}
         {!isUser && message.intent && (
           <div className="message-meta">
             <span className={`intent-badge intent-${message.intent.toLowerCase()}`}>
