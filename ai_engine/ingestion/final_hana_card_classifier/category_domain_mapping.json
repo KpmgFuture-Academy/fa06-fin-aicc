@@ -1,0 +1,133 @@
+{
+  "version": "1.0",
+  "created_at": "2025-11-29",
+  "description": "38개 카테고리 - 8개 도메인 매핑 테이블",
+
+  "confidence_thresholds": {
+    "pattern_a": 0.9,
+    "pattern_b_low": 0.5,
+    "description": {
+      "A": "confidence >= 0.9 (고신뢰) - 추가 질문 없이 카테고리 확정",
+      "B": "0.5 <= confidence < 0.9 (중신뢰) - Clarification Loop 진입",
+      "C": "confidence < 0.5 (저신뢰) - Clarification Loop 진입"
+    }
+  },
+
+  "domain_mapping": [
+    {
+      "domain_code": "PAY_BILL",
+      "domain_name": "결제/청구",
+      "rag_index_name": "rag_index_pay_bill",
+      "categories": [
+        {"category_code": "CAT001", "category_name": "가상계좌 안내", "intent_code": "INT_PAY_VA_INFO"},
+        {"category_code": "CAT002", "category_name": "가상계좌 예약/취소", "intent_code": "INT_PAY_VA_RSV"},
+        {"category_code": "CAT003", "category_name": "결제계좌 안내/변경", "intent_code": "INT_PAY_ACC"},
+        {"category_code": "CAT004", "category_name": "결제대금 안내", "intent_code": "INT_PAY_AMT"},
+        {"category_code": "CAT005", "category_name": "결제일 안내/변경", "intent_code": "INT_PAY_DATE"},
+        {"category_code": "CAT006", "category_name": "입금내역 안내", "intent_code": "INT_PAY_DEP"},
+        {"category_code": "CAT007", "category_name": "이용내역 안내", "intent_code": "INT_PAY_USAGE"},
+        {"category_code": "CAT008", "category_name": "이용방법 안내", "intent_code": "INT_PAY_HOW"},
+        {"category_code": "CAT009", "category_name": "청구지 안내/변경", "intent_code": "INT_PAY_ADDR"},
+        {"category_code": "CAT010", "category_name": "쇼핑케어", "intent_code": "INT_PAY_SHOP"},
+        {"category_code": "CAT011", "category_name": "매출구분 변경", "intent_code": "INT_PAY_SALES"}
+      ]
+    },
+    {
+      "domain_code": "LIMIT_AUTH",
+      "domain_name": "한도/승인",
+      "rag_index_name": "rag_index_limit_auth",
+      "categories": [
+        {"category_code": "CAT012", "category_name": "한도 안내", "intent_code": "INT_LIM_INFO"},
+        {"category_code": "CAT013", "category_name": "한도상향 접수/처리", "intent_code": "INT_LIM_UP"},
+        {"category_code": "CAT014", "category_name": "승인취소/매출취소 안내", "intent_code": "INT_LIM_CANCEL"},
+        {"category_code": "CAT015", "category_name": "심사 진행사항 안내", "intent_code": "INT_LIM_REVIEW"},
+        {"category_code": "CAT016", "category_name": "신용공여기간 안내", "intent_code": "INT_LIM_CREDIT"}
+      ]
+    },
+    {
+      "domain_code": "DELINQ",
+      "domain_name": "연체/수납",
+      "rag_index_name": "rag_index_delinq",
+      "categories": [
+        {"category_code": "CAT017", "category_name": "연체대금 안내", "intent_code": "INT_DEL_INFO"},
+        {"category_code": "CAT018", "category_name": "연체대금 즉시출금", "intent_code": "INT_DEL_PAY"},
+        {"category_code": "CAT019", "category_name": "선결제/즉시출금", "intent_code": "INT_DEL_PRE"},
+        {"category_code": "CAT020", "category_name": "일부결제대금이월약정 안내", "intent_code": "INT_DEL_REV_INFO"},
+        {"category_code": "CAT021", "category_name": "일부결제대금이월약정 해지", "intent_code": "INT_DEL_REV_CANCEL"}
+      ]
+    },
+    {
+      "domain_code": "LOAN",
+      "domain_name": "대출",
+      "rag_index_name": "rag_index_loan",
+      "categories": [
+        {"category_code": "CAT022", "category_name": "단기카드대출 안내/실행", "intent_code": "INT_LOAN_SHORT"},
+        {"category_code": "CAT023", "category_name": "장기카드대출 안내", "intent_code": "INT_LOAN_LONG"},
+        {"category_code": "CAT024", "category_name": "오토할부/오토캐쉬백 안내/신청/취소", "intent_code": "INT_LOAN_AUTO"}
+      ]
+    },
+    {
+      "domain_code": "BENEFIT",
+      "domain_name": "포인트/혜택/바우처",
+      "rag_index_name": "rag_index_benefit",
+      "categories": [
+        {"category_code": "CAT025", "category_name": "포인트/마일리지 안내", "intent_code": "INT_BEN_POINT"},
+        {"category_code": "CAT026", "category_name": "포인트/마일리지 전환등록", "intent_code": "INT_BEN_CONVERT"},
+        {"category_code": "CAT027", "category_name": "정부지원 바우처 (등유, 임신 등)", "intent_code": "INT_BEN_GOV"},
+        {"category_code": "CAT028", "category_name": "프리미엄 바우처 안내/발급", "intent_code": "INT_BEN_PREMIUM"},
+        {"category_code": "CAT029", "category_name": "이벤트 안내", "intent_code": "INT_BEN_EVENT"},
+        {"category_code": "CAT038", "category_name": "연회비 안내", "intent_code": "INT_BEN_FEE"}
+      ]
+    },
+    {
+      "domain_code": "DOC_TAX",
+      "domain_name": "증명/세금",
+      "rag_index_name": "rag_index_doc_tax",
+      "categories": [
+        {"category_code": "CAT030", "category_name": "증명서/확인서 발급", "intent_code": "INT_DOC_CERT"},
+        {"category_code": "CAT031", "category_name": "교육비", "intent_code": "INT_DOC_EDU"},
+        {"category_code": "CAT032", "category_name": "금리인하요구권 안내/신청", "intent_code": "INT_DOC_RATE"}
+      ]
+    },
+    {
+      "domain_code": "UTILITY",
+      "domain_name": "공과금",
+      "rag_index_name": "rag_index_utility",
+      "categories": [
+        {"category_code": "CAT033", "category_name": "도시가스", "intent_code": "INT_UTIL_GAS"},
+        {"category_code": "CAT034", "category_name": "전화요금", "intent_code": "INT_UTIL_PHONE"}
+      ]
+    },
+    {
+      "domain_code": "SEC_CARD",
+      "domain_name": "인증/보안/카드관리",
+      "rag_index_name": "rag_index_sec_card",
+      "categories": [
+        {"category_code": "CAT035", "category_name": "도난/분실 신청/해제", "intent_code": "INT_SEC_LOST"},
+        {"category_code": "CAT036", "category_name": "긴급 배송 신청", "intent_code": "INT_SEC_URGENT"},
+        {"category_code": "CAT037", "category_name": "기타", "intent_code": "INT_SEC_ETC"}
+      ]
+    }
+  ],
+
+  "meta_info_template": {
+    "conversation_id": "conv_{date}_{seq}",
+    "turn_id": 1,
+    "classification_result": {
+      "domain_code": "",
+      "domain_name": "",
+      "category_code": "",
+      "category_name": "",
+      "intent_code": "",
+      "confidence": 0.0,
+      "confidence_pattern": ""
+    },
+    "rag_query": "",
+    "rag_filters": {
+      "rag_index_name": "",
+      "domain_code": "",
+      "category_code": "",
+      "is_active": true
+    }
+  }
+}
