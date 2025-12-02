@@ -80,81 +80,104 @@ def _format_conversation_history(conversation_history: List[Dict]) -> str:
     return "\n".join(formatted_lines)
 
 
-def _extract_info_from_conversation(conversation_history: List[Dict], current_message: str, collected_info: Dict[str, Any]) -> Dict[str, Any]:
-    """대화 전체 히스토리에서 모든 필수 정보를 추출합니다.
+def _extract_single_field(conversation_history: List[Dict], current_message: str, field_name: str, field_label: str) -> str | None:
+    """대화에서 단일 필드 값을 추출합니다.
     
-    LLM을 사용하여 대화 전체를 분석하고, 아직 수집되지 않은 정보를 추출합니다.
+    LLM에게 JSON이 아닌 단순 텍스트로 응답받아 파싱 실패 위험을 줄입니다.
+    고객(사용자) 메시지에서만 정보를 추출합니다.
+    
+    Args:
+        conversation_history: 대화 히스토리
+        current_message: 현재 사용자 메시지
+        field_name: 추출할 필드명 (예: "customer_name")
+        field_label: 필드 라벨 (예: "고객명")
+    
+    Returns:
+        추출된 값 또는 None
     """
-    # 이미 수집된 필드 제외
-    fields_to_extract = {
-        k: v for k, v in REQUIRED_INFO_FIELDS.items() 
-        if k not in collected_info or not collected_info[k]
-    }
+    # 고객(사용자) 메시지만 필터링 - AI 답변은 제외
+    user_messages_only = [
+        msg for msg in conversation_history 
+        if msg.get("role") == "user"
+    ]
+    history_text = _format_conversation_history(user_messages_only)
     
-    if not fields_to_extract:
-        return collected_info  # 이미 모든 정보 수집됨
-    
-    # 추출할 필드 설명 생성
-    fields_description = "\n".join([
-        f"- {k}: {v['label']}" for k, v in fields_to_extract.items()
-    ])
-    
-    # 대화 히스토리 포맷팅
-    history_text = _format_conversation_history(conversation_history)
-    
-    system_message = SystemMessage(content=f"""당신은 대화 내용에서 고객 정보를 추출하는 어시스턴트입니다.
-아래 대화 기록을 분석하여 요청된 정보를 추출해주세요.
+    system_message = SystemMessage(content=f"""당신은 대화 내용에서 특정 정보를 추출하는 어시스턴트입니다.
 
-추출할 정보:
-{fields_description}
+추출할 정보: {field_label}
 
-규칙:
-1. 대화 내용에서 명확하게 언급된 정보만 추출하세요.
-2. 추측하지 마세요. 확실하지 않으면 null로 표시하세요.
-3. 반드시 JSON 형식으로만 응답하세요.
+중요 규칙:
+1. **오직 고객이 직접 말한 내용에서만** 정보를 추출하세요.
+2. 상담봇/AI의 답변 내용은 절대 추출하지 마세요.
+3. '{field_label}' 정보가 고객 메시지에서 명확하게 언급되었으면 그 값만 추출하세요.
+4. 추측하지 마세요. 확실하지 않으면 "없음"이라고 응답하세요.
+5. 추출된 값만 간단히 응답하세요. 설명이나 다른 텍스트는 포함하지 마세요.
 
-응답 형식 (JSON):
-{{
-  "customer_name": "추출된 이름 또는 null",
-  "inquiry_type": "추출된 문의 유형 또는 null",
-  "inquiry_detail": "추출된 상세 내용 또는 null"
-}}""")
+예시:
+- 고객명을 추출하는 경우: "홍길동" (O), "고객님의 이름은 홍길동입니다" (X)
+- 문의 유형: "카드 분실" (O), "카드 분실 신고 접수" (X)
+- 상세 내용: 고객이 말한 구체적인 상황만 (O), AI가 안내한 절차나 정보 (X)
+- 정보가 없는 경우: "없음" (O)""")
     
-    human_message = HumanMessage(content=f"""[대화 기록]
+    human_message = HumanMessage(content=f"""[고객 메시지 기록]
 {history_text}
 
 [현재 고객 메시지]
 {current_message}
 
-위 대화에서 정보를 추출하여 JSON으로 응답해주세요.""")
+위 고객 메시지에서 '{field_label}' 정보를 추출해주세요. 값만 응답하세요.""")
     
     try:
         response = llm.invoke([system_message, human_message])
-        response_text = response.content.strip()
+        extracted_value = response.content.strip()
         
-        # JSON 파싱 시도
-        # JSON 블록이 ```json ... ``` 형태로 올 수 있음
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0].strip()
+        # "없음", "null", 빈 문자열 등은 None으로 처리
+        if not extracted_value or extracted_value.lower() in ["없음", "null", "none", "n/a", "-"]:
+            return None
         
-        extracted = json.loads(response_text)
+        logger.debug(f"필드 '{field_name}' 추출 성공: {extracted_value}")
+        return extracted_value
         
-        # 추출된 정보를 collected_info에 병합
-        updated_info = collected_info.copy()
-        for field_name in REQUIRED_INFO_FIELDS.keys():
-            if field_name in extracted and extracted[field_name] and extracted[field_name] != "null":
-                updated_info[field_name] = extracted[field_name]
-        
-        return updated_info
-        
-    except (json.JSONDecodeError, KeyError) as e:
-        logger.error(f"정보 추출 JSON 파싱 실패: {str(e)}")
-        return collected_info
     except Exception as e:
-        logger.error(f"정보 추출 중 오류: {str(e)}")
-        return collected_info
+        logger.error(f"필드 '{field_name}' 추출 중 오류: {str(e)}")
+        return None
+
+
+def _extract_info_from_conversation(conversation_history: List[Dict], current_message: str, collected_info: Dict[str, Any]) -> Dict[str, Any]:
+    """대화 전체 히스토리에서 필수 정보를 한 필드씩 추출합니다.
+    
+    각 필드를 개별적으로 추출하여 JSON 파싱 실패 위험을 줄입니다.
+    이미 수집된 필드는 건너뜁니다.
+    """
+    # collected_info가 None이면 빈 포맷으로 초기화
+    if collected_info is None:
+        collected_info = {
+            "customer_name": None,
+            "inquiry_type": None,
+            "inquiry_detail": None
+        }
+    
+    updated_info = collected_info.copy()
+    
+    # 아직 수집되지 않은 필드만 추출 시도
+    for field_name, field_config in REQUIRED_INFO_FIELDS.items():
+        # 이미 값이 있으면 건너뜀
+        if updated_info.get(field_name):
+            continue
+        
+        # 단일 필드 추출
+        extracted_value = _extract_single_field(
+            conversation_history,
+            current_message,
+            field_name,
+            field_config["label"]
+        )
+        
+        if extracted_value:
+            updated_info[field_name] = extracted_value
+            logger.info(f"필드 '{field_name}' 수집 완료: {extracted_value}")
+    
+    return updated_info
 
 
 def _get_missing_fields(collected_info: Dict[str, Any]) -> List[str]:

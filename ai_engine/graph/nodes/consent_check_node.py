@@ -32,6 +32,17 @@ def consent_check_node(state: GraphState) -> GraphState:
     if is_consent:
         # 동의함 → waiting_agent로 이동
         state["customer_consent_received"] = True
+        
+        # collected_info 빈 포맷 초기화 (DB에 저장될 스키마)
+        # 이미 값이 있으면 유지, 없으면 빈 포맷으로 초기화
+        if not state.get("collected_info"):
+            state["collected_info"] = {
+                "customer_name": None,      # 고객명
+                "inquiry_type": None,       # 문의 유형
+                "inquiry_detail": None      # 상세 내용
+            }
+            logger.info(f"collected_info 빈 포맷 초기화 - 세션: {session_id}")
+        
         logger.info(f"고객 동의 확인 - 세션: {session_id}, 동의함 → waiting_agent로 이동")
     else:
         # 그 외 전부 → triage_agent로 이동

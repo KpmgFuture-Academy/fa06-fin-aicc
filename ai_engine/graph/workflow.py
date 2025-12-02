@@ -14,13 +14,18 @@
 
 [HUMAN_REQUIRED = TRUE 플로우 (상담사 연결)]
 1. consent_check_node에서 고객 동의 확인 (룰 베이스)
-   - "네" 패턴 → customer_consent_received=True → waiting_agent
+   - "네" 패턴 → customer_consent_received=True, collected_info 빈 포맷 초기화 → waiting_agent
    - 그 외 전부 → is_human_required_flow=False → triage_agent
-2. waiting_agent에서 정보 수집 (대화 히스토리 기반)
+2. waiting_agent에서 정보 수집 (한 필드씩 추출)
+   - 대화 히스토리에서 단일 필드 값 추출 (JSON 파싱 실패 방지)
    - collected_info 업데이트
-   - 부족한 정보만 질문
-3. 정보 수집 완료 (info_collection_complete=True)
+   - 부족한 정보에 대해 질문 생성
+3. chat_db_storage에서 DB 저장 (항상 거침)
+   - collected_info를 chat_sessions 테이블에 저장
+   - user_message, ai_message를 chat_messages 테이블에 저장
+4. 정보 수집 완료 시 (info_collection_complete=True)
    → summary_agent → human_transfer → END
+5. 정보 수집 중 → END (다음 턴 대기)
 
 한 사용자(세션)에 대해 여러 턴의 대화가 가능하며, 상담사 이관이 결정된 시점에만
 전체 대화를 요약하여 대시보드에 표시합니다.
@@ -83,20 +88,21 @@ def _route_after_consent(state: GraphState) -> str:
     return "triage_agent"
 
 
-def _route_after_waiting(state: GraphState) -> str:
-    """waiting_agent 이후 분기.
+def _route_after_db_storage(state: GraphState) -> str:
+    """chat_db_storage 이후 분기.
     
-    - 정보 수집 완료 시 → summary_agent
-    - 정보 수집 중 → chat_db_storage
+    - HUMAN_REQUIRED 플로우에서 정보 수집 완료 시 → summary_agent
+    - 그 외 (일반 플로우 또는 정보 수집 중) → END
     """
+    is_human_required_flow = state.get("is_human_required_flow", False)
     info_collection_complete = state.get("info_collection_complete", False)
     
-    # 정보 수집 완료 시 summary_agent로 이동
-    if info_collection_complete:
+    # HUMAN_REQUIRED 플로우에서 정보 수집이 완료된 경우에만 summary_agent로
+    if is_human_required_flow and info_collection_complete:
         return "summary_agent"
     
-    # 정보 수집 중이면 chat_db_storage로 이동 (다음 턴 대기)
-    return "chat_db_storage"
+    # 그 외에는 END (일반 플로우 또는 정보 수집 중)
+    return "end"
 
 
 def build_workflow() -> Any:
@@ -148,13 +154,16 @@ def build_workflow() -> Any:
         },
     )
 
-    # waiting_agent 이후 조건부 분기
+    # waiting_agent 이후 → chat_db_storage (항상 거침, collected_info 저장)
+    graph.add_edge("waiting_agent", "chat_db_storage")
+    
+    # chat_db_storage 이후 조건부 분기
     graph.add_conditional_edges(
-        "waiting_agent",
-        _route_after_waiting,
+        "chat_db_storage",
+        _route_after_db_storage,
         {
-            "summary_agent": "summary_agent",      # 정보 수집 완료 시
-            "chat_db_storage": "chat_db_storage",  # 정보 수집 중
+            "summary_agent": "summary_agent",  # HUMAN_REQUIRED 플로우 정보 수집 완료 시
+            "end": END,                        # 일반 플로우 또는 정보 수집 중
         },
     )
     
@@ -163,8 +172,5 @@ def build_workflow() -> Any:
     
     # human_transfer 이후 → END
     graph.add_edge("human_transfer", END)
-    
-    # chat_db_storage 이후 → END
-    graph.add_edge("chat_db_storage", END)
 
     return graph.compile()
