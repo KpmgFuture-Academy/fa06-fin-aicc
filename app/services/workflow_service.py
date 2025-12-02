@@ -217,9 +217,15 @@ async def process_chat_message(request: ChatRequest) -> ChatResponse:
 
 
 async def process_handover(request: HandoverRequest) -> HandoverResponse:
-    """상담원 이관 처리 (LangGraph 워크플로우 실행)"""
+    """상담원 이관 처리 (summary_agent 직접 호출)
+    
+    "상담원 연결" 버튼 클릭 시 호출되며, 대화 내용을 요약하고 분석 결과를 반환합니다.
+    워크플로우를 거치지 않고 직접 summary_agent를 호출하여 요약/감정/키워드를 생성합니다.
+    """
+    from ai_engine.graph.nodes.summary_agent import summary_agent_node
+    
     try:
-        logger.info(f"상담원 이관 워크플로우 시작 - 세션: {request.session_id}, 사유: {request.trigger_reason}")
+        logger.info(f"상담원 이관 분석 시작 - 세션: {request.session_id}, 사유: {request.trigger_reason}")
         
         # 이전 대화 이력 로드
         conversation_history = session_manager.get_conversation_history(request.session_id)
@@ -239,40 +245,27 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
         
         logger.info(f"대화 이력 로드 완료 - 세션: {request.session_id}, 메시지 수: {len(conversation_history)}")
         
-        # GraphState 생성 (상담원 이관 요청)
-        # 상담원 이관 요청은 직접 요청이므로 triage_agent를 거치지 않고 바로 처리
-        initial_state: GraphState = {
+        # GraphState 생성 (summary_agent 호출용)
+        state: GraphState = {
             "session_id": request.session_id,
-            "user_message": f"[상담원 이관 요청] {request.trigger_reason}",
             "conversation_history": conversation_history,
-            "triage_decision": TriageDecisionType.HUMAN_REQUIRED,  # 상담원 이관 요청
-            "requires_consultant": True,
             "handover_reason": request.trigger_reason,
-            "customer_intent_summary": None,  # triage_agent를 거치지 않으므로 None
-            "intent": IntentType.HUMAN_REQ,
-            "processing_start_time": datetime.now().isoformat(),
-            # 상담원 이관 요청은 정보 수집 플로우와 별개 (직접 이관)
-            "is_human_required_flow": False,
-            "customer_consent_received": False,
-            "collected_info": {},
-            "info_collection_complete": False,
         }
         
-        # 워크플로우 실행
-        # 현재는 모든 케이스가 answer_agent를 거치지만, 상담원 이관 요청의 경우
-        # summary_agent와 human_transfer가 필요한 경우를 위해 별도 처리 고려 가능
-        workflow = get_workflow()
-        final_state = await workflow.ainvoke(initial_state)
+        # summary_agent 직접 호출 - 요약/감정/키워드 생성
+        state = summary_agent_node(state)
+        
+        logger.info(f"요약 생성 완료 - 세션: {request.session_id}, 요약: {state.get('summary', 'None')[:50] if state.get('summary') else 'None'}...")
         
         # GraphState를 HandoverResponse로 변환
-        response = state_to_handover_response(final_state)
+        response = state_to_handover_response(state)
         
-        logger.info(f"상담원 이관 워크플로우 완료 - 세션: {request.session_id}, 상태: {response.status}")
+        logger.info(f"상담원 이관 분석 완료 - 세션: {request.session_id}, 상태: {response.status}")
         
         return response
         
     except Exception as e:
-        logger.error(f"상담원 이관 워크플로우 실행 중 오류 - 세션: {request.session_id}, 오류: {str(e)}", exc_info=True)
+        logger.error(f"상담원 이관 분석 중 오류 - 세션: {request.session_id}, 오류: {str(e)}", exc_info=True)
         # 에러 발생 시 기본 응답 반환
         return HandoverResponse(
             status="error",
