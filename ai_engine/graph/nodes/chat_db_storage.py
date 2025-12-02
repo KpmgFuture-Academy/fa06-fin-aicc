@@ -3,16 +3,20 @@
 from __future__ import annotations
 from datetime import datetime
 import json
+import logging
 from typing import Optional
 from ai_engine.graph.state import GraphState, ConversationMessage
 from app.core.database import SessionLocal
 from app.models.chat_message import ChatSession, ChatMessage, MessageRole
 from app.schemas.common import IntentType, ActionType
 
+logger = logging.getLogger(__name__)
+
 
 def chat_db_storage_node(state: GraphState) -> GraphState:
     """상담 내용을 데이터베이스에 저장하고 conversation_history를 업데이트하는 노드."""
     session_id = state.get("session_id")
+    logger.info(f"chat_db_storage_node 실행 - 세션: {session_id}")
     user_message = state.get("user_message")
     ai_message = state.get("ai_message")
     intent = state.get("intent")
@@ -104,6 +108,8 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
         
         # 모든 변경사항 커밋 (chat_sessions + chat_messages)
         db.commit()
+        
+        logger.info(f"DB 저장 완료 - 세션: {session_id}, collected_info: {collected_info}")
         
         # DB에서 최신 conversation_history 로드
         messages = db.query(ChatMessage).filter(
