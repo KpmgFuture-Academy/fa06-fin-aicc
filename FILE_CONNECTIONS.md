@@ -59,9 +59,9 @@ ai_engine/graph/nodes/triage_agent.py
     │   │       │
     │   │       └─> ai_engine/graph/tools/intent_classification_tool.py
     │   │               │
-    │   │               └─> Hana Card 모델
+    │   │               └─> Final Classifier 모델 (LoRA 기반 KcELECTRA, 38개 카테고리)
     │   │                   └─> ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
-    │   │                       └─> models/hana_card_model/ (모델 파일)
+    │   │                       └─> models/final_classifier_model/model_final/ (모델 파일)
     │   │
     │   ├─> rag_search_tool.invoke()
     │   │       │

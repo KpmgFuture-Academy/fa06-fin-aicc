@@ -1,111 +1,96 @@
-# 모델 다운로드 안내
+# 모델 배치 안내
 
-학습된 BERT 모델 파일은 용량 제한으로 Git 저장소에 포함되지 않습니다 (435MB).
+Final Classifier 모델 (LoRA 기반 KcELECTRA)은 다음 경로에 배치해야 합니다.
 
-## 다운로드 방법
+## 모델 배치 방법
 
-### Option 1: Google Drive (권장)
+### 모델 경로
 
-1. **다운로드 링크**:
-   [Google Drive에서 다운로드](https://drive.google.com/drive/folders/14HhWnQG5GJjZi_9XMdPs6Vl8H-eUcuSf)
+모델 파일을 다음 위치에 배치:
+```
+models/final_classifier_model/model_final/
+```
 
-2. **압축 해제**:
-   ```bash
-   # 다운로드한 파일 압축 해제
-   unzip bert_intent_classifier.zip -d models/
-   ```
-
-3. **확인**:
-   ```bash
-   ls models/bert_intent_classifier/
-   # model.safetensors, config.json 등이 있어야 함
-   ```
-
-### Option 2: Hugging Face Hub
+### 확인
 
 ```bash
-# Hugging Face CLI 설치
-pip install huggingface-hub
-
-# 모델 다운로드 (업로드 후 사용 가능)
-huggingface-cli download your-username/bert-financial-intent \
-  --local-dir models/bert_intent_classifier
-```
-
-### Option 3: 직접 전달
-
-팀 내부 공유 서버나 네트워크 드라이브에서 다운로드:
-```
-\\shared-drive\models\bert_intent_classifier\
+ls models/final_classifier_model/model_final/
+# best_model.pt, lora_adapter/ 등이 있어야 함
 ```
 
 ## 모델 파일 구조
 
-다운로드 후 다음과 같은 구조여야 합니다:
+배치 후 다음과 같은 구조여야 합니다:
 
 ```
-models/bert_intent_classifier/
-├── model.safetensors          # 433MB (모델 가중치)
-├── config.json                # 모델 설정
-├── id2intent.json             # ID → 의도 매핑
-├── intent2id.json             # 의도 → ID 매핑
-├── tokenizer.json             # 토크나이저
-├── tokenizer_config.json
-├── special_tokens_map.json
-├── vocab.txt                  # 어휘 사전
-└── training_args.bin          # 학습 인자
+models/final_classifier_model/
+├── README.md                      # 모델 설명
+└── model_final/
+    ├── best_model.pt              # 최고 성능 체크포인트 (~500MB)
+    ├── latest_checkpoint.pt       # 최신 체크포인트 (~500MB)
+    ├── evaluation_results.txt     # 상세 평가 결과
+    ├── confidence_analysis.json   # Confidence 분석 결과
+    └── lora_adapter/              # LoRA 어댑터 (경량, 필수)
+        ├── adapter_config.json    # 베이스 모델 정보 포함
+        ├── adapter_model.safetensors (~4MB)
+        └── README.md
 ```
 
-**총 크기**: 약 435MB
+**총 크기**: 약 500MB (LoRA 어댑터만 사용 시 ~4MB)
 
 ## 검증
 
-모델이 정상적으로 다운로드되었는지 확인:
+모델이 정상적으로 배치되었는지 확인:
 
 ```bash
 python -c "
 import os
-model_path = 'models/bert_intent_classifier'
-required_files = ['model.safetensors', 'config.json', 'id2intent.json']
+model_path = 'models/final_classifier_model/model_final'
+lora_path = os.path.join(model_path, 'lora_adapter')
 
-for file in required_files:
-    path = os.path.join(model_path, file)
+# 필수 파일 확인
+required_files = [
+    ('lora_adapter/adapter_config.json', lora_path),
+    ('lora_adapter/adapter_model.safetensors', lora_path),
+]
+
+print('=== 필수 파일 (LoRA 어댑터) ===')
+for name, base in required_files:
+    file = name.split('/')[-1]
+    path = os.path.join(base, file)
     if os.path.exists(path):
         size = os.path.getsize(path) / (1024**2)  # MB
         print(f'✓ {file}: {size:.1f} MB')
     else:
         print(f'✗ {file}: 누락')
+
+# 선택 파일 확인
+print('\n=== 선택 파일 (체크포인트) ===')
+optional_files = ['best_model.pt', 'latest_checkpoint.pt']
+for file in optional_files:
+    path = os.path.join(model_path, file)
+    if os.path.exists(path):
+        size = os.path.getsize(path) / (1024**2)  # MB
+        print(f'✓ {file}: {size:.1f} MB')
+    else:
+        print(f'- {file}: 없음 (선택사항)')
 "
 ```
 
 예상 출력:
 ```
-✓ model.safetensors: 433.0 MB
-✓ config.json: 0.2 MB
-✓ id2intent.json: 0.1 MB
+=== 필수 파일 (LoRA 어댑터) ===
+✓ adapter_config.json: 0.0 MB
+✓ adapter_model.safetensors: 4.0 MB
+
+=== 선택 파일 (체크포인트) ===
+✓ best_model.pt: 500.0 MB
+✓ latest_checkpoint.pt: 500.0 MB
 ```
 
 ## 문제 해결
 
-### 다운로드 실패
-
-**증상**: 파일 다운로드가 중단되거나 실패
-
-**해결**:
-- 인터넷 연결 확인
-- 충분한 디스크 공간 확보 (최소 500MB)
-- 브라우저 대신 다운로드 관리자 사용
-
-### 압축 해제 오류
-
-**증상**: 압축 파일이 손상됨
-
-**해결**:
-- 파일 크기 확인 (약 400MB여야 함)
-- 재다운로드
-- 다른 압축 해제 도구 사용 (7-Zip 등)
-
-### 경로 오류
+### 모델을 찾을 수 없음
 
 **증상**: 모델을 찾을 수 없다는 오류
 
@@ -115,30 +100,46 @@ for file in required_files:
 pwd
 
 # 모델 경로 확인
-ls models/bert_intent_classifier/
+ls models/final_classifier_model/model_final/
 
 # 직접 경로 지정
-python scripts/inference.py --model /절대/경로/models/bert_intent_classifier
+python scripts/inference.py --model /절대/경로/models/final_classifier_model/model_final
 ```
 
-## 네트워크 제한 환경
+### peft 라이브러리 오류
 
-회사 방화벽 등으로 외부 다운로드가 불가능한 경우:
+**증상**: `ModuleNotFoundError: No module named 'peft'`
 
-1. **USB 드라이브 사용**:
-   - 외부에서 다운로드 후 USB로 전달
+**해결**:
+```bash
+pip install peft>=0.4.0
+```
 
-2. **내부 서버 활용**:
-   - IT 부서에 요청하여 내부 서버에 업로드
+### 베이스 모델 다운로드 오류
 
-3. **오프라인 패키지**:
-   - 모든 파일을 압축하여 전달
+**증상**: `beomi/KcELECTRA-base-v2022` 다운로드 실패
+
+**해결**:
+- 인터넷 연결 확인
+- Hugging Face 접근 가능 여부 확인
+- 오프라인 환경에서는 베이스 모델을 미리 다운로드 필요
+
+## 모델 로드 방식
+
+Final Classifier는 LoRA 방식으로 로드됩니다:
+
+1. `adapter_config.json`에서 베이스 모델 정보 추출 (`beomi/KcELECTRA-base-v2022`)
+2. 베이스 모델을 Hugging Face에서 다운로드 (첫 실행 시)
+3. LoRA 어댑터 적용 (`lora_adapter/`)
+4. (선택) `best_model.pt`에서 추가 가중치 및 라벨 매핑 로드
 
 ## 추가 정보
 
-- **모델 버전**: v1.0.0 (2025-11-18)
-- **파일 형식**: SafeTensors (PyTorch 호환)
-- **체크섬**: [여기에 MD5/SHA256 체크섬 추가]
+- **모델 버전**: v2.0.0 (Final Classifier with LoRA)
+- **베이스 모델**: beomi/KcELECTRA-base-v2022
+- **파인튜닝 방식**: LoRA (Low-Rank Adaptation)
+- **카테고리**: 38개
+- **도메인**: 8개
 
 ---
 

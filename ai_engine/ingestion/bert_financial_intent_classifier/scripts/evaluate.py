@@ -41,11 +41,13 @@ def find_model_path():
     project_root = os.path.dirname(ai_engine_dir)  # fa06-fin-aicc/
     
     candidates = [
-        # 프로젝트 루트 기준
-        os.path.join(project_root, 'models/hana_card_model'),
+        # 프로젝트 루트 기준 - final_classifier_model (새 모델)
+        os.path.join(project_root, 'models/final_classifier_model/model_final'),
         # 현재 작업 디렉토리 기준
-        os.path.join(os.getcwd(), 'models/hana_card_model'),
-        os.path.join(os.getcwd(), '../models/hana_card_model'),
+        os.path.join(os.getcwd(), 'models/final_classifier_model/model_final'),
+        os.path.join(os.getcwd(), '../models/final_classifier_model/model_final'),
+        # fallback: 기존 hana_card_model (호환성)
+        os.path.join(project_root, 'models/hana_card_model'),
     ]
 
     for path in candidates:
@@ -54,9 +56,7 @@ def find_model_path():
             return abs_path
     
     # 못 찾으면 기본 경로 반환
-    return os.path.join(project_root, 'models/hana_card_model')
-
-    return None
+    return os.path.join(project_root, 'models/final_classifier_model/model_final')
 
 
 def find_data_path():

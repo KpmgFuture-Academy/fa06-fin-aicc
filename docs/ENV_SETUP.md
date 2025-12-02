@@ -58,13 +58,17 @@ COLLECTION_NAME=financial_documents
 
 ## 선택적 설정
 
-### Hana Card 모델 경로
+### Final Classifier 모델 경로
 
-Hana Card 의도 분류 모델은 자동으로 다음 경로에서 탐색됩니다:
-- `models/hana_card_model/`
+Final Classifier 의도 분류 모델 (LoRA 기반 KcELECTRA, 38개 카테고리)은 자동으로 다음 경로에서 탐색됩니다:
+- `models/final_classifier_model/model_final/`
 - 프로젝트 루트 기준 상대 경로
 
 모델이 없으면 의도 분류가 실패하며 예외가 발생합니다.
+
+**필요 파일:**
+- `lora_adapter/` (LoRA 어댑터)
+- `best_model.pt` (체크포인트, 선택사항)
 
 ## 전체 .env 파일 예시
 

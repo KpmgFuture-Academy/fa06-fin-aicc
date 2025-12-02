@@ -53,7 +53,7 @@ def build_rag_prompt(
 
     handover_flags = []
     if force_handover_intent:
-        handover_flags.append("Hana Card 의도 분류 결과 상담원 연결 필요")
+        handover_flags.append("의도 분류 결과 상담원 연결 필요")
     if rag_low_confidence:
         handover_flags.append("근거 문서 유사도가 낮음")
     if user_requested_handover:

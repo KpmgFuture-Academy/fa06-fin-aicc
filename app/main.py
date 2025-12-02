@@ -73,18 +73,18 @@ async def startup_event():
         logger.warning(f"⚠️ 벡터 DB 초기화 실패 (RAG 검색은 빈 결과 반환): {str(e)}")
         logger.warning("   벡터 DB는 선택사항입니다. 문서가 없으면 RAG 검색 결과가 비어있을 수 있습니다.")
     
-    # Hana Card 모델 확인
+    # Final Classifier 모델 확인 (LoRA 기반 KcELECTRA)
     try:
         from ai_engine.ingestion.bert_financial_intent_classifier.scripts.inference import IntentClassifier
         classifier = IntentClassifier()
         if classifier is not None:
-            logger.info("✅ Hana Card 의도 분류 모델 로드 완료")
+            logger.info("✅ Final Classifier 의도 분류 모델 로드 완료 (38개 카테고리)")
         else:
-            logger.warning("⚠️ Hana Card 모델을 찾을 수 없습니다. 키워드 기반 fallback을 사용합니다.")
-            logger.warning("   모델 위치: fa06-fin-aicc/models/hana_card_model/ 폴더를 확인하세요.")
+            logger.warning("⚠️ Final Classifier 모델을 찾을 수 없습니다.")
+            logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
     except Exception as e:
-        logger.warning(f"⚠️ Hana Card 모델 로드 실패 (키워드 기반 fallback 사용): {str(e)}")
-        logger.warning("   모델 위치: fa06-fin-aicc/models/hana_card_model/ 폴더를 확인하세요.")
+        logger.warning(f"⚠️ Final Classifier 모델 로드 실패: {str(e)}")
+        logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
 
 
 @app.on_event("shutdown")

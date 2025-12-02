@@ -260,12 +260,12 @@ frontend/
 ```
 ai_engine/graph/tools/intent_classification_tool.py
     │
-    └─> Hana Card 모델 사용
+    └─> Final Classifier 모델 사용 (LoRA 기반 KcELECTRA, 38개 카테고리)
         └─> ai_engine/ingestion/bert_financial_intent_classifier/scripts/inference.py
 ```
 
 **연결 관계:**
-- `intent_classification_tool.py` → `models/hana_card_model/` (모델 로드)
+- `intent_classification_tool.py` → `models/final_classifier_model/model_final/` (모델 로드)
 - `intent_classification_tool.py` → `data/kb_finance_insurance_60items_v1.json` (키워드)
 
 ##### 5.2 RAG Search Tool
@@ -404,7 +404,7 @@ Frontend (React)
                     │                       │       ├─> Hybrid Search (BM25)
                     │                       │       └─> Reranking (Cross-Encoder)
                     │                       │
-                    │                       └─> Intent Classifier (Hana Card)
+                    │                       └─> Intent Classifier (Final Classifier - LoRA KcELECTRA)
                     │
                     └─> Database Layer (SQLAlchemy)
                             │
@@ -436,11 +436,11 @@ triage_agent_node
     ↓
 intent_classification_tool
     ↓
-bert_intent_classifier/inference.py
+bert_financial_intent_classifier/scripts/inference.py
     ↓
-Hana Card 모델 (models/hana_card_model/)
+Final Classifier 모델 (models/final_classifier_model/model_final/)
     ↓
-의도 분류 결과 반환
+의도 분류 결과 반환 (38개 카테고리)
 ```
 
 #### 3. RAG 검색 체인

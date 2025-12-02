@@ -6,20 +6,65 @@ env/
 # 파이썬 캐시 파일 (자동 생성되는 불필요한 파일들)
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# 맥(Mac) 운영체제 임시 파일 (윈도우 사용자도 넣어두면 좋음)
+# 맥(Mac) 운영체제 임시 파일
 .DS_Store
+
+# 윈도우 임시 파일
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # 환경 변수 파일 (API 키 등 비밀번호가 들어가는 파일)
 .env
+.env.local
+.env.*.local
 
-# 모델 파일
+# IDE 설정 파일
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 모델 파일 (대용량)
 models/bert_intent_classifier/
 models/hana_card_model/
+models/final_classifier_model/
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.bin
 
 # 로컬 DB/벡터 저장소
 chroma_db/
-data/
 *.db
 *.sqlite3
 *.sqlite
+
+# 로그 파일
+*.log
+logs/
+
+# 출력/결과 폴더
+outputs/
+results/
+
+# Node.js (Frontend)
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 빌드 결과물
+dist/
+build/
+*.egg-info/
+
+# 테스트 관련
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/

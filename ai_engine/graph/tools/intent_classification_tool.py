@@ -1,4 +1,4 @@
-"""의도 분류 Tool: Hana Card 모델을 호출하여 고객 메시지의 문맥 의도를 분류합니다."""
+"""의도 분류 Tool: Final Classifier 모델을 호출하여 고객 메시지의 문맥 의도를 분류합니다."""
 
 from __future__ import annotations
 
@@ -17,11 +17,12 @@ logger = logging.getLogger(__name__)
 
 @tool
 def classify_intent(user_message: str) -> str:
-    """Hana Card 모델을 사용하여 고객 메시지의 문맥 의도를 분류합니다.
+    """Final Classifier 모델을 사용하여 고객 메시지의 문맥 의도를 분류합니다.
     
     문맥 의도는 질문의 주제나 도메인을 나타냅니다 (예: 결제일 안내/변경/취소, 한도 안내 등).
     감정이나 요청 타입이 아니라 문맥 그 자체의 의도를 분류합니다.
     상위 3개의 의도와 신뢰도를 반환합니다.
+    38개 카테고리, 8개 도메인을 지원합니다.
     
     Args:
         user_message: 고객이 입력한 메시지
@@ -38,8 +39,8 @@ def classify_intent(user_message: str) -> str:
     classifier = _get_classifier()
     if classifier is None:
         raise RuntimeError(
-            "Hana Card intent classifier is not available. "
-            "모델이 올바른 위치에 있는지 확인하세요: fa06-fin-aicc/models/hana_card_model"
+            "Final Classifier intent model is not available. "
+            "모델이 올바른 위치에 있는지 확인하세요: fa06-fin-aicc/models/final_classifier_model/model_final"
         )
 
     try:
@@ -63,14 +64,14 @@ intent_classification_tool = classify_intent
 
 @lru_cache(maxsize=1)
 def _get_classifier() -> Optional[IntentClassifier]:
-    """지연 로딩으로 Hana Card 분류기를 초기화한다."""
+    """지연 로딩으로 Final Classifier 분류기를 초기화한다."""
     try:
-        logger.info("Loading Hana Card intent classifier...")
+        logger.info("Loading Final Classifier intent model...")
         return IntentClassifier()
     except FileNotFoundError as exc:
         logger.error(
-            "Hana Card intent model not found: %s\n"
-            "Expected path: fa06-fin-aicc/models/hana_card_model\n"
+            "Final Classifier intent model not found: %s\n"
+            "Expected path: fa06-fin-aicc/models/final_classifier_model/model_final\n"
             "모델이 올바른 위치에 있는지 확인하세요.",
             exc,
         )
