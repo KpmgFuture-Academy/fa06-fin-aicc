@@ -34,26 +34,27 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
     
     db = SessionLocal()
     try:
+        # ========== [chat_sessions 테이블] 세션 정보 저장 ==========
         # 세션 조회 또는 생성
         chat_session = db.query(ChatSession).filter(
             ChatSession.session_id == session_id
         ).first()
         
         if not chat_session:
-            # 새 세션 생성
+            # [chat_sessions] 새 세션 INSERT
             chat_session = ChatSession(
-                session_id=session_id,
-                is_active=1,
-                is_human_required_flow=1 if is_human_required_flow else 0,
-                customer_consent_received=1 if customer_consent_received else 0,
-                collected_info=json.dumps(collected_info, ensure_ascii=False) if collected_info else None,
-                info_collection_complete=1 if info_collection_complete else 0,
-                triage_decision=triage_decision.value if triage_decision else None
+                session_id=session_id,                    # session_id 컬럼
+                is_active=1,                              # is_active 컬럼
+                is_human_required_flow=1 if is_human_required_flow else 0,      # is_human_required_flow 컬럼
+                customer_consent_received=1 if customer_consent_received else 0, # customer_consent_received 컬럼
+                collected_info=json.dumps(collected_info, ensure_ascii=False) if collected_info else None,  # collected_info 컬럼 (JSON)
+                info_collection_complete=1 if info_collection_complete else 0,   # info_collection_complete 컬럼
+                triage_decision=triage_decision.value if triage_decision else None  # triage_decision 컬럼
             )
             db.add(chat_session)
             db.flush()  # ID를 얻기 위해 flush
         else:
-            # 기존 세션 업데이트 - HUMAN_REQUIRED 플로우 상태 저장
+            # [chat_sessions] 기존 세션 UPDATE - HUMAN_REQUIRED 플로우 상태 저장
             chat_session.is_human_required_flow = 1 if is_human_required_flow else 0
             chat_session.customer_consent_received = 1 if customer_consent_received else 0
             chat_session.collected_info = json.dumps(collected_info, ensure_ascii=False) if collected_info else None
@@ -61,18 +62,19 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
             if triage_decision:
                 chat_session.triage_decision = triage_decision.value if hasattr(triage_decision, 'value') else str(triage_decision)
         
-        # 사용자 메시지 저장
+        # ========== [chat_messages 테이블] 대화 메시지 저장 ==========
+        # [chat_messages] 사용자 메시지 INSERT (role=USER)
         if user_message:
             user_msg = ChatMessage(
-                session_id=session_id,
-                role=MessageRole.USER,
-                message=user_message,
-                intent=intent.value if intent else None,
-                created_at=datetime.utcnow()
+                session_id=session_id,           # session_id 컬럼 (FK)
+                role=MessageRole.USER,           # role 컬럼
+                message=user_message,            # message 컬럼
+                intent=intent.value if intent else None,  # intent 컬럼
+                created_at=datetime.utcnow()     # created_at 컬럼
             )
             db.add(user_msg)
         
-        # AI 답변 저장
+        # [chat_messages] AI 응답 INSERT (role=ASSISTANT)
         if ai_message:
             source_docs_json = None
             if source_documents:
@@ -87,19 +89,20 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
                 ], ensure_ascii=False)
             
             ai_msg = ChatMessage(
-                session_id=session_id,
-                role=MessageRole.ASSISTANT,
-                message=ai_message,
-                suggested_action=suggested_action.value if suggested_action else None,
-                source_documents=source_docs_json,
-                created_at=datetime.utcnow()
+                session_id=session_id,           # session_id 컬럼 (FK)
+                role=MessageRole.ASSISTANT,      # role 컬럼
+                message=ai_message,              # message 컬럼
+                suggested_action=suggested_action.value if suggested_action else None,  # suggested_action 컬럼
+                source_documents=source_docs_json,  # source_documents 컬럼 (JSON)
+                created_at=datetime.utcnow()     # created_at 컬럼
             )
             db.add(ai_msg)
         
-        # 세션 업데이트 시간 갱신
+        # ========== DB 커밋 ==========
+        # [chat_sessions] updated_at 컬럼 갱신
         chat_session.updated_at = datetime.utcnow()
         
-        # 커밋
+        # 모든 변경사항 커밋 (chat_sessions + chat_messages)
         db.commit()
         
         # DB에서 최신 conversation_history 로드
