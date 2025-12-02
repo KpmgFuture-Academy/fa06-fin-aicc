@@ -43,10 +43,11 @@ def classify_intent(user_message: str) -> str:
         )
 
     try:
+        logger.info(f"intent_classification_tool 호출됨 - 메시지: {user_message[:50]}...")
         # Top 3 결과 반환
         results = classifier.predict(user_message, top_k=3)
-        logger.debug(
-            "Intent classified via Hana Card model (top 3): %s",
+        logger.info(
+            "Intent 분류 결과 (top 3): %s",
             [(r["intent"], f"{r['confidence']:.2f}") for r in results]
         )
         # JSON 문자열로 반환 (LangChain tool은 문자열을 반환해야 함)
