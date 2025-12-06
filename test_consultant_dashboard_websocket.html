@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>상담원 대시보드 WebSocket 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 2rem;
+            background: #f5f5f5;
+        }
+        .log {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        .log-entry {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .log-entry.info {
+            color: #2196f3;
+        }
+        .log-entry.success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .log-entry.error {
+            color: #f44336;
+        }
+        .log-entry.data {
+            color: #666;
+            white-space: pre-wrap;
+            margin-left: 1rem;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+        .status.connected {
+            background: #4caf50;
+            color: white;
+        }
+        .status.disconnected {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎧 상담원 대시보드 WebSocket 테스트</h1>
+    
+    <button onclick="connect()">연결 시작</button>
+    <button onclick="clearLog()">로그 지우기</button>
+    
+    <div id="status" class="status disconnected">연결 안 됨</div>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        let ws = null;
+        
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function addDataLog(label, data) {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry data';
+            entry.textContent = `${label}\n${JSON.stringify(data, null, 2)}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            if (connected) {
+                status.className = 'status connected';
+                status.textContent = '✅ 연결됨';
+            } else {
+                status.className = 'status disconnected';
+                status.textContent = '❌ 연결 안 됨';
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        function connect() {
+            const wsUrl = 'ws://localhost:8000/api/v1/chat/ws/consultant_dashboard';
+            addLog(`연결 시도: ${wsUrl}`, 'info');
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                addLog('✅ WebSocket 연결 성공!', 'success');
+                updateStatus(true);
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    addLog(`📩 메시지 수신: type=${message.type}`, 'info');
+                    
+                    if (message.type === 'handover_report') {
+                        addLog('✅ handover_report 수신!', 'success');
+                        addDataLog('📦 리포트 데이터:', message);
+                    } else if (message.type === 'status') {
+                        addLog(`ℹ️ 상태 메시지: ${message.message}`, 'info');
+                    } else {
+                        addDataLog('📨 기타 메시지:', message);
+                    }
+                } catch (error) {
+                    addLog(`❌ 메시지 파싱 오류: ${error}`, 'error');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                addLog('❌ WebSocket 오류 발생', 'error');
+                console.error('WebSocket 오류:', error);
+                updateStatus(false);
+            };
+            
+            ws.onclose = (event) => {
+                addLog(`🔌 WebSocket 연결 종료: code=${event.code}, reason=${event.reason}`, 'info');
+                updateStatus(false);
+                
+                // 5초 후 재연결
+                setTimeout(() => {
+                    addLog('🔄 5초 후 재연결 시도...', 'info');
+                    connect();
+                }, 5000);
+            };
+        }
+        
+        // 페이지 로드 시 자동 연결
+        window.onload = () => {
+            addLog('페이지 로드 완료', 'info');
+            addLog('자동 연결을 원하면 "연결 시작" 버튼을 클릭하세요', 'info');
+        };
+    </script>
+</body>
+</html>
+

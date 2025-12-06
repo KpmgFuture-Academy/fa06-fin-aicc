@@ -14,6 +14,31 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """세션별 대화 이력 관리 (DB 기반)"""
     
+    def __init__(self):
+        # 세션별 임시 메타데이터 저장 (메모리)
+        self._session_metadata: Dict[str, Dict[str, Any]] = {}
+    
+    def store_session_metadata(self, session_id: str, summary: Optional[str], sentiment: Optional[str], keywords: List[str]):
+        """세션의 요약 정보를 임시로 메모리에 저장"""
+        self._session_metadata[session_id] = {
+            "summary": summary,
+            "sentiment": sentiment,
+            "keywords": keywords
+        }
+        logger.debug(f"세션 메타데이터 저장 - 세션: {session_id}, summary: {summary[:50] if summary else None}...")
+    
+    def get_session_metadata(self, session_id: str) -> Dict[str, Any]:
+        """세션의 요약 정보를 메모리에서 조회"""
+        metadata = self._session_metadata.get(session_id, {})
+        logger.debug(f"세션 메타데이터 조회 - 세션: {session_id}, 존재: {bool(metadata)}")
+        return metadata
+    
+    def clear_session_metadata(self, session_id: str):
+        """세션의 요약 정보를 메모리에서 삭제"""
+        if session_id in self._session_metadata:
+            del self._session_metadata[session_id]
+            logger.debug(f"세션 메타데이터 삭제 - 세션: {session_id}")
+    
     def get_conversation_history(self, session_id: str) -> List[ConversationMessage]:
         """세션의 대화 이력을 DB에서 조회"""
         db = SessionLocal()

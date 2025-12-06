@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import type { ChatRequest, ChatResponse, HandoverRequest, HandoverResponse } from '../types/api';
+import { websocketService } from './websocket';
 
 // 백엔드 서버 직접 연결 (프록시 대신)
 // 환경 변수가 없으면 기본값으로 localhost:8000 사용
@@ -20,11 +21,35 @@ const apiClient = axios.create({
 
 export const chatApi = {
   /**
-   * 채팅 메시지 전송
+   * 채팅 메시지 전송 (HTTP)
+   * WebSocket 사용 불가 시 fallback으로 사용
    */
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
     const response = await apiClient.post<ChatResponse>('/api/v1/chat/message', request);
     return response.data;
+  },
+
+  /**
+   * 채팅 메시지 전송 (WebSocket 우선, HTTP fallback)
+   * @param request - 채팅 요청
+   * @param onMessage - WebSocket 응답 콜백
+   * @param useWebSocket - WebSocket 사용 여부 (기본값: true)
+   */
+  async sendMessageWithWebSocket(
+    request: ChatRequest,
+    onMessage: (response: ChatResponse) => void,
+    useWebSocket: boolean = true
+  ): Promise<ChatResponse | null> {
+    // WebSocket이 활성화되고 연결 가능한 경우
+    if (useWebSocket && websocketService.isConnected()) {
+      // WebSocket으로 메시지 전송
+      websocketService.sendMessage(request.user_message);
+      return null; // WebSocket은 비동기 콜백으로 응답
+    }
+
+    // HTTP fallback
+    console.log('WebSocket 사용 불가, HTTP로 요청');
+    return await this.sendMessage(request);
   },
 
   /**

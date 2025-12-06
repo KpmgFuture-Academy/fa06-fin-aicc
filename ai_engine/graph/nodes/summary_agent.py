@@ -41,6 +41,19 @@ else:
 
 def summary_agent_node(state: GraphState) -> GraphState:
     """상담 내용을 요약하고 감정/키워드를 추출하는 노드"""
+    
+    # 🔧 이미 요약 정보가 있으면 재사용 (process_handover에서 전달된 경우)
+    existing_summary = state.get("summary")
+    existing_sentiment = state.get("customer_sentiment")
+    existing_keywords = state.get("extracted_keywords", [])
+    
+    if existing_summary and existing_sentiment:
+        logger.info(f"기존 요약 정보 재사용 - 세션: {state.get('session_id', 'unknown')}")
+        logger.info(f"  📝 summary: {existing_summary}")
+        logger.info(f"  😊 sentiment: {existing_sentiment}")
+        logger.info(f"  🔑 keywords: {existing_keywords}")
+        return state  # 이미 요약이 있으면 그대로 반환
+    
     conversation_history = state.get("conversation_history", [])
     
     if not conversation_history:
@@ -132,6 +145,12 @@ def summary_agent_node(state: GraphState) -> GraphState:
         state["summary"] = summary
         state["customer_sentiment"] = sentiment
         state["extracted_keywords"] = keywords[:5]  # 최대 5개
+        
+        # 🔍 생성된 요약 정보 로깅
+        logger.info(f"✅ 요약 생성 완료 - 세션: {state.get('session_id', 'unknown')}")
+        logger.info(f"  📝 summary: {summary}")
+        logger.info(f"  😊 sentiment: {sentiment}")
+        logger.info(f"  🔑 keywords: {keywords[:5]}")
         
     except Exception as e:
         # 에러 발생 시 기본값 설정

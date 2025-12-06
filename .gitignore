@@ -15,3 +15,5 @@ __pycache__/
 
 # 모델 파일
 models/bert_intent_classifier/
+models/hana_card_model/*.safetensors
+models/hana_card_model/training_args.bin

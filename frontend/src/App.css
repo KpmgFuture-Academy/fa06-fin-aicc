@@ -23,6 +23,33 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.connection-status {
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.connection-status.status-connected {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.connection-status.status-connecting {
+  color: #ff9800;
+  background: rgba(255, 152, 0, 0.1);
+}
+
+.connection-status.status-disconnected {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.connection-status.status-error {
+  color: #9c27b0;
+  background: rgba(156, 39, 176, 0.1);
+}
+
 .reset-button {
   padding: 6px 12px;
   background: #f44336;
