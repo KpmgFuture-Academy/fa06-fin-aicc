@@ -319,6 +319,10 @@ class AICCSTTService:
         text = self._extract_text(final_payload)
         segments = self._parse_segments(final_payload)
         
+        # text가 비어있으면 segments에서 텍스트 합치기
+        if not text.strip() and segments:
+            text = " ".join(seg.text for seg in segments if seg.text)
+        
         logger.info(f"VITO STT 완료: {text[:50]}..." if len(text) > 50 else f"VITO STT 완료: {text}")
         
         return STTResult(
