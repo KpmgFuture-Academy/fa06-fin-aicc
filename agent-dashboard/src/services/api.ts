@@ -200,3 +200,28 @@ export const getAllSessionMessages = async (
 
   return response.json();
 };
+
+// ========== 음성 STT API ==========
+
+export interface STTResponse {
+  transcribed_text: string;
+  stt_duration_ms: number;
+}
+
+// 음성 → 텍스트 변환 (STT만)
+export const transcribeAudio = async (audioBlob: Blob): Promise<STTResponse> => {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'recording.webm');
+  formData.append('language', 'ko');
+
+  const response = await fetch(`${API_BASE_URL}/voice/transcribe`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`STT API error: ${response.status}`);
+  }
+
+  return response.json();
+};

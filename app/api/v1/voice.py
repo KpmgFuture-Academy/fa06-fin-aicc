@@ -298,6 +298,45 @@ async def tts_stream(request: TTSRequest):
     )
 
 
+@router.post("/transcribe")
+async def transcribe_only(
+    audio: UploadFile = File(..., description="음성 파일"),
+    language: str = Form("ko", description="언어 코드"),
+):
+    """
+    🎤 STT 전용 엔드포인트 (상담원 대시보드용)
+
+    음성 파일을 텍스트로 변환합니다.
+    AI 워크플로우 없이 순수 STT만 수행합니다.
+    """
+    start_time = time.time()
+
+    _validate_audio_file(audio.filename)
+    audio_bytes = await audio.read()
+
+    if len(audio_bytes) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="빈 오디오 파일입니다."
+        )
+
+    try:
+        stt_service = AICCSTTService.get_instance()
+        result = stt_service.transcribe(audio_bytes, language=language)
+    except STTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"음성 인식 실패: {str(e)}"
+        )
+
+    duration_ms = int((time.time() - start_time) * 1000)
+
+    return {
+        "transcribed_text": result.text,
+        "stt_duration_ms": duration_ms,
+    }
+
+
 @router.get("/token-info", response_model=TokenInfoResponse)
 async def get_token_info():
     """

@@ -10,11 +10,13 @@ import {
   closeSession,
   getClosedSessions,
   getAllSessionMessages,
+  transcribeAudio,
   Message,
   HandoverSession,
   HandoverAnalysisResult,
   DBMessage
 } from '../services/api';
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 const Container = styled.div`
   height: 100vh;
@@ -239,6 +241,50 @@ const SidebarToggleButton = styled.button`
   &:hover {
     background-color: #4a3fbf;
   }
+`;
+
+// 마이크 버튼 스타일
+const MicButton = styled.button<{ isRecording: boolean; isProcessing?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background-color: ${props => {
+    if (props.isProcessing) return '#9e9e9e';
+    if (props.isRecording) return '#f44336';
+    return '#4CAF50';
+  }};
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: ${props => props.isProcessing ? 'wait' : 'pointer'};
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: auto;
+  transition: all 0.2s;
+
+  &:hover {
+    opacity: ${props => props.isProcessing ? 1 : 0.9};
+  }
+
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+
+  ${props => props.isRecording && `
+    animation: pulse 1s infinite;
+  `}
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+`;
+
+const MicIcon = styled.span`
+  font-size: 16px;
 `;
 
 const SidebarOverlay = styled.div<{ isOpen: boolean }>`
@@ -615,6 +661,10 @@ const Dashboard: React.FC = () => {
   const [selectedClosedSession, setSelectedClosedSession] = useState<HandoverSession | null>(null);
   const [historyMessages, setHistoryMessages] = useState<DBMessage[]>([]);
 
+  // 음성 녹음 관련
+  const { isRecording, startRecording, stopRecording, error: recordingError } = useAudioRecorder();
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+
   // 시간 포맷팅 헬퍼
   const formatTime = (date: Date | null): string => {
     if (!date) return '-';
@@ -870,6 +920,44 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // 마이크 버튼 클릭 핸들러
+  const handleMicClick = async () => {
+    if (isRecording) {
+      // 녹음 중지 및 STT 처리
+      const audioBlob = await stopRecording();
+
+      if (!audioBlob) {
+        console.error('녹음 데이터 없음');
+        return;
+      }
+
+      setIsTranscribing(true);
+
+      try {
+        // STT 변환
+        const sttResult = await transcribeAudio(audioBlob);
+        const transcribedText = sttResult.transcribed_text;
+
+        if (!transcribedText.trim()) {
+          alert('음성을 인식할 수 없습니다. 다시 시도해주세요.');
+          return;
+        }
+
+        // 변환된 텍스트를 입력창에 설정
+        setInputValue(transcribedText);
+
+      } catch (error) {
+        console.error('STT 변환 실패:', error);
+        alert('음성 변환에 실패했습니다. 다시 시도해주세요.');
+      } finally {
+        setIsTranscribing(false);
+      }
+    } else {
+      // 녹음 시작
+      await startRecording();
+    }
+  };
+
   return (
     <Container>
       {/* 세션 선택 영역 */}
@@ -899,6 +987,16 @@ const Dashboard: React.FC = () => {
         {handoverSessions.length === 0 && (
           <NoSessionText>현재 연결 대기 중인 고객이 없습니다</NoSessionText>
         )}
+        <MicButton
+          isRecording={isRecording}
+          isProcessing={isTranscribing}
+          onClick={handleMicClick}
+          disabled={isTranscribing}
+          title={isRecording ? '녹음 중지 (STT 변환)' : '음성 입력 시작'}
+        >
+          <MicIcon>{isRecording ? '⏹️' : '🎤'}</MicIcon>
+          {isTranscribing ? '변환 중...' : isRecording ? '녹음 중...' : '음성 입력'}
+        </MicButton>
         <SidebarToggleButton onClick={handleOpenSidebar}>
           상담 기록
         </SidebarToggleButton>
