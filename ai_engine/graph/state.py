@@ -31,7 +31,8 @@ FastAPI 'app/schemas'에서 선언한 데이터 계약을 그대로 충족할 �
 - conversation_history에 이전 대화를 누적하여 맥락 유지
 """
 
-from typing import TypedDict, List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any
+from typing_extensions import TypedDict
 from app.schemas.common import IntentType, ActionType, SentimentType, TriageDecisionType
 from app.schemas.chat import SourceDocument
 from app.schemas.handover import KMSRecommendation

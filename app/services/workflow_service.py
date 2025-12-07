@@ -95,12 +95,14 @@ def state_to_chat_response(state: GraphState) -> ChatResponse:
     
     intent = state.get("intent", IntentType.INFO_REQ)
     source_documents = state.get("source_documents", [])
-    
+    info_collection_complete = state.get("info_collection_complete", False)
+
     return ChatResponse(
         ai_message=ai_message,
         intent=intent,
         suggested_action=suggested_action,
-        source_documents=source_documents
+        source_documents=source_documents,
+        info_collection_complete=info_collection_complete
     )
 
 

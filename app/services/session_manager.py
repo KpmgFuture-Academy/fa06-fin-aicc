@@ -54,7 +54,10 @@ class SessionManager:
     
     def get_session_state(self, session_id: str) -> Dict[str, Any]:
         """세션의 HUMAN_REQUIRED 플로우 상태를 DB에서 조회
-        
+
+        Note: is_active 조건 없이 조회합니다. HUMAN_REQUIRED 플로우 상태는
+        세션의 활성화 여부와 관계없이 로드해야 정보 수집 플로우가 정상 작동합니다.
+
         Returns:
             Dict with keys:
             - is_human_required_flow: bool
@@ -65,9 +68,9 @@ class SessionManager:
         """
         db = SessionLocal()
         try:
+            # is_active 조건 제거 - 플로우 상태는 활성화 여부와 무관하게 로드
             chat_session = db.query(ChatSession).filter(
-                ChatSession.session_id == session_id,
-                ChatSession.is_active == 1
+                ChatSession.session_id == session_id
             ).first()
             
             if not chat_session:

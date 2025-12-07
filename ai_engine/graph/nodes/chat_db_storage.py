@@ -1,16 +1,24 @@
 # ai_engine/graph/nodes/chat_db_storage.py
 
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import json
 import logging
 from typing import Optional
+
 from ai_engine.graph.state import GraphState, ConversationMessage
 from app.core.database import SessionLocal
 from app.models.chat_message import ChatSession, ChatMessage, MessageRole
 from app.schemas.common import IntentType, ActionType
 
 logger = logging.getLogger(__name__)
+
+# 한국 시간(KST, UTC+9) 헬퍼
+KST = timezone(timedelta(hours=9))
+
+def get_kst_now() -> datetime:
+    """현재 한국 시간 반환"""
+    return datetime.now(KST).replace(tzinfo=None)
 
 
 def chat_db_storage_node(state: GraphState) -> GraphState:
@@ -20,22 +28,37 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
     user_message = state.get("user_message")
     ai_message = state.get("ai_message")
     intent = state.get("intent")
-    suggested_action = state.get("suggested_action")
     source_documents = state.get("source_documents", [])
-    
+
     # HUMAN_REQUIRED 플로우 상태 필드
     is_human_required_flow = state.get("is_human_required_flow", False)
     customer_consent_received = state.get("customer_consent_received", False)
     collected_info = state.get("collected_info", {})
     info_collection_complete = state.get("info_collection_complete", False)
     triage_decision = state.get("triage_decision")
-    
+    requires_consultant = state.get("requires_consultant", False)
+
+    # suggested_action 결정 로직
+    # 1. state에 이미 설정되어 있으면 사용 (human_transfer 노드에서 설정)
+    # 2. 그렇지 않으면 info_collection_complete 또는 triage_decision 기반으로 결정
+    suggested_action = state.get("suggested_action")
+    if suggested_action is None:
+        # 정보 수집 완료 또는 HUMAN_REQUIRED 결정인 경우 HANDOVER
+        triage_value = triage_decision.value if hasattr(triage_decision, 'value') else str(triage_decision) if triage_decision else None
+        if info_collection_complete or triage_value == "HUMAN_REQUIRED" or requires_consultant:
+            suggested_action = ActionType.HANDOVER
+            logger.info(f"suggested_action을 HANDOVER로 설정 - 세션: {session_id}, info_complete: {info_collection_complete}, triage: {triage_value}")
+        else:
+            suggested_action = ActionType.CONTINUE
+        # state에도 설정
+        state["suggested_action"] = suggested_action
+
     if not session_id:
         # 세션 ID가 없으면 에러
         state["error_message"] = "세션 ID가 없습니다."
         state["db_stored"] = False
         return state
-    
+
     db = SessionLocal()
     try:
         # ========== [chat_sessions 테이블] 세션 정보 저장 ==========
@@ -43,7 +66,7 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
         chat_session = db.query(ChatSession).filter(
             ChatSession.session_id == session_id
         ).first()
-        
+
         if not chat_session:
             # [chat_sessions] 새 세션 INSERT
             chat_session = ChatSession(
@@ -65,7 +88,7 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
             chat_session.info_collection_complete = 1 if info_collection_complete else 0
             if triage_decision:
                 chat_session.triage_decision = triage_decision.value if hasattr(triage_decision, 'value') else str(triage_decision)
-        
+
         # ========== [chat_messages 테이블] 대화 메시지 저장 ==========
         # [chat_messages] 사용자 메시지 INSERT (role=USER)
         if user_message:
@@ -74,10 +97,10 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
                 role=MessageRole.USER,           # role 컬럼
                 message=user_message,            # message 컬럼
                 intent=intent.value if intent else None,  # intent 컬럼
-                created_at=datetime.utcnow()     # created_at 컬럼
+                created_at=get_kst_now()     # created_at 컬럼
             )
             db.add(user_msg)
-        
+
         # [chat_messages] AI 응답 INSERT (role=ASSISTANT)
         if ai_message:
             source_docs_json = None
@@ -91,31 +114,31 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
                     }
                     for doc in source_documents
                 ], ensure_ascii=False)
-            
+
             ai_msg = ChatMessage(
                 session_id=session_id,           # session_id 컬럼 (FK)
                 role=MessageRole.ASSISTANT,      # role 컬럼
                 message=ai_message,              # message 컬럼
                 suggested_action=suggested_action.value if suggested_action else None,  # suggested_action 컬럼
                 source_documents=source_docs_json,  # source_documents 컬럼 (JSON)
-                created_at=datetime.utcnow()     # created_at 컬럼
+                created_at=get_kst_now()     # created_at 컬럼
             )
             db.add(ai_msg)
-        
+
         # ========== DB 커밋 ==========
         # [chat_sessions] updated_at 컬럼 갱신
-        chat_session.updated_at = datetime.utcnow()
-        
+        chat_session.updated_at = get_kst_now()
+
         # 모든 변경사항 커밋 (chat_sessions + chat_messages)
         db.commit()
-        
-        logger.info(f"DB 저장 완료 - 세션: {session_id}, collected_info: {collected_info}")
-        
+
+        logger.info(f"DB 저장 완료 - 세션: {session_id}, collected_info: {collected_info}, suggested_action: {suggested_action}")
+
         # DB에서 최신 conversation_history 로드
         messages = db.query(ChatMessage).filter(
             ChatMessage.session_id == session_id
         ).order_by(ChatMessage.created_at.asc()).all()
-        
+
         # conversation_history 업데이트
         conversation_history: list[ConversationMessage] = []
         for msg in messages:
@@ -124,10 +147,10 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
                 message=msg.message,
                 timestamp=msg.created_at.isoformat()
             ))
-        
+
         state["conversation_history"] = conversation_history
         state["db_stored"] = True
-        
+
     except Exception as e:
         db.rollback()
         state["error_message"] = f"DB 저장 중 오류 발생: {str(e)}"
@@ -135,7 +158,7 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
         # 에러가 발생해도 conversation_history는 메모리에서 유지
         if "conversation_history" not in state:
             state["conversation_history"] = []
-        
+
         # 메모리에서 conversation_history 업데이트 (fallback)
         timestamp = datetime.now().isoformat()
         if user_message:
@@ -152,10 +175,9 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
             ))
     finally:
         db.close()
-    
+
     # is_session_end는 기본적으로 False
     if "is_session_end" not in state:
         state["is_session_end"] = False
-    
-    return state
 
+    return state

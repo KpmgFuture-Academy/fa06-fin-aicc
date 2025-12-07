@@ -18,6 +18,14 @@ const apiClient = axios.create({
   timeout: API_TIMEOUT, // 로컬 모델을 위해 5분으로 설정
 });
 
+// 폴링용 메시지 타입
+export interface PollingMessage {
+  id: number;
+  role: string;
+  message: string;
+  created_at: string;
+}
+
 export const chatApi = {
   /**
    * 채팅 메시지 전송
@@ -40,6 +48,38 @@ export const chatApi = {
    */
   async healthCheck(): Promise<{ status: string; database: string }> {
     const response = await apiClient.get('/health');
+    return response.data;
+  },
+
+  /**
+   * 새 메시지 폴링 (상담원 → 고객 메시지 수신용)
+   * after_id: 이 ID 이후의 메시지만 조회
+   * afterHandover: true면 HANDOVER 이후 메시지만 조회
+   */
+  async pollMessages(sessionId: string, afterId?: number, afterHandover: boolean = true): Promise<PollingMessage[]> {
+    const params: Record<string, any> = {};
+    if (afterId !== undefined) {
+      params.after_id = afterId;
+    }
+    if (afterHandover) {
+      params.after_handover = 'true';
+    }
+    const response = await apiClient.get<PollingMessage[]>(
+      `/api/v1/sessions/${sessionId}/messages`,
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * 고객 메시지 전송 (상담원 연결 모드에서 사용)
+   * AI 응답 없이 메시지만 DB에 저장
+   */
+  async sendCustomerMessage(sessionId: string, message: string): Promise<{ success: boolean; message_id: number }> {
+    const response = await apiClient.post<{ success: boolean; message_id: number }>(
+      `/api/v1/sessions/${sessionId}/customer-message`,
+      { message }
+    );
     return response.data;
   },
 };
