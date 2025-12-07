@@ -114,11 +114,21 @@ class IntentClassifier:
         self.model.to(self.device)
         self.model.eval()
 
-        # 라벨 매핑이 없으면 기본값 생성 (임시)
+        # 라벨 매핑이 없으면 id2intent.json 파일에서 로드 시도
         if not self.id2intent:
-            print("[WARNING] 라벨 매핑을 찾을 수 없습니다. 기본 라벨 사용.")
-            # 38개 카테고리 기본값
-            self.id2intent = {i: f"LABEL_{i}" for i in range(38)}
+            id2intent_path = os.path.join(model_path, 'id2intent.json')
+            if os.path.exists(id2intent_path):
+                print(f"[INFO] id2intent.json에서 라벨 매핑 로드 중...")
+                import json
+                with open(id2intent_path, 'r', encoding='utf-8') as f:
+                    loaded_mapping = json.load(f)
+                    self.id2intent = {int(k): v for k, v in loaded_mapping.items()}
+                    self.intent2id = {v: int(k) for k, v in loaded_mapping.items()}
+                print(f"[OK] 라벨 매핑 로드 완료: {len(self.id2intent)}개 카테고리")
+            else:
+                print("[WARNING] 라벨 매핑을 찾을 수 없습니다. 기본 라벨 사용.")
+                # 38개 카테고리 기본값
+                self.id2intent = {i: f"LABEL_{i}" for i in range(38)}
 
         print(f"[OK] 모델 로드 완료 ({self.device})")
         print(f"[OK] 의도 종류: {len(self.id2intent):,}개\n")
@@ -142,14 +152,17 @@ class IntentClassifier:
             
             # 2. 현재 작업 디렉토리 기준
             os.path.join(os.getcwd(), 'models/final_classifier_model/model_final'),
+            
+            # 3. cwd가 상위 폴더(3rd_project 등)인 경우 - fa06-fin-aicc 하위 폴더
+            os.path.join(os.getcwd(), 'fa06-fin-aicc/models/final_classifier_model/model_final'),
 
-            # 3. 상위 디렉토리 기준
+            # 4. 상위 디렉토리 기준
             os.path.join(os.getcwd(), '../models/final_classifier_model/model_final'),
 
-            # 4. 절대 경로로 시도
+            # 5. 절대 경로로 시도
             os.path.abspath('models/final_classifier_model/model_final'),
             
-            # 5. fallback: 기존 hana_card_model (호환성)
+            # 6. fallback: 기존 hana_card_model (호환성)
             os.path.join(project_root, 'models/hana_card_model'),
         ]
 

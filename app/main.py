@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import chat, handover, session
+from app.api.v1 import chat, handover, session, voice, voice_ws
 from app.core.database import init_db, engine
 from app.core.config import settings
 from sqlalchemy import text
@@ -85,6 +85,23 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"⚠️ Final Classifier 모델 로드 실패: {str(e)}")
         logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+    
+    # STT/TTS 음성 서비스 설정 확인
+    logger.info("음성 서비스 설정 확인 중...")
+    
+    # VITO STT 설정 확인
+    if settings.vito_client_id and settings.vito_client_secret:
+        logger.info(f"✅ VITO STT 설정 확인 완료 (Client ID: {settings.vito_client_id[:8]}...)")
+    else:
+        logger.warning("⚠️ VITO STT 설정이 없습니다. 음성 입력 기능을 사용하려면 설정이 필요합니다.")
+        logger.warning("   .env 파일에 VITO_CLIENT_ID와 VITO_CLIENT_SECRET을 추가하세요.")
+        logger.warning("   발급: https://developers.vito.ai/")
+    
+    # OpenAI TTS 설정 확인
+    if settings.openai_api_key:
+        logger.info(f"✅ OpenAI TTS 설정 확인 완료 (voice: {settings.tts_voice}, model: {settings.tts_model})")
+    else:
+        logger.warning("⚠️ OpenAI API 키가 없어 TTS 기능을 사용할 수 없습니다.")
 
 
 @app.on_event("shutdown")
@@ -97,6 +114,8 @@ async def shutdown_event():
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
 app.include_router(handover.router, prefix="/api/v1/handover", tags=["Handover"])
 app.include_router(session.router, prefix="/api/v1/sessions", tags=["Sessions"])
+app.include_router(voice.router, prefix="/api/v1/voice", tags=["Voice"])
+app.include_router(voice_ws.router, prefix="/api/v1/voice", tags=["Voice WebSocket"])
 
 
 @app.get("/")

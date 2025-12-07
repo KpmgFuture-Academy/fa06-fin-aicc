@@ -68,3 +68,45 @@ build/
 .coverage
 htmlcov/
 .tox/
+
+# ========== STT/TTS 음성 서비스 ==========
+
+# 테스트용 오디오 파일 (대용량)
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.m4a
+*.webm
+*.opus
+
+# TTS 출력 파일
+tts_output.*
+test_input.*
+test_tts.*
+
+# 임시 오디오 파일
+temp_audio/
+audio_cache/
+
+# VITO API 관련 (토큰 캐시 등)
+.vito_token
+vito_cache/
+
+# ========== 기타 ==========
+
+# Jupyter Notebook 체크포인트
+.ipynb_checkpoints/
+
+# mypy 캐시
+.mypy_cache/
+
+# 임시 파일
+*.tmp
+*.temp
+*.bak
+
+# 압축 파일
+*.zip
+*.tar.gz
+*.rar

@@ -46,6 +46,23 @@ class Settings(BaseSettings):
     # OpenAI 설정
     openai_api_key: Optional[str] = None
     
+    # ========== STT/TTS 음성 서비스 설정 ==========
+    
+    # VITO STT 설정 (Return Zero)
+    # https://developers.vito.ai/ 에서 발급
+    vito_client_id: Optional[str] = None
+    vito_client_secret: Optional[str] = None
+    vito_stt_timeout: int = 60  # STT 요청 타임아웃 (초)
+    
+    # OpenAI TTS 설정
+    # 음성 종류: alloy, echo, fable, onyx, nova, shimmer
+    tts_voice: str = "alloy"
+    # 모델: tts-1 (빠름, 저품질), tts-1-hd (느림, 고품질)
+    tts_model: str = "tts-1"
+    tts_timeout: int = 30  # TTS 요청 타임아웃 (초)
+    
+    # ========== LLM 설정 ==========
+    
     # LM Studio 설정
     lm_studio_base_url: str = "http://localhost:1234/v1"
     lm_studio_model: str = "openai/gpt-oss-20b"
