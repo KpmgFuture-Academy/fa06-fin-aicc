@@ -17,3 +17,8 @@ class SentimentType(str, Enum): # 고객 감정 상태
     POSITIVE = "POSITIVE"
     NEGATIVE = "NEGATIVE"
     NEUTRAL = "NEUTRAL"
+
+class TriageDecisionType(str, Enum):  # Triage 에이전트 의사결정 타입
+    AUTO_HANDLE_OK = "AUTO_HANDLE_OK"      # 자동 처리 가능 (답변 생성)
+    NEED_MORE_INFO = "NEED_MORE_INFO"     # 추가 정보 필요 (질문 생성)
+    HUMAN_REQUIRED = "HUMAN_REQUIRED"      # 상담사 연결 필요
