@@ -1,38 +1,40 @@
 # WebSocket Voice Services
 
-HTTP 기반 모듈(`app/services/voice`, `app/services/voice2`)을 그대로 두고, 동일한 퍼블릭 인터페이스를 WebSocket 전송으로 제공하는 복제본이다. 스트리밍 게이트웨이를 붙일 때 이 디렉터리의 모듈을 사용하면 된다.
+HTTP 기반 모듈(`app/services/voice`, `app/services/voice2`)과는 별개로, 동일한 퍼블릭 인터페이스를 WebSocket 전송으로 제공하는 복제본입니다. 스트리밍 게이트웨이에 붙일 때 HTTP/WS 인터페이스를 공통으로 유지할 수 있습니다.
 
 ## 구조
-- `voice/` : OpenAI Whisper STT WebSocket 버전 (`OpenAIWhisperWebSocketSTT`, `STTWithCustomerEmotionService`)
+- `voice/` : OpenAI Whisper STT WebSocket 버전 (`OpenAIWhisperWebSocketSTT`, `STTWithCustomerEmotionService`, TTS WebSocket 엔진)
 - `voice2/` : VITO STT WebSocket 버전 (`ReturnZeroWebSocketSTTEngine`, `VitoSTTWithCustomerEmotionService`)
-- `common.py` : WebSocket 공통 유틸(오디오 바이트 정규화, 스트리밍, 타임아웃 처리)
+- `Hume/` : Humelo/Hume TTS WebSocket 엔진 (`HumeloTTSWebSocketEngine`) 및 샘플 스크립트
+- `common.py` : WebSocket 공통 유틸(프레임 바이너리 처리, 파싱/스트리밍)
 
 ## 의존성
-- `websockets` 패키지가 추가로 필요하다. 루트 `requirements.txt`에 포함되어 있지 않으면 `pip install websockets` 후 사용한다.
+- `websockets` 패키지가 필요합니다. 루트 `requirements.txt`에 포함되어 있으며 없으면 `pip install websockets`로 설치합니다.
+- Humelo/Hume TTS는 환경변수 `HUME_API_KEY`, `HUME_VOICE_ID`가 필요합니다.
 
-## 예시 (Whisper)
+## 예시 (Whisper STT)
 ```python
 import os
 from app.services.websocket.voice.stt import OpenAIWhisperWebSocketSTT, SpeechToTextService
 
 engine = OpenAIWhisperWebSocketSTT(
     api_key=os.environ["OPENAI_API_KEY"],
-    endpoint="wss://api.openai.com/v1/audio/transcriptions",  # 게이트웨이에 맞게 조정
+    endpoint="wss://api.openai.com/v1/audio/transcriptions",
 )
 stt = SpeechToTextService(engine)
 result = stt.transcribe_file("sample.wav")
 print(result.text)
 ```
 
-## 예시 (VITO)
+## 예시 (Hume/Humelo TTS)
 ```python
 import os
-from app.services.websocket.voice2.stt2 import ReturnZeroWebSocketSTTEngine, VitoSpeechToTextService
+from app.services.websocket.Hume.tts3 import HumeloTTSWebSocketEngine, TextToSpeechService
 
-token = os.environ["VITO_ACCESS_TOKEN"]  # 또는 HTTP auth를 사용해 발급
-engine = ReturnZeroWebSocketSTTEngine(api_key=token)
-stt = VitoSpeechToTextService(engine)
-result = stt.transcribe_file("sample.wav", diarize=True, speaker_count=2)
-print(result.text)
+engine = HumeloTTSWebSocketEngine(
+    api_key=os.environ["HUME_API_KEY"],
+    voice_id=os.environ["HUME_VOICE_ID"],
+)
+tts = TextToSpeechService(engine)
+audio = tts.synthesize_to_bytes("안녕하세요, 테스트입니다.")
 ```
-
