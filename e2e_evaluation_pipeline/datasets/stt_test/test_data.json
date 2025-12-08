@@ -1,0 +1,86 @@
+{
+  "description": "STT 평가용 샘플 테스트 데이터",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "audio_id": "stt_001",
+      "reference": "안녕하세요 카드 분실 신고하려고 전화했습니다",
+      "hypothesis": "안녕하세요 카드 분실 신고하려고 전화했습니다",
+      "domain": "card_loss",
+      "expected_segments": 1,
+      "financial_terms": ["카드", "분실", "신고"]
+    },
+    {
+      "audio_id": "stt_002",
+      "reference": "지난달 결제 내역 확인하고 싶은데요 포인트도 같이 조회해 주세요",
+      "hypothesis": "지난달 결제 내역 확인하고 싶은데요 포인트도 가치 조회해 주세요",
+      "domain": "payment_inquiry",
+      "expected_segments": 1,
+      "financial_terms": ["결제", "내역", "포인트", "조회"]
+    },
+    {
+      "audio_id": "stt_003",
+      "reference": "신용카드 한도 상향 요청합니다 현재 삼백만원에서 오백만원으로요",
+      "hypothesis": "신용카드 한도 상향 요청합니다 현재 300만원에서 500만원으로요",
+      "domain": "limit_change",
+      "expected_segments": 1,
+      "financial_terms": ["신용카드", "한도", "상향"]
+    },
+    {
+      "audio_id": "stt_004",
+      "reference": "해외에서 카드 결제가 안 돼요 긴급하게 사용해야 하는데 도와주세요",
+      "hypothesis": "해외에서 카드 결제가 안 돼요 긴급하게 사용해야 하는데 도와주세요",
+      "domain": "overseas_payment",
+      "expected_segments": 1,
+      "financial_terms": ["해외", "카드", "결제"]
+    },
+    {
+      "audio_id": "stt_005",
+      "reference": "자동이체 날짜를 변경하고 싶습니다 매월 15일에서 25일로 바꿔주세요",
+      "hypothesis": "자동이체 날짜를 변경하고 싶습니다 매월 십오일에서 이십오일로 바꿔주세요",
+      "domain": "auto_payment",
+      "expected_segments": 1,
+      "financial_terms": ["자동이체", "날짜", "변경"]
+    },
+    {
+      "audio_id": "stt_006",
+      "reference": "분할 납부 신청하려구요 이번 달 결제 금액 중에서 50만원을 3개월로요",
+      "hypothesis": "분할 납부 신청하려구요 이번 달 결재 금액 중에서 오십만원을 삼개월로요",
+      "domain": "installment",
+      "expected_segments": 1,
+      "financial_terms": ["분할", "납부", "결제", "금액"]
+    },
+    {
+      "audio_id": "stt_007",
+      "reference": "연회비 면제 가능한가요 작년에 카드 사용 실적이 천만원 넘었거든요",
+      "hypothesis": "연회비 면제 가능한가요 작년에 카드 사용 실적이 천만원 넘었거든요",
+      "domain": "annual_fee",
+      "expected_segments": 1,
+      "financial_terms": ["연회비", "면제", "실적"]
+    },
+    {
+      "audio_id": "stt_008",
+      "reference": "적금 연계 카드 추천해 주세요 포인트 적립률 높은 걸로요",
+      "hypothesis": "적금 연계 카드 추천해 주세요 포인트 적립을 높은 걸로요",
+      "domain": "card_recommendation",
+      "expected_segments": 1,
+      "financial_terms": ["적금", "카드", "포인트", "적립"]
+    },
+    {
+      "audio_id": "stt_009",
+      "reference": "카드 재발급 받고 싶어요 마그네틱이 안 읽혀요",
+      "hypothesis": "카드 재발급 받고 싶어요 마그네틱이 안 읽혀요",
+      "domain": "card_reissue",
+      "expected_segments": 1,
+      "financial_terms": ["카드", "재발급", "마그네틱"]
+    },
+    {
+      "audio_id": "stt_010",
+      "reference": "보이스피싱 피해를 입었는데 카드 정지하고 환불 받을 수 있을까요",
+      "hypothesis": "보이스피싱 피해를 입었는데 카드 정지하고 환불 받을 수 있을까요",
+      "domain": "fraud",
+      "expected_segments": 1,
+      "financial_terms": ["보이스피싱", "피해", "카드", "정지", "환불"]
+    }
+  ]
+}

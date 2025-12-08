@@ -1,0 +1,134 @@
+{
+  "description": "Slot Filling 평가용 샘플 대화 데이터",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "dialogue_id": "slot_001",
+      "expected_slots": {
+        "customer_name": "김철수",
+        "inquiry_type": "카드 분실",
+        "inquiry_detail": "지갑을 잃어버려서 카드도 같이 분실"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 무엇을 도와드릴까요?"},
+        {"role": "user", "content": "카드를 잃어버렸어요"},
+        {"role": "assistant", "content": "카드 분실이시군요. 성함을 알려주시겠어요?"},
+        {"role": "user", "content": "제 이름은 김철수입니다"},
+        {"role": "assistant", "content": "네, 김철수 고객님. 언제 어디서 분실하셨나요?"},
+        {"role": "user", "content": "오늘 아침 지하철에서 지갑을 잃어버려서 카드도 같이 분실했어요"}
+      ],
+      "final_transferred": false
+    },
+    {
+      "dialogue_id": "slot_002",
+      "expected_slots": {
+        "customer_name": "이영희",
+        "inquiry_type": "결제 오류",
+        "inquiry_detail": "온라인 쇼핑몰에서 이중 결제"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 무엇을 도와드릴까요?"},
+        {"role": "user", "content": "결제 오류가 발생했어요. 저는 이영희라고 합니다"},
+        {"role": "assistant", "content": "이영희 고객님, 어떤 결제 오류가 발생하셨나요?"},
+        {"role": "user", "content": "온라인 쇼핑몰에서 한 번만 결제했는데 두 번 빠져나갔어요"}
+      ],
+      "final_transferred": false
+    },
+    {
+      "dialogue_id": "slot_003",
+      "expected_slots": {
+        "customer_name": "박지민",
+        "inquiry_type": "한도 조정",
+        "inquiry_detail": "해외여행으로 인한 임시 한도 상향 요청"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 어떤 도움이 필요하신가요?"},
+        {"role": "user", "content": "안녕하세요, 박지민입니다. 한도 조정 문의드려요"},
+        {"role": "assistant", "content": "박지민 고객님, 한도 관련 어떤 도움이 필요하신가요?"},
+        {"role": "user", "content": "다음 주에 해외여행 가는데 임시로 한도를 올려주세요"}
+      ],
+      "final_transferred": false
+    },
+    {
+      "dialogue_id": "slot_004",
+      "expected_slots": {
+        "customer_name": "최동현",
+        "inquiry_type": "포인트 문의",
+        "inquiry_detail": "적립 포인트 사용처 확인"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 무엇을 도와드릴까요?"},
+        {"role": "user", "content": "포인트 문의요"},
+        {"role": "assistant", "content": "네, 포인트 관련 문의시군요. 성함을 알려주시겠어요?"},
+        {"role": "user", "content": "최동현이에요"},
+        {"role": "assistant", "content": "최동현 고객님, 포인트 관련 어떤 내용이 궁금하신가요?"},
+        {"role": "user", "content": "쌓인 포인트를 어디서 쓸 수 있는지 알고 싶어요"}
+      ],
+      "final_transferred": false
+    },
+    {
+      "dialogue_id": "slot_005",
+      "expected_slots": {
+        "customer_name": "정민주",
+        "inquiry_type": "해지 문의",
+        "inquiry_detail": "사용하지 않는 카드 해지 요청"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 무엇을 도와드릴까요?"},
+        {"role": "user", "content": "카드 해지하려고요"},
+        {"role": "assistant", "content": "카드 해지 문의시군요. 본인 확인을 위해 성함을 알려주세요."},
+        {"role": "user", "content": "정민주입니다"},
+        {"role": "assistant", "content": "정민주 고객님, 해지 사유를 여쭤봐도 될까요?"},
+        {"role": "user", "content": "안 쓰는 카드라서 정리하려구요"}
+      ],
+      "final_transferred": true
+    },
+    {
+      "dialogue_id": "slot_006",
+      "expected_slots": {
+        "customer_name": "송미영",
+        "inquiry_type": "연회비",
+        "inquiry_detail": "연회비 환불 요청"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 어떻게 도와드릴까요?"},
+        {"role": "user", "content": "연회비 때문에 전화했어요. 제 이름은 송미영이에요"},
+        {"role": "assistant", "content": "송미영 고객님, 연회비 관련 어떤 문의신가요?"},
+        {"role": "user", "content": "카드 발급받자마자 연회비가 나갔는데 환불받고 싶어요"}
+      ],
+      "final_transferred": false
+    },
+    {
+      "dialogue_id": "slot_007",
+      "expected_slots": {
+        "customer_name": "강현우",
+        "inquiry_type": "분할납부",
+        "inquiry_detail": "이번 달 결제금액 3개월 할부 전환"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 무엇을 도와드릴까요?"},
+        {"role": "user", "content": "할부 신청하려고요. 강현우입니다"},
+        {"role": "assistant", "content": "강현우 고객님, 할부 전환 관련 자세한 내용을 알려주세요."},
+        {"role": "user", "content": "이번 달 나올 결제금액을 3개월로 나눠서 내고 싶어요"}
+      ],
+      "final_transferred": false
+    },
+    {
+      "dialogue_id": "slot_008",
+      "expected_slots": {
+        "customer_name": "윤서연",
+        "inquiry_type": "카드 재발급",
+        "inquiry_detail": "마그네틱 불량으로 인한 재발급"
+      },
+      "dialogue_turns": [
+        {"role": "assistant", "content": "안녕하세요, 어떤 도움이 필요하신가요?"},
+        {"role": "user", "content": "카드 재발급 받고 싶어요"},
+        {"role": "assistant", "content": "카드 재발급 신청이시군요. 성함을 알려주시겠어요?"},
+        {"role": "user", "content": "윤서연이요"},
+        {"role": "assistant", "content": "윤서연 고객님, 재발급 사유가 무엇인가요?"},
+        {"role": "user", "content": "마그네틱이 안 읽혀서 결제가 안 돼요"}
+      ],
+      "final_transferred": false
+    }
+  ]
+}
