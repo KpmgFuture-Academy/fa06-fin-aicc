@@ -30,83 +30,12 @@ Desktop.ini
 
 # 모델 파일 (대용량)
 models/bert_intent_classifier/
-models/hana_card_model/
 models/final_classifier_model/
-*.pt
-*.pth
 *.safetensors
-*.onnx
 *.bin
 
-# 로컬 DB/벡터 저장소
+# ChromaDB (자동 생성되는 벡터 DB)
 chroma_db/
-*.db
-*.sqlite3
-*.sqlite
 
-# 로그 파일
-*.log
-logs/
-
-# 출력/결과 폴더
-outputs/
-results/
-
-# Node.js (Frontend)
-node_modules/
-frontend/node_modules/
-frontend/dist/
+# Vite 캐시
 frontend/.vite/
-
-# 빌드 결과물
-dist/
-build/
-*.egg-info/
-
-# 테스트 관련
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# ========== STT/TTS 음성 서비스 ==========
-
-# 테스트용 오디오 파일 (대용량)
-*.wav
-*.mp3
-*.ogg
-*.flac
-*.m4a
-*.webm
-*.opus
-
-# TTS 출력 파일
-tts_output.*
-test_input.*
-test_tts.*
-
-# 임시 오디오 파일
-temp_audio/
-audio_cache/
-
-# VITO API 관련 (토큰 캐시 등)
-.vito_token
-vito_cache/
-
-# ========== 기타 ==========
-
-# Jupyter Notebook 체크포인트
-.ipynb_checkpoints/
-
-# mypy 캐시
-.mypy_cache/
-
-# 임시 파일
-*.tmp
-*.temp
-*.bak
-
-# 압축 파일
-*.zip
-*.tar.gz
-*.rar

@@ -74,9 +74,15 @@ def state_to_chat_response(state: GraphState) -> ChatResponse:
         # suggested_action이 설정되지 않은 경우에만 결정
         triage_decision = state.get("triage_decision")
         requires_consultant = state.get("requires_consultant", False)
+        info_collection_complete = state.get("info_collection_complete", False)
+        is_human_required_flow = state.get("is_human_required_flow", False)
         
-        # triage_decision이 HUMAN_REQUIRED이거나 requires_consultant가 True면 HANDOVER
-        if triage_decision == TriageDecisionType.HUMAN_REQUIRED or requires_consultant:
+        # 정보 수집 중인지 확인 (HUMAN_REQUIRED 플로우 + 정보 수집 미완료)
+        if is_human_required_flow and not info_collection_complete:
+            # 정보 수집 중에는 CONTINUE (리포트 생성하지 않음)
+            suggested_action = ActionType.CONTINUE
+        # triage_decision이 HUMAN_REQUIRED이고 정보 수집이 완료되었거나, requires_consultant가 True면 HANDOVER
+        elif (triage_decision == TriageDecisionType.HUMAN_REQUIRED and info_collection_complete) or requires_consultant:
             suggested_action = ActionType.HANDOVER
         else:
             suggested_action = ActionType.CONTINUE
@@ -203,6 +209,19 @@ async def process_chat_message(request: ChatRequest) -> ChatResponse:
         if "오류" in ai_message or "error" in ai_message.lower() or "죄송합니다" in ai_message:
             logger.warning(f"워크플로우 완료 (에러 포함) - 세션: {request.session_id}, 메시지: {ai_message[:100]}")
         
+        # 요약 정보가 생성되었으면 session_manager에 저장 (handover에서 재사용)
+        summary = final_state.get("summary")
+        sentiment = final_state.get("customer_sentiment")
+        keywords = final_state.get("extracted_keywords", [])
+        if summary or sentiment or keywords:
+            session_manager.store_session_metadata(
+                request.session_id, 
+                summary, 
+                sentiment.value if sentiment else None,
+                keywords
+            )
+            logger.debug(f"요약 정보 저장 완료 - 세션: {request.session_id}")
+        
         logger.info(f"워크플로우 완료 - 세션: {request.session_id}, intent: {response.intent}, action: {response.suggested_action}")
         
         return response
@@ -247,15 +266,41 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
         
         logger.info(f"대화 이력 로드 완료 - 세션: {request.session_id}, 메시지 수: {len(conversation_history)}")
         
-        # GraphState 생성 (summary_agent 호출용)
-        state: GraphState = {
+        # 이전 워크플로우에서 생성된 요약 정보 가져오기
+        metadata = session_manager.get_session_metadata(request.session_id)
+        stored_summary = metadata.get("summary")
+        stored_sentiment = metadata.get("sentiment")
+        stored_keywords = metadata.get("keywords", [])
+        
+        if stored_summary:
+            logger.info(f"저장된 요약 정보 발견 - 세션: {request.session_id}, summary: {stored_summary[:50]}...")
+        else:
+            logger.warning(f"저장된 요약 정보 없음 - 세션: {request.session_id}, 워크플로우에서 새로 생성 예정")
+        
+        # GraphState 생성 (상담원 이관 요청)
+        # 상담원 이관 요청은 직접 요청이므로 triage_agent를 거치지 않고 바로 처리
+        initial_state: GraphState = {
             "session_id": request.session_id,
             "conversation_history": conversation_history,
             "handover_reason": request.trigger_reason,
+            "intent": IntentType.HUMAN_REQ,
+            "processing_start_time": datetime.now().isoformat(),
+            # 상담원 이관 요청은 정보 수집과 별개
+            "is_collecting_info": False,
+            "info_collection_count": 0,
+            # 상담원 이관 요청은 정보 수집 플로우와 별개 (직접 이관)
+            "is_human_required_flow": False,
+            "customer_consent_received": False,
+            "collected_info": {},
+            "info_collection_complete": False,
+            # 🔧 이전 워크플로우에서 생성된 요약 정보 포함
+            "summary": stored_summary,
+            "customer_sentiment": SentimentType(stored_sentiment) if stored_sentiment else None,
+            "extracted_keywords": stored_keywords,
         }
         
         # summary_agent 직접 호출 - 요약/감정/키워드 생성
-        state = summary_agent_node(state)
+        state = summary_agent_node(initial_state)
         
         logger.info(f"요약 생성 완료 - 세션: {request.session_id}, 요약: {state.get('summary', 'None')[:50] if state.get('summary') else 'None'}...")
         
@@ -278,4 +323,3 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
                 kms_recommendations=[]
             )
         )
-
