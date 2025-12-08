@@ -740,10 +740,10 @@ const Dashboard: React.FC = () => {
     setHistoryMessages([]);
   };
 
-  // 초기 로드 + 10초마다 세션 목록 갱신
+  // 초기 로드 + 5분마다 세션 목록 갱신 (폴링 간격 대폭 증가)
   useEffect(() => {
     fetchHandoverSessions();
-    const interval = setInterval(fetchHandoverSessions, 10000);
+    const interval = setInterval(fetchHandoverSessions, 300000); // 30초 -> 5분(300초)으로 대폭 증가
     return () => clearInterval(interval);
   }, [fetchHandoverSessions]);
 
@@ -806,7 +806,7 @@ const Dashboard: React.FC = () => {
         setIsAnalyzing(false);
       }
 
-      // 폴링 시작 (2초마다)
+      // 폴링 시작 (30초마다 - 폴링 간격 대폭 증가)
       pollingIntervalRef.current = setInterval(async () => {
         try {
           const newMessages = await getSessionMessages(session.session_id, lastMessageIdRef.current);
@@ -830,7 +830,7 @@ const Dashboard: React.FC = () => {
         } catch (error) {
           console.error('폴링 오류:', error);
         }
-      }, 2000);
+      }, 30000); // 5초 -> 30초로 대폭 증가 (서버 부하 감소)
 
     } catch (error) {
       console.error('메시지 로드 실패:', error);

@@ -97,7 +97,8 @@ async def get_handover_sessions():
                 collected_info=collected_info
             ))
 
-        logger.info(f"이관 대기 세션 조회: {len(result)}개")
+        # 로그 레벨을 DEBUG로 변경하여 불필요한 로그 줄이기 (변경 사항이 있을 때만 INFO)
+        logger.debug(f"이관 대기 세션 조회: {len(result)}개")
         return result
 
     except Exception as e:

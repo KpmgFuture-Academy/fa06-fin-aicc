@@ -11,7 +11,10 @@ engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,  # 연결 유효성 검사
     pool_recycle=3600,   # 1시간마다 연결 재사용
-    echo=False  # SQL 쿼리 로깅 (개발 시 True로 설정)
+    echo=False,  # SQL 쿼리 로깅 (개발 시 True로 설정)
+    connect_args={
+        "connect_timeout": 5,  # 연결 타임아웃 5초 (MySQL)
+    } if "mysql" in settings.database_url.lower() else {}
 )
 
 # 세션 팩토리 생성

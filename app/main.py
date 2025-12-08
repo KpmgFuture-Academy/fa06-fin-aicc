@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,16 +38,44 @@ async def startup_event():
     """애플리케이션 시작 시 DB 테이블 생성 및 연결 확인"""
     try:
         logger.info("데이터베이스 초기화 시작...")
-        init_db()
+               
+        # 비동기로 실행하여 블로킹 방지
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)
         
-        # DB 연결 확인
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
-            result.fetchone()
+        # DB 초기화를 별도 스레드에서 실행 (타임아웃 10초)
+        try:
+            await asyncio.wait_for(
+                loop.run_in_executor(executor, init_db),
+                timeout=10.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ 데이터베이스 초기화 타임아웃 (10초) - 서버는 계속 시작됩니다")
+        except Exception as e:
+            logger.warning(f"⚠️ 데이터베이스 초기화 실패: {str(e)} - 서버는 계속 시작됩니다")
         
-        logger.info("데이터베이스 연결 성공")
+        # DB 연결 확인 (타임아웃 5초)
+        def _check_db_connection():
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                return result.fetchone()
+        
+        try:
+            await asyncio.wait_for(
+                loop.run_in_executor(executor, _check_db_connection),
+                timeout=5.0
+            )
+            logger.info("✅ 데이터베이스 연결 성공")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ 데이터베이스 연결 확인 타임아웃 (5초) - MySQL이 실행 중인지 확인하세요")
+            logger.warning("   서버는 계속 시작되지만 데이터베이스 기능은 사용할 수 없습니다")
+        except Exception as e:
+            logger.warning(f"⚠️ 데이터베이스 연결 확인 실패: {str(e)}")
+            logger.warning("   서버는 계속 시작되지만 데이터베이스 기능은 사용할 수 없습니다")
+        
+        executor.shutdown(wait=False)
     except Exception as e:
-        logger.error(f"데이터베이스 초기화 실패: {str(e)}", exc_info=True)
+        logger.error(f"데이터베이스 초기화 중 오류 발생: {str(e)}", exc_info=True)
         # DB 연결 실패해도 서버는 시작 (나중에 재시도 가능)
     
     # LLM 설정 확인
@@ -64,26 +94,61 @@ async def startup_event():
             logger.error("   프로젝트 루트 디렉토리에 .env 파일이 있는지 확인하세요.")
             logger.error("   환경 변수는 사용하지 않습니다. 반드시 .env 파일에 설정해야 합니다.")
     
-    # 벡터 DB 초기화 확인
+    # 벡터 DB 초기화 확인 (비동기, 타임아웃 30초)
     try:
-        from ai_engine.vector_store import get_vector_store
-        vector_store = get_vector_store()
-        logger.info(f"✅ 벡터 DB 초기화 완료 - 경로: {settings.vector_db_path}, 컬렉션: {settings.collection_name}")
+        def _init_vector_store():
+            from ai_engine.vector_store import get_vector_store
+            return get_vector_store()
+        
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)
+        
+        try:
+            vector_store = await asyncio.wait_for(
+                loop.run_in_executor(executor, _init_vector_store),
+                timeout=30.0
+            )
+            logger.info(f"✅ 벡터 DB 초기화 완료 - 경로: {settings.vector_db_path}, 컬렉션: {settings.collection_name}")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ 벡터 DB 초기화 타임아웃 (30초) - RAG 검색은 빈 결과 반환될 수 있습니다")
+        except Exception as e:
+            logger.warning(f"⚠️ 벡터 DB 초기화 실패 (RAG 검색은 빈 결과 반환): {str(e)}")
+            logger.warning("   벡터 DB는 선택사항입니다. 문서가 없으면 RAG 검색 결과가 비어있을 수 있습니다.")
+        finally:
+            executor.shutdown(wait=False)
     except Exception as e:
-        logger.warning(f"⚠️ 벡터 DB 초기화 실패 (RAG 검색은 빈 결과 반환): {str(e)}")
+        logger.warning(f"⚠️ 벡터 DB 초기화 중 오류: {str(e)}")
         logger.warning("   벡터 DB는 선택사항입니다. 문서가 없으면 RAG 검색 결과가 비어있을 수 있습니다.")
     
-    # Final Classifier 모델 확인 (LoRA 기반 KcELECTRA)
+    # Final Classifier 모델 확인 (LoRA 기반 KcELECTRA) - 비동기, 타임아웃 60초
     try:
-        from ai_engine.ingestion.bert_financial_intent_classifier.scripts.inference import IntentClassifier
-        classifier = IntentClassifier()
-        if classifier is not None:
-            logger.info("✅ Final Classifier 의도 분류 모델 로드 완료 (38개 카테고리)")
-        else:
-            logger.warning("⚠️ Final Classifier 모델을 찾을 수 없습니다.")
+        def _init_classifier():
+            from ai_engine.ingestion.bert_financial_intent_classifier.scripts.inference import IntentClassifier
+            return IntentClassifier()
+        
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)
+        
+        try:
+            classifier = await asyncio.wait_for(
+                loop.run_in_executor(executor, _init_classifier),
+                timeout=60.0
+            )
+            if classifier is not None:
+                logger.info("✅ Final Classifier 의도 분류 모델 로드 완료 (38개 카테고리)")
+            else:
+                logger.warning("⚠️ Final Classifier 모델을 찾을 수 없습니다.")
+                logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ Final Classifier 모델 로드 타임아웃 (60초) - 의도 분류 기능이 제한될 수 있습니다")
             logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+        except Exception as e:
+            logger.warning(f"⚠️ Final Classifier 모델 로드 실패: {str(e)}")
+            logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+        finally:
+            executor.shutdown(wait=False)
     except Exception as e:
-        logger.warning(f"⚠️ Final Classifier 모델 로드 실패: {str(e)}")
+        logger.warning(f"⚠️ Final Classifier 모델 로드 중 오류: {str(e)}")
         logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
     
     # STT/TTS 음성 서비스 설정 확인

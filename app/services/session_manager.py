@@ -9,6 +9,7 @@ from ai_engine.graph.state import ConversationMessage
 from app.core.database import SessionLocal
 from app.models.chat_message import ChatSession, ChatMessage
 from app.schemas.common import TriageDecisionType
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,49 @@ class SessionManager:
         except Exception as e:
             db.rollback()
             logger.error(f"세션 비활성화 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+        finally:
+            db.close()
+    
+    def deactivate_inactive_sessions(self, threshold_minutes: int = 3) -> int:
+        """마지막 메시지 시각 기준 무활동 세션 비활성화
+        
+        Returns:
+            int: 비활성화된 세션 수
+        """
+        db = SessionLocal()
+        deactivated = 0
+        try:
+            cutoff = datetime.utcnow() - timedelta(minutes=threshold_minutes)
+            
+            # 활성 세션만 조회
+            active_sessions = db.query(ChatSession).filter(
+                ChatSession.is_active == 1
+            ).all()
+            
+            for session in active_sessions:
+                # 마지막 메시지 시각 조회 (없으면 세션 updated_at/created_at 사용)
+                last_msg = db.query(ChatMessage).filter(
+                    ChatMessage.session_id == session.session_id
+                ).order_by(ChatMessage.created_at.desc()).first()
+                
+                last_ts = (
+                    last_msg.created_at if last_msg
+                    else session.updated_at or session.created_at
+                )
+                
+                if last_ts and last_ts < cutoff:
+                    session.is_active = 0
+                    session.updated_at = datetime.utcnow()
+                    deactivated += 1
+            
+            if deactivated > 0:
+                db.commit()
+                logger.info(f"무활동 세션 {deactivated}개 비활성화 (기준: {threshold_minutes}분)")
+            return deactivated
+        except Exception as e:
+            db.rollback()
+            logger.error(f"무활동 세션 비활성화 중 오류: {str(e)}", exc_info=True)
+            return deactivated
         finally:
             db.close()
     
