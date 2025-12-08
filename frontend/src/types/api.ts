@@ -20,7 +20,6 @@ export interface ChatResponse {
   intent: IntentType;
   suggested_action: ActionType;
   source_documents: SourceDocument[];
-  info_collection_complete: boolean;
 }
 
 export interface HandoverRequest {
