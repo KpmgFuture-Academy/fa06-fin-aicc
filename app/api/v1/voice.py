@@ -27,7 +27,7 @@ from app.schemas.chat import ChatRequest
 from app.schemas.common import IntentType, ActionType
 from app.services.workflow_service import process_chat_message
 from app.services.voice.stt_service import AICCSTTService, STTError
-from app.services.voice.tts_service import AICCTTSService, TTSError
+from app.services.voice.tts_service_google import AICCGoogleTTSService, TTSError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -136,7 +136,7 @@ async def voice_chat_message(
         tts_duration: Optional[int] = None
         
         try:
-            tts_service = AICCTTSService.get_instance()
+            tts_service = AICCGoogleTTSService.get_instance()
             tts_audio = tts_service.synthesize(
                 chat_response.ai_message,
                 voice=tts_voice,
@@ -238,7 +238,7 @@ async def tts_only(request: TTSRequest):
     텍스트를 음성으로 변환합니다.
     """
     try:
-        tts_service = AICCTTSService.get_instance()
+        tts_service = AICCGoogleTTSService.get_instance()
         audio_bytes = tts_service.synthesize(
             request.text,
             voice=request.voice,
@@ -268,7 +268,7 @@ async def tts_stream(request: TTSRequest):
     (Base64 인코딩 없이 직접 오디오 파일로 사용 가능)
     """
     try:
-        tts_service = AICCTTSService.get_instance()
+        tts_service = AICCGoogleTTSService.get_instance()
         audio_bytes = tts_service.synthesize(
             request.text,
             voice=request.voice,
