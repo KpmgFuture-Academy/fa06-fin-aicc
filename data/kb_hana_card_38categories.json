@@ -1,0 +1,382 @@
+[
+  {
+    "kb_id": 1,
+    "title": "가상계좌 안내",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT001",
+    "intent_code": "INT_PAY_VA_INFO",
+    "summary": "가상계좌 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n가상계좌 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 가상계좌 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 2,
+    "title": "가상계좌 예약/취소",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT002",
+    "intent_code": "INT_PAY_VA_RSV",
+    "summary": "가상계좌 예약/취소은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n가상계좌 예약/취소은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 가상계좌 예약/취소 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 3,
+    "title": "결제계좌 안내/변경",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT003",
+    "intent_code": "INT_PAY_ACC",
+    "summary": "결제계좌 안내/변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n결제계좌 안내/변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 결제계좌 안내/변경 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 4,
+    "title": "결제대금 안내",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT004",
+    "intent_code": "INT_PAY_AMT",
+    "summary": "결제대금 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n결제대금 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 결제대금 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 5,
+    "title": "결제일 안내/변경",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT005",
+    "intent_code": "INT_PAY_DATE",
+    "summary": "결제일 안내/변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n결제일 안내/변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 결제일 안내/변경 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 6,
+    "title": "입금내역 안내",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT006",
+    "intent_code": "INT_PAY_DEP",
+    "summary": "입금내역 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n입금내역 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 입금내역 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 7,
+    "title": "이용내역 안내",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT007",
+    "intent_code": "INT_PAY_USAGE",
+    "summary": "이용내역 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n이용내역 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 이용내역 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 8,
+    "title": "이용방법 안내",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT008",
+    "intent_code": "INT_PAY_HOW",
+    "summary": "이용방법 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n이용방법 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 이용방법 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 9,
+    "title": "청구지 안내/변경",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT009",
+    "intent_code": "INT_PAY_ADDR",
+    "summary": "청구지 안내/변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n청구지 안내/변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 청구지 안내/변경 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 10,
+    "title": "쇼핑케어",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT010",
+    "intent_code": "INT_PAY_SHOP",
+    "summary": "쇼핑케어은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n쇼핑케어은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 쇼핑케어 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 11,
+    "title": "매출구분 변경",
+    "category": "PAY_BILL",
+    "domain_name": "결제/청구",
+    "category_code": "CAT011",
+    "intent_code": "INT_PAY_SALES",
+    "summary": "매출구분 변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n매출구분 변경은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 매출구분 변경 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 12,
+    "title": "한도 안내",
+    "category": "LIMIT_AUTH",
+    "domain_name": "한도/승인",
+    "category_code": "CAT012",
+    "intent_code": "INT_LIM_INFO",
+    "summary": "한도 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n한도 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 한도 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 13,
+    "title": "한도상향 접수/처리",
+    "category": "LIMIT_AUTH",
+    "domain_name": "한도/승인",
+    "category_code": "CAT013",
+    "intent_code": "INT_LIM_UP",
+    "summary": "한도상향 접수/처리은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n한도상향 접수/처리은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 한도상향 접수/처리 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 14,
+    "title": "승인취소/매출취소 안내",
+    "category": "LIMIT_AUTH",
+    "domain_name": "한도/승인",
+    "category_code": "CAT014",
+    "intent_code": "INT_LIM_CANCEL",
+    "summary": "승인취소/매출취소 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n승인취소/매출취소 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 승인취소/매출취소 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 15,
+    "title": "심사 진행사항 안내",
+    "category": "LIMIT_AUTH",
+    "domain_name": "한도/승인",
+    "category_code": "CAT015",
+    "intent_code": "INT_LIM_REVIEW",
+    "summary": "심사 진행사항 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n심사 진행사항 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 심사 진행사항 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 16,
+    "title": "신용공여기간 안내",
+    "category": "LIMIT_AUTH",
+    "domain_name": "한도/승인",
+    "category_code": "CAT016",
+    "intent_code": "INT_LIM_CREDIT",
+    "summary": "신용공여기간 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n신용공여기간 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 신용공여기간 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 17,
+    "title": "연체대금 안내",
+    "category": "DELINQ",
+    "domain_name": "연체/수납",
+    "category_code": "CAT017",
+    "intent_code": "INT_DEL_INFO",
+    "summary": "연체대금 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n연체대금 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 연체대금 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 18,
+    "title": "연체대금 즉시출금",
+    "category": "DELINQ",
+    "domain_name": "연체/수납",
+    "category_code": "CAT018",
+    "intent_code": "INT_DEL_PAY",
+    "summary": "연체대금 즉시출금은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n연체대금 즉시출금은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 연체대금 즉시출금 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 19,
+    "title": "선결제/즉시출금",
+    "category": "DELINQ",
+    "domain_name": "연체/수납",
+    "category_code": "CAT019",
+    "intent_code": "INT_DEL_PRE",
+    "summary": "선결제/즉시출금은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n선결제/즉시출금은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 선결제/즉시출금 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 20,
+    "title": "일부결제대금이월약정 안내",
+    "category": "DELINQ",
+    "domain_name": "연체/수납",
+    "category_code": "CAT020",
+    "intent_code": "INT_DEL_REV_INFO",
+    "summary": "일부결제대금이월약정 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n일부결제대금이월약정 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 일부결제대금이월약정 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 21,
+    "title": "일부결제대금이월약정 해지",
+    "category": "DELINQ",
+    "domain_name": "연체/수납",
+    "category_code": "CAT021",
+    "intent_code": "INT_DEL_REV_CANCEL",
+    "summary": "일부결제대금이월약정 해지은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n일부결제대금이월약정 해지은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 일부결제대금이월약정 해지 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 22,
+    "title": "단기카드대출 안내/실행",
+    "category": "LOAN",
+    "domain_name": "대출",
+    "category_code": "CAT022",
+    "intent_code": "INT_LOAN_SHORT",
+    "summary": "단기카드대출 안내/실행은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n단기카드대출 안내/실행은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 단기카드대출 안내/실행 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 23,
+    "title": "장기카드대출 안내",
+    "category": "LOAN",
+    "domain_name": "대출",
+    "category_code": "CAT023",
+    "intent_code": "INT_LOAN_LONG",
+    "summary": "장기카드대출 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n장기카드대출 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 장기카드대출 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 24,
+    "title": "오토할부/오토캐쉬백 안내/신청/취소",
+    "category": "LOAN",
+    "domain_name": "대출",
+    "category_code": "CAT024",
+    "intent_code": "INT_LOAN_AUTO",
+    "summary": "오토할부/오토캐쉬백 안내/신청/취소은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n오토할부/오토캐쉬백 안내/신청/취소은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 오토할부/오토캐쉬백 안내/신청/취소 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 25,
+    "title": "포인트/마일리지 안내",
+    "category": "BENEFIT",
+    "domain_name": "포인트/혜택/바우처",
+    "category_code": "CAT025",
+    "intent_code": "INT_BEN_POINT",
+    "summary": "포인트/마일리지 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n포인트/마일리지 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 포인트/마일리지 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 26,
+    "title": "포인트/마일리지 전환등록",
+    "category": "BENEFIT",
+    "domain_name": "포인트/혜택/바우처",
+    "category_code": "CAT026",
+    "intent_code": "INT_BEN_CONVERT",
+    "summary": "포인트/마일리지 전환등록은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n포인트/마일리지 전환등록은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 포인트/마일리지 전환등록 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 27,
+    "title": "정부지원 바우처 (등유, 임신 등)",
+    "category": "BENEFIT",
+    "domain_name": "포인트/혜택/바우처",
+    "category_code": "CAT027",
+    "intent_code": "INT_BEN_GOV",
+    "summary": "정부지원 바우처 (등유, 임신 등)은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n정부지원 바우처 (등유, 임신 등)은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 정부지원 바우처 (등유, 임신 등) 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 28,
+    "title": "프리미엄 바우처 안내/발급",
+    "category": "BENEFIT",
+    "domain_name": "포인트/혜택/바우처",
+    "category_code": "CAT028",
+    "intent_code": "INT_BEN_PREMIUM",
+    "summary": "프리미엄 바우처 안내/발급은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n프리미엄 바우처 안내/발급은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 프리미엄 바우처 안내/발급 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 29,
+    "title": "이벤트 안내",
+    "category": "BENEFIT",
+    "domain_name": "포인트/혜택/바우처",
+    "category_code": "CAT029",
+    "intent_code": "INT_BEN_EVENT",
+    "summary": "이벤트 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n이벤트 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 이벤트 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 30,
+    "title": "연회비 안내",
+    "category": "BENEFIT",
+    "domain_name": "포인트/혜택/바우처",
+    "category_code": "CAT038",
+    "intent_code": "INT_BEN_FEE",
+    "summary": "연회비 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n연회비 안내은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 연회비 안내 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 31,
+    "title": "증명서/확인서 발급",
+    "category": "DOC_TAX",
+    "domain_name": "증명/세금",
+    "category_code": "CAT030",
+    "intent_code": "INT_DOC_CERT",
+    "summary": "증명서/확인서 발급은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n증명서/확인서 발급은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 증명서/확인서 발급 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 32,
+    "title": "교육비",
+    "category": "DOC_TAX",
+    "domain_name": "증명/세금",
+    "category_code": "CAT031",
+    "intent_code": "INT_DOC_EDU",
+    "summary": "교육비은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n교육비은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 교육비 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 33,
+    "title": "금리인하요구권 안내/신청",
+    "category": "DOC_TAX",
+    "domain_name": "증명/세금",
+    "category_code": "CAT032",
+    "intent_code": "INT_DOC_RATE",
+    "summary": "금리인하요구권 안내/신청은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n금리인하요구권 안내/신청은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 금리인하요구권 안내/신청 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 34,
+    "title": "도시가스",
+    "category": "UTILITY",
+    "domain_name": "공과금",
+    "category_code": "CAT033",
+    "intent_code": "INT_UTIL_GAS",
+    "summary": "도시가스은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n도시가스은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 도시가스 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 35,
+    "title": "전화요금",
+    "category": "UTILITY",
+    "domain_name": "공과금",
+    "category_code": "CAT034",
+    "intent_code": "INT_UTIL_PHONE",
+    "summary": "전화요금은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n전화요금은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 전화요금 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 36,
+    "title": "도난/분실 신청/해제",
+    "category": "SEC_CARD",
+    "domain_name": "인증/보안/카드관리",
+    "category_code": "CAT035",
+    "intent_code": "INT_SEC_LOST",
+    "summary": "도난/분실 신청/해제은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n도난/분실 신청/해제은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 도난/분실 신청/해제 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 37,
+    "title": "긴급 배송 신청",
+    "category": "SEC_CARD",
+    "domain_name": "인증/보안/카드관리",
+    "category_code": "CAT036",
+    "intent_code": "INT_SEC_URGENT",
+    "summary": "긴급 배송 신청은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n긴급 배송 신청은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 긴급 배송 신청 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  },
+  {
+    "kb_id": 38,
+    "title": "기타",
+    "category": "SEC_CARD",
+    "domain_name": "인증/보안/카드관리",
+    "category_code": "CAT037",
+    "intent_code": "INT_SEC_ETC",
+    "summary": "기타은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.",
+    "content": "1. 개요 (Overview)\n기타은(는) 고객 카드업무 처리 과정에서 필요한 정보를 제공하는 카테고리입니다.\n2. 정책 문서 (Policy)\n• 실제 정책은 내부 규정을 기반으로 작성됩니다.\n• 해당 카테고리에서 적용되는 정책을 기술합니다.\n3. 업무 매뉴얼 (Operational Manual)\n• 상담사/시스템 처리 절차를 기술합니다.\n• 고객 응대 스크립트를 포함할 수 있습니다.\n4. 상품 매뉴얼 (Product Manual)\n• 이 카테고리와 관련된 상품/서비스 정책 정보를 기술합니다.\n5. Clarification Loop (A/B/C 패턴)\nPattern A: 고신뢰 → 바로 RAG 검색.\nPattern B/C: Clarification 질문 최대 3회.\n6. 고객정보 필요 여부 및 요청 항목\n• 본인 인증 여부, 카드 식별 정보 등 필요한 고객 정보를 기술합니다.\n7. RAG 검색 보조 키워드\n• RAG 검색 품질 향상을 위한 보조 키워드를 기술합니다.\n8. FAQ\nQ. 기타 관련 자주 묻는 질문?\nA. 카테고리 특성에 따라 조정됩니다.\n9. 운영 참고 메모\n• 운영 시 알아야 할 특이사항을 기술합니다."
+  }
+]

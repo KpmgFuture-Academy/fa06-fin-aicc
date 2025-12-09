@@ -1,12 +1,14 @@
 import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import chat, handover, session, voice, voice_ws
 from app.core.database import init_db, engine
 from app.core.config import settings
+from app.services.session_manager import session_manager
 from sqlalchemy import text
 
 # 로깅 설정
@@ -21,6 +23,9 @@ app = FastAPI(
     description="AI 상담 챗봇 서버 - LangGraph 기반 워크플로우",
     version="1.0.0"
 )
+
+# 무활동 세션 정리 태스크
+inactivity_cleanup_task: Optional[asyncio.Task] = None
 
 # CORS 설정
 app.add_middleware(
@@ -168,11 +173,21 @@ async def startup_event():
     else:
         logger.warning("⚠️ OpenAI API 키가 없어 TTS 기능을 사용할 수 없습니다.")
 
+    # 무활동 세션 정리 태스크 시작 (10분 무활동, 60초 주기)
+    global inactivity_cleanup_task
+    if inactivity_cleanup_task is None:
+        inactivity_cleanup_task = asyncio.create_task(_inactive_session_cleanup_worker())
+        logger.info("무활동 세션 정리 태스크 시작 (10분 무활동 시 is_active=0, 60초 주기)")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """애플리케이션 종료 시 정리 작업"""
     logger.info("애플리케이션 종료 중...")
+    global inactivity_cleanup_task
+    if inactivity_cleanup_task:
+        inactivity_cleanup_task.cancel()
+        inactivity_cleanup_task = None
 
 
 # 라우터 등록 (부품 조립)
@@ -191,6 +206,16 @@ def root():
         "service": "Bank AICC Dev Server",
         "version": "1.0.0"
     }
+
+
+async def _inactive_session_cleanup_worker():
+    """무활동 세션을 주기적으로 비활성화"""
+    while True:
+        try:
+            session_manager.deactivate_inactive_sessions(threshold_minutes=10)
+        except Exception as e:
+            logger.error(f"무활동 세션 정리 태스크 오류: {str(e)}", exc_info=True)
+        await asyncio.sleep(60)
 
 
 @app.get("/health")

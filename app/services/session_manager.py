@@ -182,7 +182,7 @@ class SessionManager:
         finally:
             db.close()
     
-    def deactivate_inactive_sessions(self, threshold_minutes: int = 3) -> int:
+    def deactivate_inactive_sessions(self, threshold_minutes: int = 10) -> int:
         """마지막 메시지 시각 기준 무활동 세션 비활성화
         
         Returns:

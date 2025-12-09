@@ -107,6 +107,7 @@ class Settings(BaseSettings):
         case_sensitive = False
         # pydantic-settings는 자동으로 openai_api_key -> OPENAI_API_KEY로 변환합니다
         env_file_encoding = "utf-8"
+        extra = "ignore"  # 추가 필드 무시
 
 
 # 전역 설정 인스턴스
