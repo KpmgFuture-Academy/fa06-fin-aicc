@@ -38,4 +38,5 @@ models/final_classifier_model/
 chroma_db/
 
 # Vite 캐시
-frontend/.vite/
+
+.vite/
