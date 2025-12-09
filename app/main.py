@@ -167,11 +167,25 @@ async def startup_event():
         logger.warning("   .env 파일에 VITO_CLIENT_ID와 VITO_CLIENT_SECRET을 추가하세요.")
         logger.warning("   발급: https://developers.vito.ai/")
     
-    # OpenAI TTS 설정 확인
-    if settings.openai_api_key:
-        logger.info(f"✅ OpenAI TTS 설정 확인 완료 (voice: {settings.tts_voice}, model: {settings.tts_model})")
+    # Google TTS 설정 확인 (메인 TTS 서비스)
+    import os
+    google_tts_api_key = os.getenv("GOOGLE_TTS_API_KEY") or os.getenv("GEM_API_KEY")
+    google_tts_credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    google_tts_voice = os.getenv("GOOGLE_TTS_VOICE", "ko-KR-Neural2-B")
+    google_tts_language = os.getenv("GOOGLE_TTS_LANGUAGE", "ko-KR")
+    
+    if google_tts_api_key or google_tts_credentials:
+        logger.info(f"✅ Google TTS 설정 확인 완료 (voice: {google_tts_voice}, language: {google_tts_language})")
     else:
-        logger.warning("⚠️ OpenAI API 키가 없어 TTS 기능을 사용할 수 없습니다.")
+        logger.error("❌ Google TTS 설정이 없습니다. TTS 기능을 사용할 수 없습니다.")
+        logger.error("   .env 파일에 GOOGLE_TTS_API_KEY 또는 GOOGLE_APPLICATION_CREDENTIALS를 추가하세요.")
+        logger.error("   Google TTS API 키 발급: https://ai.google.dev/")
+    
+    # OpenAI TTS 설정 확인 (선택사항) - 주석 처리됨 (Google TTS 사용)
+    # if settings.openai_api_key:
+    #     logger.info(f"ℹ️  OpenAI TTS 설정 확인 완료 (voice: {settings.tts_voice}, model: {settings.tts_model}) - 현재 미사용")
+    # else:
+    #     logger.debug("OpenAI TTS 설정 없음 (현재 미사용)")
 
     # 무활동 세션 정리 태스크 시작 (10분 무활동, 60초 주기)
     global inactivity_cleanup_task

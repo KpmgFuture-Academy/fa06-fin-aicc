@@ -27,7 +27,7 @@ from app.schemas.chat import ChatRequest
 from app.schemas.voice import WSMessageType
 from app.services.workflow_service import process_chat_message
 from app.services.voice.stt_service import AICCSTTService, STTError
-from app.services.voice.tts_service import AICCTTSService, TTSError
+from app.services.voice.tts_service_google import AICCGoogleTTSService, TTSError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -84,7 +84,7 @@ async def voice_websocket_endpoint(websocket: WebSocket, session_id: str):
     연결 URL: ws://localhost:8000/api/v1/voice/ws/{session_id}
     
     클라이언트 → 서버 메시지:
-    - audio_start: 음성 전송 시작 {"type": "audio_start", "data": {"language": "ko", "tts_voice": "alloy"}}
+    - audio_start: 음성 전송 시작 {"type": "audio_start", "data": {"language": "ko", "tts_voice": "ko-KR-Neural2-B"}}
     - audio_chunk: 음성 데이터 {"type": "audio_chunk", "data": {"audio_base64": "..."}}
     - audio_end: 음성 전송 종료 {"type": "audio_end"}
     - text_message: 텍스트 직접 전송 {"type": "text_message", "data": {"text": "..."}}
@@ -111,7 +111,7 @@ async def voice_websocket_endpoint(websocket: WebSocket, session_id: str):
     audio_buffer: list[bytes] = []
     audio_settings: dict = {
         "language": "ko",
-        "tts_voice": "alloy",
+        "tts_voice": "ko-KR-Neural2-B",  # Google TTS 기본 음성
         "diarize": False,
     }
     
@@ -155,7 +155,7 @@ async def voice_websocket_endpoint(websocket: WebSocket, session_id: str):
                     audio_buffer.clear()
                     audio_settings.update({
                         "language": msg_data.get("language", "ko"),
-                        "tts_voice": msg_data.get("tts_voice", "alloy"),
+                        "tts_voice": msg_data.get("tts_voice", "ko-KR-Neural2-B"),  # Google TTS 기본 음성
                         "diarize": msg_data.get("diarize", False),
                     })
                     logger.info(f"[WS] 음성 시작 - 세션: {session_id}, 설정: {audio_settings}")
@@ -193,7 +193,7 @@ async def voice_websocket_endpoint(websocket: WebSocket, session_id: str):
                         await process_text_and_respond(
                             session_id=session_id,
                             text=text,
-                            tts_voice=audio_settings.get("tts_voice", "alloy"),
+                            tts_voice=audio_settings.get("tts_voice", "ko-KR-Neural2-B"),
                         )
                     else:
                         await ws_manager.send_message(
@@ -275,7 +275,7 @@ async def process_audio_and_respond(
         await process_text_and_respond(
             session_id=session_id,
             text=transcribed_text,
-            tts_voice=settings.get("tts_voice", "alloy"),
+            tts_voice=settings.get("tts_voice", "ko-KR-Neural2-B"),
         )
         
     except Exception as e:
@@ -290,7 +290,7 @@ async def process_audio_and_respond(
 async def process_text_and_respond(
     session_id: str,
     text: str,
-    tts_voice: str = "alloy",
+    tts_voice: str = "ko-KR-Neural2-B",
 ):
     """텍스트 처리 및 응답 (워크플로우 → TTS)"""
     
@@ -319,7 +319,7 @@ async def process_text_and_respond(
         logger.info(f"[WS] TTS 시작 - 세션: {session_id}")
         
         try:
-            tts_service = AICCTTSService.get_instance()
+            tts_service = AICCGoogleTTSService.get_instance()
             tts_audio = tts_service.synthesize(
                 chat_response.ai_message,
                 voice=tts_voice,
