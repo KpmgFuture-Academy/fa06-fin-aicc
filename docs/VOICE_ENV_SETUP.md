@@ -2,7 +2,7 @@
 
 ## 개요
 - **STT (음성→텍스트)**: VITO (Return Zero)
-- **TTS (텍스트→음성)**: OpenAI TTS-1
+- **TTS (텍스트→음성)**: Google Cloud Text-to-Speech
 
 ---
 
@@ -29,38 +29,52 @@ VITO_CLIENT_SECRET=your-client-secret-here
 
 ---
 
-## 2. OpenAI TTS 설정
+## 2. Google Cloud TTS 설정
 
-### 2-1. API 키
-기존 `OPENAI_API_KEY`를 그대로 사용합니다.
+### 2-1. Google Cloud 프로젝트 설정
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속
+2. 새 프로젝트 생성 또는 기존 프로젝트 선택
+3. "API 및 서비스" > "라이브러리" 이동
+4. "Cloud Text-to-Speech API" 검색 후 **사용 설정**
 
-### 2-2. 음성 종류 선택
+### 2-2. API 키 발급
+1. "API 및 서비스" > "사용자 인증 정보" 이동
+2. "사용자 인증 정보 만들기" > "API 키" 클릭
+3. 생성된 API 키 복사
+4. (선택) API 키 제한 설정:
+   - "API 키 수정" 클릭
+   - "API 제한사항" > "키 제한" 선택
+   - "Cloud Text-to-Speech API" 선택
+
+### 2-3. 환경 변수 설정
 `.env` 파일에 추가:
 ```env
-# 음성 옵션: alloy, echo, fable, onyx, nova, shimmer
-TTS_VOICE=alloy
+GOOGLE_TTS_API_KEY=your-google-tts-api-key-here
 ```
 
-| 음성 | 특징 | 추천 용도 |
-|------|------|----------|
-| `alloy` | 중성적, 균형 잡힌 | 일반 상담 (기본값) |
-| `echo` | 따뜻하고 자연스러운 | 친근한 안내 |
-| `fable` | 표현력 있는 | 스토리텔링 |
-| `onyx` | 깊고 권위 있는 남성 | 공식적 안내 |
-| `nova` | 친근하고 밝은 여성 | 환영 메시지 |
-| `shimmer` | 차분하고 부드러운 | 금융 상담 |
+### 2-4. 요금제
+| 유형 | 무료 제공량 | 초과 요금 |
+|------|------------|----------|
+| Standard | 월 400만 자 | $4/100만 자 |
+| WaveNet | 월 100만 자 | $16/100만 자 |
+| Neural2 | 월 100만 자 | $16/100만 자 |
 
-### 2-3. 모델 선택
-```env
-# tts-1: 빠른 응답, 일반 품질 (권장)
-# tts-1-hd: 느린 응답, 고품질
-TTS_MODEL=tts-1
-```
+### 2-5. 음성 옵션
+현재 기본 설정: `ko-KR-Neural2-B` (한국어 남성 음성)
 
-| 모델 | 응답 속도 | 품질 | 비용 |
-|------|----------|------|------|
-| `tts-1` | 빠름 (~1초) | 일반 | $0.015/1K chars |
-| `tts-1-hd` | 느림 (~2초) | 고품질 | $0.030/1K chars |
+| 음성 ID | 성별 | 유형 | 특징 |
+|---------|------|------|------|
+| ko-KR-Neural2-A | 여성 | Neural2 | 자연스러운 여성 음성 |
+| ko-KR-Neural2-B | 남성 | Neural2 | 자연스러운 남성 음성 |
+| ko-KR-Neural2-C | 여성 | Neural2 | 또 다른 여성 음성 |
+| ko-KR-Standard-A | 여성 | Standard | 기본 여성 음성 |
+| ko-KR-Standard-B | 여성 | Standard | 기본 여성 음성 |
+| ko-KR-Standard-C | 남성 | Standard | 기본 남성 음성 |
+| ko-KR-Standard-D | 남성 | Standard | 기본 남성 음성 |
+| ko-KR-Wavenet-A | 여성 | WaveNet | 고품질 여성 음성 |
+| ko-KR-Wavenet-B | 여성 | WaveNet | 고품질 여성 음성 |
+| ko-KR-Wavenet-C | 남성 | WaveNet | 고품질 남성 음성 |
+| ko-KR-Wavenet-D | 남성 | WaveNet | 고품질 남성 음성 |
 
 ---
 
@@ -75,9 +89,8 @@ DATABASE_URL=mysql+pymysql://root:password@localhost:3306/aicc_db?charset=utf8mb
 VITO_CLIENT_ID=your-vito-client-id
 VITO_CLIENT_SECRET=your-vito-client-secret
 
-# ========== TTS 설정 (OpenAI) ==========
-TTS_VOICE=alloy
-TTS_MODEL=tts-1
+# ========== TTS 설정 (Google Cloud) ==========
+GOOGLE_TTS_API_KEY=your-google-tts-api-key
 ```
 
 ---
@@ -87,7 +100,7 @@ TTS_MODEL=tts-1
 서버 시작 시 로그에서 확인:
 ```
 ✅ VITO STT 설정 확인 완료
-✅ OpenAI TTS 설정 확인 완료 (voice: alloy, model: tts-1)
+✅ Google TTS 설정 확인 완료 (voice: ko-KR-Neural2-B)
 ```
 
 ---
@@ -101,15 +114,25 @@ VitoSTTError: VITO auth failed
 - `VITO_CLIENT_ID`와 `VITO_CLIENT_SECRET` 확인
 - [VITO 콘솔](https://console.vito.ai/)에서 애플리케이션 상태 확인
 
-### TTS 요청 실패
+### Google TTS 요청 실패 (500 에러)
 ```
-TTSError: OpenAI TTS request failed
+TTSError: Google TTS API request failed
 ```
-- `OPENAI_API_KEY` 유효성 확인
-- API 사용량 한도 확인
-- 텍스트 길이 제한 (4096자) 확인
+- `GOOGLE_TTS_API_KEY` 설정 확인
+- Google Cloud Console에서 API 활성화 확인
+- API 키 제한 설정 확인
 
 ### 토큰 만료 (VITO)
 - VITO 토큰은 6시간 유효
 - 서비스에서 자동 갱신 처리됨
 
+---
+
+## 6. 관련 코드 위치
+
+| 파일 | 설명 |
+|------|------|
+| `app/services/voice/stt_service.py` | VITO STT 서비스 |
+| `app/services/voice/tts_service_google.py` | Google TTS 서비스 |
+| `app/api/v1/voice_ws.py` | WebSocket 음성 스트리밍 |
+| `app/api/v1/voice.py` | REST API 음성 엔드포인트 |

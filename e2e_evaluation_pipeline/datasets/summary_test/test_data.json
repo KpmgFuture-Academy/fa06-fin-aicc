@@ -1,0 +1,89 @@
+{
+  "description": "Summary Agent 평가용 샘플 테스트 데이터",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "summary_id": "sum_001",
+      "dialogue": [
+        {"role": "user", "content": "카드를 분실했어요"},
+        {"role": "assistant", "content": "카드 분실 신고 도와드리겠습니다. 성함을 알려주세요."},
+        {"role": "user", "content": "김철수입니다"},
+        {"role": "assistant", "content": "김철수 고객님, 카드 정지 처리 완료했습니다. 재발급 신청하시겠어요?"},
+        {"role": "user", "content": "네, 재발급해주세요"},
+        {"role": "assistant", "content": "재발급 신청 완료했습니다. 5-7영업일 내 수령 가능합니다."}
+      ],
+      "reference_summary": "고객 김철수님이 카드 분실 신고를 접수함. 카드 정지 처리 완료 및 재발급 신청 진행. 5-7영업일 내 카드 수령 예정.",
+      "key_info": ["김철수", "카드 분실", "정지 처리", "재발급", "5-7영업일"],
+      "sentiment": "neutral"
+    },
+    {
+      "summary_id": "sum_002",
+      "dialogue": [
+        {"role": "user", "content": "결제가 두 번 됐어요"},
+        {"role": "assistant", "content": "이중 결제 확인 도와드리겠습니다. 어디서 결제하셨나요?"},
+        {"role": "user", "content": "A마트에서 10만원 결제했는데 두 번 빠졌어요"},
+        {"role": "assistant", "content": "확인 결과 10만원 이중 결제 건이 확인됩니다. 환불 처리 진행하겠습니다."},
+        {"role": "user", "content": "네, 감사합니다"},
+        {"role": "assistant", "content": "3-5영업일 내 환불 처리됩니다."}
+      ],
+      "reference_summary": "고객이 A마트에서 10만원 이중 결제 건 문의. 이중 결제 확인 후 환불 처리 진행. 3-5영업일 내 환불 예정.",
+      "key_info": ["A마트", "10만원", "이중 결제", "환불", "3-5영업일"],
+      "sentiment": "resolved"
+    },
+    {
+      "summary_id": "sum_003",
+      "dialogue": [
+        {"role": "user", "content": "한도 올려주세요"},
+        {"role": "assistant", "content": "한도 상향 신청 도와드리겠습니다. 현재 한도와 희망 한도를 알려주세요."},
+        {"role": "user", "content": "300만원에서 500만원으로요"},
+        {"role": "assistant", "content": "심사 결과 450만원까지 상향 가능합니다. 진행하시겠어요?"},
+        {"role": "user", "content": "네, 그렇게 해주세요"},
+        {"role": "assistant", "content": "한도 상향 완료되었습니다."}
+      ],
+      "reference_summary": "고객이 신용카드 한도 상향 요청 (300만원 → 500만원). 심사 결과 450만원으로 상향 승인 및 처리 완료.",
+      "key_info": ["한도 상향", "300만원", "500만원", "450만원", "승인"],
+      "sentiment": "positive"
+    },
+    {
+      "summary_id": "sum_004",
+      "dialogue": [
+        {"role": "user", "content": "해외에서 카드가 안 돼요"},
+        {"role": "assistant", "content": "해외 결제 관련 도와드리겠습니다. 어느 나라에 계신가요?"},
+        {"role": "user", "content": "일본이요. 급하게 결제해야 하는데 안 되네요"},
+        {"role": "assistant", "content": "해외 결제 차단이 설정되어 있었습니다. 지금 해제해드렸습니다."},
+        {"role": "user", "content": "아, 감사합니다!"}
+      ],
+      "reference_summary": "고객이 일본에서 해외 결제 불가 문의. 해외 결제 차단 설정 확인 후 해제 처리 완료.",
+      "key_info": ["일본", "해외 결제", "차단", "해제"],
+      "sentiment": "positive"
+    },
+    {
+      "summary_id": "sum_005",
+      "dialogue": [
+        {"role": "user", "content": "포인트로 뭘 할 수 있어요?"},
+        {"role": "assistant", "content": "포인트 사용처 안내드립니다. 현재 12,500포인트 보유중이십니다."},
+        {"role": "user", "content": "그걸로 연회비 낼 수 있어요?"},
+        {"role": "assistant", "content": "네, 포인트로 연회비 납부 가능합니다. 다음 연회비 청구 시 자동 차감 신청 도와드릴까요?"},
+        {"role": "user", "content": "네, 그렇게 해주세요"},
+        {"role": "assistant", "content": "포인트 연회비 자동 차감 신청 완료되었습니다."}
+      ],
+      "reference_summary": "고객이 포인트 사용처 문의. 12,500포인트 보유 확인. 포인트로 연회비 자동 차감 신청 처리 완료.",
+      "key_info": ["포인트", "12,500", "연회비", "자동 차감"],
+      "sentiment": "positive"
+    },
+    {
+      "summary_id": "sum_006",
+      "dialogue": [
+        {"role": "user", "content": "보이스피싱 당한 것 같아요"},
+        {"role": "assistant", "content": "긴급 상황이시군요. 바로 카드 정지 처리하겠습니다."},
+        {"role": "user", "content": "50만원이 빠져나갔어요"},
+        {"role": "assistant", "content": "카드 정지 완료했습니다. 경찰 신고와 함께 피해 접수 진행해 주세요."},
+        {"role": "user", "content": "환불 받을 수 있나요?"},
+        {"role": "assistant", "content": "피해 사실 확인 후 환급 심사 진행됩니다. 전담팀에서 연락드리겠습니다."}
+      ],
+      "reference_summary": "고객이 보이스피싱 피해 신고 (50만원). 카드 즉시 정지 처리. 경찰 신고 안내 및 피해 접수 진행. 전담팀 연락 예정.",
+      "key_info": ["보이스피싱", "50만원", "카드 정지", "경찰 신고", "전담팀"],
+      "sentiment": "urgent"
+    }
+  ]
+}

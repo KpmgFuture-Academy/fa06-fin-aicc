@@ -629,6 +629,58 @@ const getSentimentText = (sentiment: string) => {
   }
 };
 
+// 슬롯 라벨 매핑 (영문 키 → 한글 라벨)
+const SLOT_LABELS: Record<string, string> = {
+  card_last_4_digits: '카드 뒤 4자리',
+  card_type: '카드 종류',
+  loss_date: '분실 일시',
+  loss_location: '분실 장소',
+  request_type: '요청 유형',
+  fraud_date: '부정사용 일시',
+  fraud_amount: '부정사용 금액',
+  fraud_merchant: '부정사용 가맹점',
+  requested_limit: '희망 한도',
+  purpose: '상향 목적',
+  transaction_date: '거래 일시',
+  transaction_amount: '거래 금액',
+  merchant_name: '가맹점명',
+  receipt_number: '접수 번호',
+  receipt_date: '접수 일시',
+  payment_month: '결제월',
+  desired_payment_date: '희망 결제일',
+  new_bank: '변경할 은행',
+  new_account_number: '새 계좌번호',
+  inquiry_period: '조회 기간',
+  change_type: '변경 유형',
+  prepay_amount: '선결제 금액',
+  error_date: '오류 발생일',
+  error_description: '오류 내용',
+  auto_payment_service: '자동결제 서비스',
+  withdrawal_account: '출금 계좌',
+  withdrawal_amount: '출금 금액',
+  payment_amount: '결제 금액',
+  payment_ratio: '결제 비율',
+  desired_loan_amount: '희망 대출 금액',
+  desired_amount: '희망 금액',
+  repayment_period: '상환 기간',
+  repayment_amount: '상환 금액',
+  repayment_type: '상환 방식',
+  usage_destination: '사용처',
+  partner_name: '제휴사명',
+  inquiry_type: '문의 유형',
+  issue_period: '발급 기간',
+  issue_method: '발급 방식',
+  reissue_reason: '재발급 사유',
+  delivery_address: '배송 주소',
+  inquiry_year: '조회 연도',
+  business_number: '사업자번호',
+  inquiry_detail: '문의 상세',
+};
+
+const getSlotLabel = (key: string): string => {
+  return SLOT_LABELS[key] || key;
+};
+
 const Dashboard: React.FC = () => {
   // 이관 대기 세션 목록
   const [handoverSessions, setHandoverSessions] = useState<HandoverSession[]>([]);
@@ -830,7 +882,7 @@ const Dashboard: React.FC = () => {
         } catch (error) {
           console.error('폴링 오류:', error);
         }
-      }, 30000); // 5초 -> 30초로 대폭 증가 (서버 부하 감소)
+      }, 2000); // 2초마다 폴링 (실시간 통신용)
 
     } catch (error) {
       console.error('메시지 로드 실패:', error);
@@ -1013,21 +1065,23 @@ const Dashboard: React.FC = () => {
         {/* 중앙: Slot Filling 정보 */}
         <SlotFillingArea>
           <SlotItem>
-            <SlotLabel>세션번호:</SlotLabel>
-            <SlotValue>{selectedSession?.session_id || '-'}</SlotValue>
-          </SlotItem>
-          <SlotItem>
-            <SlotLabel>고객명:</SlotLabel>
-            <SlotValue>{selectedSession?.collected_info?.customer_name || '-'}</SlotValue>
-          </SlotItem>
-          <SlotItem>
             <SlotLabel>문의유형:</SlotLabel>
-            <SlotValue>{selectedSession?.collected_info?.inquiry_type || '-'}</SlotValue>
+            <SlotValue>{selectedSession?.collected_info?._domain_name || selectedSession?.collected_info?.inquiry_type || '-'}</SlotValue>
           </SlotItem>
           <SlotItem>
-            <SlotLabel>상세내용:</SlotLabel>
-            <SlotValue>{selectedSession?.collected_info?.inquiry_detail || '-'}</SlotValue>
+            <SlotLabel>상세요청:</SlotLabel>
+            <SlotValue>{selectedSession?.collected_info?._category || selectedSession?.collected_info?.inquiry_detail || '-'}</SlotValue>
           </SlotItem>
+          {/* 동적 슬롯 표시 - 내부 필드(_로 시작)와 기본 필드 제외 */}
+          {selectedSession?.collected_info && Object.entries(selectedSession.collected_info)
+            .filter(([key]) => !key.startsWith('_') && !['inquiry_type', 'inquiry_detail'].includes(key))
+            .map(([key, value]) => (
+              <SlotItem key={key}>
+                <SlotLabel>{getSlotLabel(key)}:</SlotLabel>
+                <SlotValue>{String(value) || '-'}</SlotValue>
+              </SlotItem>
+            ))
+          }
         </SlotFillingArea>
 
         {/* 오른쪽: 시간 정보 */}

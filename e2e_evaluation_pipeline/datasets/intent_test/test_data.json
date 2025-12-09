@@ -1,0 +1,118 @@
+{
+  "description": "Intent 분류 평가용 샘플 테스트 데이터",
+  "version": "1.0",
+  "labels": [
+    "카드분실/도난신고",
+    "결제내역조회",
+    "한도조정",
+    "포인트/혜택문의",
+    "자동이체관리",
+    "카드재발급",
+    "연회비문의",
+    "해외결제",
+    "분할납부",
+    "상담사연결"
+  ],
+  "test_cases": [
+    {
+      "text": "카드를 잃어버렸어요 지금 바로 정지해주세요",
+      "label": "카드분실/도난신고",
+      "domain": "card_loss"
+    },
+    {
+      "text": "저번 주에 결제한 내역 좀 확인하고 싶은데요",
+      "label": "결제내역조회",
+      "domain": "payment"
+    },
+    {
+      "text": "카드 한도를 늘리고 싶어요",
+      "label": "한도조정",
+      "domain": "limit"
+    },
+    {
+      "text": "포인트가 얼마나 쌓였는지 알려주세요",
+      "label": "포인트/혜택문의",
+      "domain": "point"
+    },
+    {
+      "text": "자동이체 계좌를 변경하려고요",
+      "label": "자동이체관리",
+      "domain": "auto_payment"
+    },
+    {
+      "text": "카드가 긁히질 않아서 새로 받고 싶어요",
+      "label": "카드재발급",
+      "domain": "reissue"
+    },
+    {
+      "text": "연회비가 언제 빠지나요",
+      "label": "연회비문의",
+      "domain": "annual_fee"
+    },
+    {
+      "text": "해외에서 카드 사용이 막혔어요",
+      "label": "해외결제",
+      "domain": "overseas"
+    },
+    {
+      "text": "이번 달 결제금액 나눠서 내고 싶어요",
+      "label": "분할납부",
+      "domain": "installment"
+    },
+    {
+      "text": "사람이랑 직접 통화하고 싶어요",
+      "label": "상담사연결",
+      "domain": "human_transfer"
+    },
+    {
+      "text": "카드 훔쳐갔어요 빨리 정지시켜주세요",
+      "label": "카드분실/도난신고",
+      "domain": "card_loss"
+    },
+    {
+      "text": "3월 결제 명세서 보내주세요",
+      "label": "결제내역조회",
+      "domain": "payment"
+    },
+    {
+      "text": "한도가 부족해서 결제가 안돼요",
+      "label": "한도조정",
+      "domain": "limit"
+    },
+    {
+      "text": "마일리지 얼마나 있어요",
+      "label": "포인트/혜택문의",
+      "domain": "point"
+    },
+    {
+      "text": "납부일을 바꾸고 싶습니다",
+      "label": "자동이체관리",
+      "domain": "auto_payment"
+    },
+    {
+      "text": "복잡한 문제라서 상담원 연결해주세요",
+      "label": "상담사연결",
+      "domain": "human_transfer"
+    },
+    {
+      "text": "보이스피싱 당한 것 같아요 도와주세요",
+      "label": "카드분실/도난신고",
+      "domain": "fraud"
+    },
+    {
+      "text": "해외 ATM에서 현금인출 하려는데요",
+      "label": "해외결제",
+      "domain": "overseas"
+    },
+    {
+      "text": "무이자할부 되는 곳이 어디예요",
+      "label": "포인트/혜택문의",
+      "domain": "point"
+    },
+    {
+      "text": "담당자 바꿔주세요 불만이 있어요",
+      "label": "상담사연결",
+      "domain": "human_transfer"
+    }
+  ]
+}

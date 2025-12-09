@@ -1,0 +1,259 @@
+{
+  "description": "E2E 통합 평가용 시나리오 데이터",
+  "version": "1.0",
+  "test_scenarios": [
+    {
+      "scenario_id": "e2e_001",
+      "title": "카드 분실 신고 - 자동 처리 완료",
+      "category": "card_loss",
+      "input": {
+        "audio_file": "audio/card_loss_001.wav",
+        "stt_transcript": "안녕하세요 카드 분실 신고하려고 전화했습니다"
+      },
+      "expected": {
+        "intent": "카드분실/도난신고",
+        "slots": {
+          "customer_name": "김철수",
+          "inquiry_type": "카드 분실"
+        },
+        "flow": ["triage_agent", "waiting_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    },
+    {
+      "scenario_id": "e2e_002",
+      "title": "결제 내역 조회 - 단순 FAQ",
+      "category": "payment_inquiry",
+      "input": {
+        "audio_file": "audio/payment_inquiry_001.wav",
+        "stt_transcript": "지난달 결제 내역 확인하고 싶어요"
+      },
+      "expected": {
+        "intent": "결제내역조회",
+        "slots": {},
+        "flow": ["triage_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    },
+    {
+      "scenario_id": "e2e_003",
+      "title": "복잡한 민원 - 상담사 이관",
+      "category": "complaint",
+      "input": {
+        "audio_file": "audio/complaint_001.wav",
+        "stt_transcript": "담당자 바꿔주세요 이 문제로 세 번째 전화인데 해결이 안 돼요"
+      },
+      "expected": {
+        "intent": "상담사연결",
+        "slots": {
+          "customer_name": "이영희",
+          "inquiry_type": "민원",
+          "inquiry_detail": "반복 문의로 인한 불만"
+        },
+        "flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+        "auto_resolved": false,
+        "requires_human": true
+      },
+      "ground_truth": {
+        "resolution_type": "transfer",
+        "customer_satisfied": null,
+        "repeat_explanation_needed": false,
+        "summary_provided": true
+      }
+    },
+    {
+      "scenario_id": "e2e_004",
+      "title": "해외 결제 차단 해제 요청",
+      "category": "overseas_payment",
+      "input": {
+        "audio_file": "audio/overseas_001.wav",
+        "stt_transcript": "해외에서 카드 결제가 안 돼요 지금 일본에 있는데 급해요"
+      },
+      "expected": {
+        "intent": "해외결제",
+        "slots": {
+          "customer_name": "박지민",
+          "inquiry_type": "해외 결제",
+          "inquiry_detail": "일본에서 결제 불가"
+        },
+        "flow": ["triage_agent", "waiting_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    },
+    {
+      "scenario_id": "e2e_005",
+      "title": "보이스피싱 긴급 신고",
+      "category": "fraud",
+      "input": {
+        "audio_file": "audio/fraud_001.wav",
+        "stt_transcript": "보이스피싱 당했어요 50만원이 빠져나갔어요 어떻게 해야 하나요"
+      },
+      "expected": {
+        "intent": "카드분실/도난신고",
+        "slots": {
+          "customer_name": "최동현",
+          "inquiry_type": "보이스피싱",
+          "inquiry_detail": "50만원 피해"
+        },
+        "flow": ["triage_agent", "answer_agent", "summary_agent", "human_transfer"],
+        "auto_resolved": false,
+        "requires_human": true
+      },
+      "ground_truth": {
+        "resolution_type": "transfer",
+        "customer_satisfied": null,
+        "repeat_explanation_needed": false,
+        "summary_provided": true,
+        "urgent": true
+      }
+    },
+    {
+      "scenario_id": "e2e_006",
+      "title": "포인트 사용처 문의 - 자동 응대",
+      "category": "point_inquiry",
+      "input": {
+        "audio_file": "audio/point_001.wav",
+        "stt_transcript": "포인트로 뭘 할 수 있어요 연회비 내는 데 쓸 수 있나요"
+      },
+      "expected": {
+        "intent": "포인트/혜택문의",
+        "slots": {},
+        "flow": ["triage_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    },
+    {
+      "scenario_id": "e2e_007",
+      "title": "한도 상향 요청 - 정보 수집 후 처리",
+      "category": "limit_change",
+      "input": {
+        "audio_file": "audio/limit_001.wav",
+        "stt_transcript": "카드 한도 올려주세요 300만원에서 500만원으로요"
+      },
+      "expected": {
+        "intent": "한도조정",
+        "slots": {
+          "customer_name": "정민주",
+          "inquiry_type": "한도 상향",
+          "inquiry_detail": "300만원에서 500만원"
+        },
+        "flow": ["triage_agent", "waiting_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    },
+    {
+      "scenario_id": "e2e_008",
+      "title": "분할 납부 신청",
+      "category": "installment",
+      "input": {
+        "audio_file": "audio/installment_001.wav",
+        "stt_transcript": "이번 달 결제금액 나눠서 내고 싶어요 3개월로요"
+      },
+      "expected": {
+        "intent": "분할납부",
+        "slots": {
+          "customer_name": "강현우",
+          "inquiry_type": "분할납부",
+          "inquiry_detail": "3개월 할부"
+        },
+        "flow": ["triage_agent", "waiting_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    },
+    {
+      "scenario_id": "e2e_009",
+      "title": "대화 블랙홀 시나리오 - 반복 설명 방지",
+      "category": "transfer_with_context",
+      "input": {
+        "audio_file": "audio/transfer_001.wav",
+        "stt_transcript": "상담사 연결해주세요 복잡한 문제가 있어요"
+      },
+      "expected": {
+        "intent": "상담사연결",
+        "slots": {
+          "customer_name": "윤서연",
+          "inquiry_type": "기타 문의",
+          "inquiry_detail": "복잡한 문제로 상담사 연결 요청"
+        },
+        "flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+        "auto_resolved": false,
+        "requires_human": true
+      },
+      "ground_truth": {
+        "resolution_type": "transfer",
+        "customer_satisfied": null,
+        "repeat_explanation_needed": false,
+        "summary_provided": true,
+        "context_transferred": true
+      }
+    },
+    {
+      "scenario_id": "e2e_010",
+      "title": "연회비 환불 문의",
+      "category": "annual_fee",
+      "input": {
+        "audio_file": "audio/annual_fee_001.wav",
+        "stt_transcript": "연회비 환불 받고 싶어요 카드 발급받자마자 연회비가 나갔거든요"
+      },
+      "expected": {
+        "intent": "연회비문의",
+        "slots": {
+          "customer_name": "송미영",
+          "inquiry_type": "연회비",
+          "inquiry_detail": "환불 요청"
+        },
+        "flow": ["triage_agent", "waiting_agent", "answer_agent", "end"],
+        "auto_resolved": true,
+        "requires_human": false
+      },
+      "ground_truth": {
+        "resolution_type": "auto",
+        "customer_satisfied": true,
+        "repeat_explanation_needed": false
+      }
+    }
+  ],
+  "evaluation_criteria": {
+    "auto_resolution_target": 70,
+    "repeat_explanation_target": 0,
+    "e2e_latency_target_ms": 3000,
+    "csat_target": 80,
+    "fcr_target": 75
+  }
+}

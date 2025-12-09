@@ -1,0 +1,222 @@
+{
+  "card_last_4_digits": {
+    "label": "카드 뒤 4자리",
+    "question": "해당 카드 뒤 4자리를 알려주시겠어요?",
+    "validation": "^\\d{4}$"
+  },
+  "card_type": {
+    "label": "카드 종류",
+    "question": "어떤 카드에 대한 문의이신가요? (예: 신용카드, 체크카드, 카드명)",
+    "validation": null
+  },
+  "loss_date": {
+    "label": "분실 일시",
+    "question": "카드를 분실하신 대략적인 날짜와 시간을 알려주세요.",
+    "validation": null
+  },
+  "loss_location": {
+    "label": "분실 장소",
+    "question": "혹시 어디에서 분실하셨는지 기억나시나요?",
+    "validation": null
+  },
+  "request_type": {
+    "label": "요청 유형",
+    "question": "카드 정지를 원하시나요, 아니면 정지 해제를 원하시나요?",
+    "validation": null
+  },
+  "fraud_date": {
+    "label": "부정사용 일시",
+    "question": "부정사용이 발생한 날짜와 시간을 알려주세요.",
+    "validation": null
+  },
+  "fraud_amount": {
+    "label": "부정사용 금액",
+    "question": "부정사용된 금액이 얼마인가요?",
+    "validation": null
+  },
+  "fraud_merchant": {
+    "label": "부정사용 가맹점",
+    "question": "혹시 어디에서 사용된 것으로 나오나요? (가맹점명)",
+    "validation": null
+  },
+  "requested_limit": {
+    "label": "희망 한도",
+    "question": "희망하시는 한도 금액이 얼마인가요?",
+    "validation": null
+  },
+  "purpose": {
+    "label": "상향 목적",
+    "question": "한도 상향이 필요하신 사유를 간단히 말씀해 주시겠어요?",
+    "validation": null
+  },
+  "transaction_date": {
+    "label": "거래 일시",
+    "question": "해당 거래가 발생한 날짜를 알려주세요.",
+    "validation": null
+  },
+  "transaction_amount": {
+    "label": "거래 금액",
+    "question": "거래 금액이 얼마인가요?",
+    "validation": null
+  },
+  "merchant_name": {
+    "label": "가맹점명",
+    "question": "어느 가맹점에서 결제하셨나요?",
+    "validation": null
+  },
+  "receipt_number": {
+    "label": "접수 번호",
+    "question": "접수 번호를 알고 계시면 알려주세요.",
+    "validation": null
+  },
+  "receipt_date": {
+    "label": "접수 일시",
+    "question": "언제 접수하셨는지 알려주시겠어요?",
+    "validation": null
+  },
+  "payment_month": {
+    "label": "결제월",
+    "question": "몇 월 결제대금을 확인하고 싶으신가요?",
+    "validation": null
+  },
+  "desired_payment_date": {
+    "label": "희망 결제일",
+    "question": "희망하시는 결제일이 며칠인가요?",
+    "validation": null
+  },
+  "new_bank": {
+    "label": "변경할 은행",
+    "question": "어느 은행으로 변경하시겠어요?",
+    "validation": null
+  },
+  "new_account_number": {
+    "label": "새 계좌번호",
+    "question": "새 계좌번호를 알려주시겠어요?",
+    "validation": null
+  },
+  "inquiry_period": {
+    "label": "조회 기간",
+    "question": "어느 기간의 내역을 확인하고 싶으신가요?",
+    "validation": null
+  },
+  "change_type": {
+    "label": "변경 유형",
+    "question": "일시불에서 할부로 변경하시겠어요, 아니면 할부에서 일시불로 변경하시겠어요?",
+    "validation": null
+  },
+  "prepay_amount": {
+    "label": "선결제 금액",
+    "question": "얼마를 선결제하시겠어요?",
+    "validation": null
+  },
+  "error_date": {
+    "label": "오류 발생일",
+    "question": "결제 오류가 발생한 날짜를 알려주세요.",
+    "validation": null
+  },
+  "error_description": {
+    "label": "오류 내용",
+    "question": "어떤 오류가 발생했는지 자세히 말씀해 주시겠어요?",
+    "validation": null
+  },
+  "auto_payment_service": {
+    "label": "자동결제 서비스",
+    "question": "어떤 서비스의 자동결제에 대한 문의이신가요?",
+    "validation": null
+  },
+  "withdrawal_account": {
+    "label": "출금 계좌",
+    "question": "출금하실 계좌 정보를 알려주시겠어요?",
+    "validation": null
+  },
+  "withdrawal_amount": {
+    "label": "출금 금액",
+    "question": "얼마를 출금하시겠어요?",
+    "validation": null
+  },
+  "payment_amount": {
+    "label": "결제 금액",
+    "question": "얼마를 결제하시겠어요?",
+    "validation": null
+  },
+  "payment_ratio": {
+    "label": "결제 비율",
+    "question": "결제금액의 몇 퍼센트를 이월하시겠어요?",
+    "validation": null
+  },
+  "desired_loan_amount": {
+    "label": "희망 대출 금액",
+    "question": "희망하시는 대출 금액이 얼마인가요?",
+    "validation": null
+  },
+  "desired_amount": {
+    "label": "희망 금액",
+    "question": "희망하시는 금액이 얼마인가요?",
+    "validation": null
+  },
+  "repayment_period": {
+    "label": "상환 기간",
+    "question": "상환 기간은 어느 정도로 원하시나요?",
+    "validation": null
+  },
+  "repayment_amount": {
+    "label": "상환 금액",
+    "question": "상환하실 금액이 얼마인가요?",
+    "validation": null
+  },
+  "repayment_type": {
+    "label": "상환 방식",
+    "question": "일부 상환인가요, 전액 상환인가요?",
+    "validation": null
+  },
+  "usage_destination": {
+    "label": "사용처",
+    "question": "포인트를 어디에 사용하시겠어요?",
+    "validation": null
+  },
+  "partner_name": {
+    "label": "제휴사명",
+    "question": "어느 제휴사에 대한 문의이신가요?",
+    "validation": null
+  },
+  "inquiry_type": {
+    "label": "문의 유형",
+    "question": "어떤 문의이신가요? (예: 로그인 문제, 앱 오류 등)",
+    "validation": null
+  },
+  "issue_period": {
+    "label": "발급 기간",
+    "question": "어느 기간의 자료가 필요하신가요?",
+    "validation": null
+  },
+  "issue_method": {
+    "label": "발급 방식",
+    "question": "이메일, 팩스, 우편 중 어떤 방식으로 받으시겠어요?",
+    "validation": null
+  },
+  "reissue_reason": {
+    "label": "재발급 사유",
+    "question": "카드 재발급이 필요하신 사유가 무엇인가요?",
+    "validation": null
+  },
+  "delivery_address": {
+    "label": "배송 주소",
+    "question": "카드를 받으실 주소를 알려주시겠어요?",
+    "validation": null
+  },
+  "inquiry_year": {
+    "label": "조회 연도",
+    "question": "몇 년도 자료가 필요하신가요?",
+    "validation": null
+  },
+  "business_number": {
+    "label": "사업자번호",
+    "question": "사업자등록번호를 알려주시겠어요?",
+    "validation": null
+  },
+  "inquiry_detail": {
+    "label": "문의 상세 내용",
+    "question": "문의하신 내용을 좀 더 자세히 말씀해 주시겠어요?",
+    "validation": null
+  }
+}
