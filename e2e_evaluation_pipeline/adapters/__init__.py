@@ -38,6 +38,8 @@ from .intent_adapter import IntentAdapter, IntentClassificationResult
 from .rag_adapter import RAGAdapter, RAGSearchResult, RetrievedDocument
 from .slot_adapter import SlotAdapter, SlotExtractionResult, SlotDefinition
 from .flow_adapter import FlowAdapter, FlowExecutionResult, FlowType
+from .stt_adapter import STTAdapter, STTResult, STTEvaluationResult
+from .tts_adapter import TTSAdapter, TTSResult, TTSEvaluationResult
 
 __all__ = [
     # 어댑터 클래스
@@ -46,6 +48,8 @@ __all__ = [
     "RAGAdapter",
     "SlotAdapter",
     "FlowAdapter",
+    "STTAdapter",
+    "TTSAdapter",
     # 결과 클래스
     "WorkflowExecutionResult",
     "IntentClassificationResult",
@@ -54,5 +58,9 @@ __all__ = [
     "SlotExtractionResult",
     "SlotDefinition",
     "FlowExecutionResult",
-    "FlowType"
+    "FlowType",
+    "STTResult",
+    "STTEvaluationResult",
+    "TTSResult",
+    "TTSEvaluationResult"
 ]
