@@ -51,10 +51,24 @@ class DataLoader:
         path = self.datasets_dir / "e2e_test" / "scenarios.json"
         return self._load_json(path)
 
+    def load_tts_test_data(self) -> Dict[str, Any]:
+        """TTS 테스트 데이터 로드"""
+        # TTS는 텍스트 리스트만 필요하므로 기본 샘플 반환
+        return {
+            "test_texts": [
+                "카드 한도 상향 신청하고 싶어요",
+                "결제일 변경 문의드립니다",
+                "상담원 연결 부탁드립니다",
+                "마이너스 통장 개설 가능한가요?",
+                "적금 이자율이 얼마인가요?"
+            ]
+        }
+
     def load_all(self) -> Dict[str, Dict[str, Any]]:
         """모든 테스트 데이터 로드"""
         return {
             "stt": self.load_stt_test_data(),
+            "tts": self.load_tts_test_data(),
             "intent": self.load_intent_test_data(),
             "rag": self.load_golden_qa_data(),
             "slot_filling": self.load_slot_test_data(),

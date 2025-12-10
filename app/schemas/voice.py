@@ -32,7 +32,7 @@ class STTResponse(BaseModel):
 class TTSRequest(BaseModel):
     """TTS 전용 요청"""
     text: str = Field(..., max_length=4096, description="변환할 텍스트 (최대 4096자)")
-    voice: str = Field("alloy", description="음성 종류 (alloy, echo, fable, onyx, nova, shimmer)")
+    voice: str = Field("ko-KR-Neural2-B", description="음성 종류 (기본값: ko-KR-Neural2-B, Google TTS voice 사용)")
     format: str = Field("mp3", description="출력 포맷 (mp3, opus, aac, flac, wav)")
 
 
@@ -108,7 +108,7 @@ class WSMessage(BaseModel):
 class WSAudioStartData(BaseModel):
     """음성 전송 시작 데이터"""
     language: str = Field("ko", description="언어 코드")
-    tts_voice: str = Field("alloy", description="TTS 음성")
+    tts_voice: str = Field("ko-KR-Neural2-B", description="TTS 음성 (Google TTS voice)")
     diarize: bool = Field(False, description="화자 분리 여부")
 
 

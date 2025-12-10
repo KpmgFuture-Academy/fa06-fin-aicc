@@ -17,6 +17,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from ..configs.config import EvaluationConfig
 from ..metrics.base import BaseMetrics, EvaluationResult
 from ..metrics.stt_metrics import STTMetrics
+from ..metrics.tts_metrics import TTSMetrics
 from ..metrics.intent_metrics import IntentMetrics
 from ..metrics.rag_metrics import RAGMetrics
 from ..metrics.slot_metrics import SlotFillingMetrics
@@ -30,6 +31,7 @@ class ModuleEvaluationRunner:
 
     METRICS_CLASSES: Dict[str, Type[BaseMetrics]] = {
         "stt": STTMetrics,
+        "tts": TTSMetrics,
         "intent": IntentMetrics,
         "rag": RAGMetrics,
         "slot_filling": SlotFillingMetrics,

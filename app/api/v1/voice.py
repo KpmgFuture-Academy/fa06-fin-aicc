@@ -262,7 +262,7 @@ async def tts_only(request: TTSRequest):
     return TTSResponse(
         audio_base64=base64.b64encode(audio_bytes).decode("utf-8"),
         format=request.format,
-        voice=request.voice,
+        voice=request.voice or tts_service.default_voice,  # None이면 서비스 기본값 사용
         text_length=len(request.text),
         audio_size_bytes=len(audio_bytes),
     )

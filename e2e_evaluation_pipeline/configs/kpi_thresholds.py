@@ -575,7 +575,53 @@ class KPIThresholds:
     })
 
     # ========================================
-    # H. E2E (전체 시스템) 성능평가
+    # H. TTS (Text-to-Speech) 성능평가
+    # ========================================
+    tts: Dict[str, KPIMetric] = field(default_factory=lambda: {
+        "avg_synthesis_time_ms": KPIMetric(
+            name="Average Synthesis Time",
+            target=500.0,
+            unit="ms",
+            priority=Priority.P1,
+            higher_is_better=False,
+            description="평균 음성 합성 시간",
+            industry_average=600.0,
+            world_class=300.0
+        ),
+        "success_rate": KPIMetric(
+            name="TTS Success Rate",
+            target=99.0,
+            unit="%",
+            priority=Priority.P0,
+            higher_is_better=True,
+            description="음성 합성 성공률",
+            industry_average=98.0,
+            world_class=99.5
+        ),
+        "avg_chars_per_second": KPIMetric(
+            name="Characters per Second",
+            target=5.0,
+            unit="chars/s",
+            priority=Priority.P2,
+            higher_is_better=True,
+            description="초당 문자 처리 속도 (한국어 기준)",
+            industry_average=4.5,
+            world_class=6.0
+        ),
+        "error_rate": KPIMetric(
+            name="TTS Error Rate",
+            target=1.0,
+            unit="%",
+            priority=Priority.P0,
+            higher_is_better=False,
+            description="음성 합성 오류율",
+            industry_average=2.0,
+            world_class=0.5
+        ),
+    })
+
+    # ========================================
+    # I. E2E (전체 시스템) 성능평가
     # ========================================
     e2e: Dict[str, KPIMetric] = field(default_factory=lambda: {
         "auto_resolution_rate": KPIMetric(
@@ -802,7 +848,7 @@ def get_all_p0_metrics() -> Dict[str, Dict[str, KPIMetric]]:
     kpi = DEFAULT_KPI_THRESHOLDS
     result = {}
 
-    for layer_name in ['stt', 'intent', 'triage', 'rag', 'slot_filling', 'summary', 'flow', 'e2e']:
+    for layer_name in ['stt', 'tts', 'intent', 'triage', 'rag', 'slot_filling', 'summary', 'flow', 'e2e']:
         layer_metrics = getattr(kpi, layer_name)
         p0_metrics = {k: v for k, v in layer_metrics.items() if v.priority == Priority.P0}
         if p0_metrics:
@@ -816,7 +862,7 @@ def get_metrics_by_priority(priority: Priority) -> Dict[str, Dict[str, KPIMetric
     kpi = DEFAULT_KPI_THRESHOLDS
     result = {}
 
-    for layer_name in ['stt', 'intent', 'triage', 'rag', 'slot_filling', 'summary', 'flow', 'e2e']:
+    for layer_name in ['stt', 'tts', 'intent', 'triage', 'rag', 'slot_filling', 'summary', 'flow', 'e2e']:
         layer_metrics = getattr(kpi, layer_name)
         filtered = {k: v for k, v in layer_metrics.items() if v.priority == priority}
         if filtered:

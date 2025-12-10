@@ -57,7 +57,7 @@ Examples:
 
     parser.add_argument(
         "--module",
-        choices=["stt", "intent", "rag", "slot_filling", "summary", "flow", "e2e"],
+        choices=["stt", "tts", "intent", "rag", "slot_filling", "summary", "flow", "e2e"],
         help="특정 모듈만 평가"
     )
 
@@ -111,6 +111,9 @@ Examples:
         if args.module == "stt":
             from e2e_evaluation_pipeline.datasets.data_loader import get_sample_stt_pairs
             test_data = get_sample_stt_pairs()
+        elif args.module == "tts":
+            from e2e_evaluation_pipeline.datasets.data_loader import get_sample_tts_data
+            test_data = get_sample_tts_data()
         elif args.module == "intent":
             from e2e_evaluation_pipeline.datasets.data_loader import get_sample_intent_data
             test_data = get_sample_intent_data()
