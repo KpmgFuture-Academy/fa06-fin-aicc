@@ -191,7 +191,7 @@ ChromaDB에 저장된 38개 카테고리 문서의 "6. 고객정보 필요 여�
 | 2 | slot_metadata.json 생성 | `ai_engine/config/slot_metadata.json` | ✅ 완료 |
 | 3 | slot_loader.py 생성 | `ai_engine/graph/utils/slot_loader.py` | ✅ 완료 |
 | 4 | waiting_agent.py 수정 | `ai_engine/graph/nodes/waiting_agent.py` | ✅ 완료 |
-| 5 | UI 동적 슬롯 표시 | `agent-dashboard/src/pages/Dashboard.tsx` | ✅ 완료 |
+| 5 | UI 동적 슬롯 표시 | `frontend_dashboard/src/pages/Dashboard.tsx` | ✅ 완료 |
 
 ---
 

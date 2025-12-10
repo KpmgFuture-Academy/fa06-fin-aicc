@@ -13,7 +13,7 @@
 - [x] 상담원 메시지 폴링 및 TTS 재생 로직
 - [x] React 클로저 문제 해결 (`useRef` 사용)
 
-### 2. 프론트엔드 (agent-dashboard)
+### 2. 프론트엔드 (frontend_dashboard)
 - [x] 폴링 주기 30초 → 2초로 단축 (실시간 통신용)
 - [x] 상담원 메시지 전송 기능
 - [x] UI 동적 슬롯 표시 (문의유형/상세요청 + 카테고리별 슬롯)
@@ -43,11 +43,11 @@ Google TTS 설정 완료 후 테스트:
 2. "카드 분실했어요" 등 상담사 연결이 필요한 문의
 3. 카테고리별 필요 정보 수집 (카드 뒤 4자리, 분실 일시 등)
 4. 정보 수집 완료 → `info_collection_complete = True`
-5. agent-dashboard에서 세션 선택
+5. frontend_dashboard에서 세션 선택
 6. 상담원이 메시지 전송
 7. voice-chatbot에서 초록색 메시지로 표시 + TTS 재생 확인
 8. 고객이 응답 (음성)
-9. agent-dashboard에서 고객 메시지 수신 확인
+9. frontend_dashboard에서 고객 메시지 수신 확인
 
 ---
 
@@ -58,7 +58,7 @@ Google TTS 설정 완료 후 테스트:
 | `voice-chatbot-revision/src/App.tsx` | 고객 UI, 이관 모드 로직 |
 | `voice-chatbot-revision/src/services/api.ts` | API 호출 함수 |
 | `voice-chatbot-revision/src/components/ChatMessage.tsx` | 메시지 UI 컴포넌트 |
-| `agent-dashboard/src/pages/Dashboard.tsx` | 상담원 대시보드, 동적 슬롯 UI |
+| `frontend_dashboard/src/pages/Dashboard.tsx` | 상담원 대시보드, 동적 슬롯 UI |
 | `app/services/session_manager.py` | 세션 상태 관리, `is_handover_mode()` |
 | `app/api/v1/voice_ws.py` | WebSocket 음성 처리, AI 스킵 로직 |
 | `ai_engine/config/slot_definitions.json` | 카테고리별 슬롯 정의 |

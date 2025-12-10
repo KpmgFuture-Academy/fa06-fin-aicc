@@ -4,7 +4,7 @@
 
 두 폴더는 음성 챗봇의 **서로 다른 버전/구현 방식**을 나타냅니다:
 - **`voice-chatbot`**: 기본 버전 (REST API 기반)
-- **`voice-chatbot-revision`**: 개선 버전 (WebSocket 실시간 스트리밍 + Silero VAD)
+- **`frontend_voicebot`**: 개선 버전 (WebSocket 실시간 스트리밍 + Silero VAD)
 
 ---
 
@@ -17,7 +17,7 @@
 - **배치 처리**: 녹음 완료 후 전체 오디오를 한 번에 전송
 - **단방향 통신**: 요청 → 응답 패턴
 
-#### `voice-chatbot-revision` (개선 버전)
+#### `frontend_voicebot` (개선 버전)
 - **WebSocket 기반**: `ws://localhost:8000/api/v1/voice/streaming/{session_id}` 사용
 - **실시간 스트리밍**: 오디오를 청크 단위로 실시간 전송
 - **양방향 통신**: 오디오 스트리밍 + 실시간 STT 결과 + TTS 스트리밍
@@ -34,7 +34,7 @@
 - ❌ VAD (Voice Activity Detection) 없음
 - ❌ Barge-in (끼어들기) 없음
 
-#### `voice-chatbot-revision`
+#### `frontend_voicebot`
 - ✅ **실시간 STT**: VITO API를 통한 실시간 음성 인식
 - ✅ **Silero VAD**: 딥러닝 기반 Voice Activity Detection
   - 음성/비음성 자동 구분
@@ -58,7 +58,7 @@ src/
 └── App.tsx                  # 기본 구현
 ```
 
-#### `voice-chatbot-revision`
+#### `frontend_voicebot`
 ```
 src/
 ├── hooks/
@@ -114,7 +114,7 @@ const {
 - REST API 엔드포인트만 사용
 - 백엔드 파일 없음
 
-#### `voice-chatbot-revision`
+#### `frontend_voicebot`
 - WebSocket 스트리밍 엔드포인트 사용
 - `backend-files/` 폴더에 백엔드 참조 파일 포함:
   - `app/api/v1/voice_ws.py` - WebSocket 스트리밍 엔드포인트
@@ -130,7 +130,7 @@ const {
 - 단계별 처리로 지연 발생 가능
 - 실시간 피드백 없음
 
-#### `voice-chatbot-revision`
+#### `frontend_voicebot`
 - 녹음 시작 → **실시간 STT 텍스트 표시** → 자동 전송 → **TTS 스트리밍 재생**
 - 자연스러운 대화 흐름
 - **Barge-in**: AI 응답 중에도 끼어들 수 있음
@@ -146,7 +146,7 @@ const {
 - Axios
 - Web Audio API
 
-#### `voice-chatbot-revision` 추가
+#### `frontend_voicebot` 추가
 - WebSocket (실시간 통신)
 - AudioContext + ScriptProcessorNode (고급 오디오 처리)
 - Silero VAD (백엔드 통합)
@@ -159,7 +159,7 @@ const {
 - 포트: `3002`
 - 스크립트: `npm start` (Vite 설정에 `--port 3002`)
 
-#### `voice-chatbot-revision`
+#### `frontend_voicebot`
 - 포트: `3010` (README 기준)
 - 스크립트: `npm run dev` (기본 포트)
 - **VAD 설정**:
@@ -172,7 +172,7 @@ const {
 
 ## 📊 기능 비교표
 
-| 기능 | voice-chatbot | voice-chatbot-revision |
+| 기능 | voice-chatbot | frontend_voicebot |
 |------|---------------|------------------------|
 | 음성 녹음 | ✅ | ✅ |
 | STT 변환 | ✅ (배치) | ✅ (실시간) |
@@ -195,7 +195,7 @@ const {
 - 실시간 기능이 필요 없는 경우
 - 빠른 구현이 필요한 경우
 
-### `voice-chatbot-revision` 사용 시기
+### `frontend_voicebot` 사용 시기
 - **프로덕션 수준의 음성 챗봇**
 - 자연스러운 대화 경험 필요
 - 실시간 피드백 중요
@@ -206,7 +206,7 @@ const {
 
 ## 🔄 마이그레이션 고려사항
 
-`voice-chatbot`에서 `voice-chatbot-revision`으로 마이그레이션하려면:
+`voice-chatbot`에서 `frontend_voicebot`으로 마이그레이션하려면:
 
 1. **백엔드 준비**
    - WebSocket 스트리밍 엔드포인트 구현
@@ -229,7 +229,7 @@ const {
 ## 📝 결론
 
 - **`voice-chatbot`**: 기본 구현, REST API 기반, 간단한 사용 사례에 적합
-- **`voice-chatbot-revision`**: 고급 구현, WebSocket 스트리밍 + Silero VAD, 프로덕션 수준의 자연스러운 대화 경험 제공
+- **`frontend_voicebot`**: 고급 구현, WebSocket 스트리밍 + Silero VAD, 프로덕션 수준의 자연스러운 대화 경험 제공
 
-현재 프로젝트의 메인 백엔드(`app/api/v1/voice_ws.py`)는 `voice-chatbot-revision`의 요구사항을 지원하는 것으로 보이므로, **revision 버전을 메인으로 사용하는 것이 권장됩니다**.
+현재 프로젝트의 메인 백엔드(`app/api/v1/voice_ws.py`)는 `frontend_voicebot`의 요구사항을 지원하는 것으로 보이므로, **revision 버전을 메인으로 사용하는 것이 권장됩니다**.
 

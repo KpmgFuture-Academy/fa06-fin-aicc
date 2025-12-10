@@ -60,7 +60,7 @@ services:
   # Voice Chatbot 프론트엔드 (개발 모드)
   frontend:
     build:
-      context: ./voice-chatbot
+      context: ./frontend_voicebot
       dockerfile: Dockerfile.dev
     container_name: aicc-frontend
     expose:
@@ -69,7 +69,7 @@ services:
       # Nginx를 통해 접근하므로 /api 경로 사용
       - VITE_API_BASE_URL=http://localhost/api
     volumes:
-      - ./voice-chatbot:/app
+      - ./frontend_voicebot:/app
       - /app/node_modules
     networks:
       - aicc-network
