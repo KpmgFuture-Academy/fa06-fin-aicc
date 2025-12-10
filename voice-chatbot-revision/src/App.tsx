@@ -24,6 +24,7 @@ function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastMessageIdRef = useRef<number>(0);  // 마지막 메시지 ID (폴링용)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);  // 스크롤 디바운싱용
 
   // 양방향 스트리밍 훅 사용 (STT + AI + TTS 통합)
   const {
@@ -57,10 +58,35 @@ function App() {
     console.log('[App] isHandoverMode 변경:', isHandoverMode);
   }, [isHandoverMode]);
 
-  // 메시지 추가 시 스크롤
+  // 메시지 추가 시 스크롤 (즉시 실행)
   useEffect(() => {
+    // 이전 타이머 취소
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, currentTranscript]);
+  }, [messages]);
+
+  // 실시간 STT 업데이트 시 스크롤 (디바운싱 적용 - 300ms마다 최대 1회)
+  useEffect(() => {
+    if (!isRecording || !currentTranscript) return;
+
+    // 이전 타이머 취소
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    // 300ms 후에 스크롤 (너무 자주 호출되지 않도록)
+    scrollTimeoutRef.current = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [currentTranscript, isRecording]);
 
   // base64 → Blob 변환
   const base64ToBlob = (base64: string, mimeType: string): Blob => {
