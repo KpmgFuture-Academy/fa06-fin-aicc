@@ -64,5 +64,15 @@ async def analyze_handover(request: HandoverRequest):
         raise
     except Exception as e:
         logger.error(f"상담원 이관 처리 중 오류 발생 - 세션: {request.session_id}, 오류: {str(e)}", exc_info=True)
-        # 에러 발생 시에도 응답 반환 (워크플로우 서비스에서 처리)
-        return await process_handover(request)
+        # 에러 발생 시 에러 응답 반환 (중복 호출 방지)
+        from app.schemas.handover import AnalysisResult
+        from app.schemas.common import SentimentType
+        return HandoverResponse(
+            status="error",
+            analysis_result=AnalysisResult(
+                customer_sentiment=SentimentType.NEUTRAL,
+                summary=f"이관 처리 중 오류가 발생했습니다: {str(e)}",
+                extracted_keywords=[],
+                kms_recommendations=[]
+            )
+        )
