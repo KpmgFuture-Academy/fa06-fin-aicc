@@ -8,6 +8,7 @@ import {
   getSessionMessages,
   sendAgentMessage,
   closeSession,
+  acceptSession,
   getClosedSessions,
   getAllSessionMessages,
   transcribeAudio,
@@ -50,17 +51,17 @@ const ConnectionTitle = styled.div`
   color: #333;
 `;
 
-const StatusIndicator = styled.div<{ isConnected: boolean; isClosed?: boolean }>`
+const StatusIndicator = styled.div<{ $isConnected: boolean; $isClosed?: boolean }>`
   width: 24px;
   height: 24px;
   border-radius: 50%;
   background-color: ${props => {
-    if (props.isClosed) return '#9E9E9E';  // 회색: 종료됨
-    return props.isConnected ? '#4CAF50' : '#f44336';  // 초록: 연결, 빨강: 대기
+    if (props.$isClosed) return '#9E9E9E';  // 회색: 종료됨
+    return props.$isConnected ? '#4CAF50' : '#f44336';  // 초록: 연결, 빨강: 대기
   }};
   box-shadow: 0 0 8px ${props => {
-    if (props.isClosed) return 'rgba(158, 158, 158, 0.5)';
-    return props.isConnected ? 'rgba(76, 175, 80, 0.5)' : 'rgba(244, 67, 54, 0.5)';
+    if (props.$isClosed) return 'rgba(158, 158, 158, 0.5)';
+    return props.$isConnected ? 'rgba(76, 175, 80, 0.5)' : 'rgba(244, 67, 54, 0.5)';
   }};
 `;
 
@@ -152,9 +153,9 @@ const NoSessionText = styled.span`
 `;
 
 // 사이드바: 종료된 상담 기록
-const Sidebar = styled.div<{ isOpen: boolean }>`
+const Sidebar = styled.div<{ $isOpen: boolean }>`
   position: fixed;
-  right: ${props => props.isOpen ? '0' : '-320px'};
+  right: ${props => props.$isOpen ? '0' : '-320px'};
   top: 0;
   width: 320px;
   height: 100vh;
@@ -244,28 +245,28 @@ const SidebarToggleButton = styled.button`
 `;
 
 // 마이크 버튼 스타일
-const MicButton = styled.button<{ isRecording: boolean; isProcessing?: boolean }>`
+const MicButton = styled.button<{ $isRecording: boolean; $isProcessing?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 8px 14px;
   background-color: ${props => {
-    if (props.isProcessing) return '#9e9e9e';
-    if (props.isRecording) return '#f44336';
+    if (props.$isProcessing) return '#9e9e9e';
+    if (props.$isRecording) return '#f44336';
     return '#4CAF50';
   }};
   color: white;
   border: none;
   border-radius: 20px;
-  cursor: ${props => props.isProcessing ? 'wait' : 'pointer'};
+  cursor: ${props => props.$isProcessing ? 'wait' : 'pointer'};
   font-size: 13px;
   font-weight: 500;
   margin-left: auto;
   transition: all 0.2s;
 
   &:hover {
-    opacity: ${props => props.isProcessing ? 1 : 0.9};
+    opacity: ${props => props.$isProcessing ? 1 : 0.9};
   }
 
   &:disabled {
@@ -273,7 +274,7 @@ const MicButton = styled.button<{ isRecording: boolean; isProcessing?: boolean }
     cursor: not-allowed;
   }
 
-  ${props => props.isRecording && `
+  ${props => props.$isRecording && `
     animation: pulse 1s infinite;
   `}
 
@@ -287,7 +288,7 @@ const MicIcon = styled.span`
   font-size: 16px;
 `;
 
-const SidebarOverlay = styled.div<{ isOpen: boolean }>`
+const SidebarOverlay = styled.div<{ $isOpen: boolean }>`
   position: fixed;
   top: 0;
   left: 0;
@@ -295,7 +296,7 @@ const SidebarOverlay = styled.div<{ isOpen: boolean }>`
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.3);
   z-index: 999;
-  display: ${props => props.isOpen ? 'block' : 'none'};
+  display: ${props => props.$isOpen ? 'block' : 'none'};
 `;
 
 const HistoryChatArea = styled.div`
@@ -394,20 +395,20 @@ const ChatMessage = styled.div<{ align: 'left' | 'right' | 'center' }>`
   }};
 `;
 
-const MessageLabel = styled.span<{ type: string; isAi?: boolean }>`
+const MessageLabel = styled.span<{ type: string; $isAi?: boolean }>`
   font-size: 11px;
   color: ${props => {
     if (props.type === 'customer') return theme.colors.primary;
     if (props.type === 'agent') {
       // AI 생성 메시지는 보라색, 상담사 직접 메시지는 파란색
-      return props.isAi ? '#7B1FA2' : '#1565C0';
+      return props.$isAi ? '#7B1FA2' : '#1565C0';
     }
     return '#666';
   }};
   margin-bottom: 3px;
 `;
 
-const MessageBubble = styled.div<{ type: string; isAi?: boolean }>`
+const MessageBubble = styled.div<{ type: string; $isAi?: boolean }>`
   max-width: 85%;
   padding: 10px 14px;
   border-radius: 10px;
@@ -423,7 +424,7 @@ const MessageBubble = styled.div<{ type: string; isAi?: boolean }>`
     }
     if (props.type === 'agent') {
       // AI 생성 메시지는 연보라색, 상담사 직접 메시지는 연파란색
-      if (props.isAi) {
+      if (props.$isAi) {
         return `
           background-color: #F3E5F5;
           color: #333;
@@ -516,6 +517,25 @@ const CloseSessionButton = styled.button`
   }
 `;
 
+const AcceptSessionButton = styled.button`
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: 12px;
+
+  &:hover {
+    background-color: #45a049;
+  }
+
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
 const SummaryBlock = styled.div`
   margin-bottom: 16px;
 
@@ -577,13 +597,13 @@ const Keyword = styled.span`
   font-size: 12px;
 `;
 
-const SentimentBadge = styled.span<{ sentiment: string }>`
+const SentimentBadge = styled.span<{ $sentiment: string }>`
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
   ${props => {
-    switch (props.sentiment) {
+    switch (props.$sentiment) {
       case 'POSITIVE':
         return 'background-color: #E8F5E9; color: #2E7D32;';
       case 'NEGATIVE':
@@ -601,14 +621,14 @@ const LoadingText = styled.div`
   font-size: 13px;
 `;
 
-const RefreshButton = styled.button<{ isLoading?: boolean }>`
+const RefreshButton = styled.button<{ $isLoading?: boolean }>`
   padding: 4px 10px;
   font-size: 11px;
-  background-color: ${props => props.isLoading ? '#e0e0e0' : '#f5f5f5'};
+  background-color: ${props => props.$isLoading ? '#e0e0e0' : '#f5f5f5'};
   border: 1px solid #ddd;
   border-radius: 4px;
-  cursor: ${props => props.isLoading ? 'wait' : 'pointer'};
-  opacity: ${props => props.isLoading ? 0.7 : 1};
+  cursor: ${props => props.$isLoading ? 'wait' : 'pointer'};
+  opacity: ${props => props.$isLoading ? 0.7 : 1};
   transition: all 0.2s;
 
   &:hover {
@@ -717,6 +737,10 @@ const Dashboard: React.FC = () => {
   const { isRecording, startRecording, stopRecording, error: recordingError } = useAudioRecorder();
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
 
+  // 세션 수락 관련
+  const [isAccepting, setIsAccepting] = useState<boolean>(false);
+  const [isSessionAccepted, setIsSessionAccepted] = useState<boolean>(false);
+
   // 시간 포맷팅 헬퍼
   const formatTime = (date: Date | null): string => {
     if (!date) return '-';
@@ -809,8 +833,20 @@ const Dashboard: React.FC = () => {
 
     // 이전 종료 상태 초기화
     setIsSessionClosed(false);
+    // 수락 상태 초기화
+    setIsSessionAccepted(false);
 
-    setSelectedSession(session);
+    // 최신 세션 정보 가져오기 (collected_info 포함)
+    try {
+      const latestSessions = await getHandoverSessions();
+      const latestSession = latestSessions.find(s => s.session_id === session.session_id);
+      setSelectedSession(latestSession || session);
+      // 세션 목록도 업데이트
+      setHandoverSessions(latestSessions);
+    } catch (error) {
+      console.error('최신 세션 정보 조회 실패:', error);
+      setSelectedSession(session);
+    }
     setMessages([]);
     setAnalysisResult(null);
     lastMessageIdRef.current = undefined;
@@ -822,9 +858,9 @@ const Dashboard: React.FC = () => {
     // 상담원이 직접 보낸 메시지 ID 초기화
     agentSentMessageIds.current.clear();
 
-    // 기존 메시지 로드 (HANDOVER 이후 메시지만)
+    // 기존 메시지 로드 (HANDOVER 이전 대화 포함 - 전체 대화 표시)
     try {
-      const dbMessages = await getSessionMessages(session.session_id, undefined, true);
+      const dbMessages = await getSessionMessages(session.session_id, undefined, false);
       const converted: Message[] = dbMessages.map((m: DBMessage) => ({
         id: m.id,
         speaker: m.role === 'user' ? 'customer' : 'agent',
@@ -844,24 +880,36 @@ const Dashboard: React.FC = () => {
         lastMessageIdRef.current = Math.max(...dbMessages.map((m: DBMessage) => m.id));
       }
 
-      // 이관 분석 요청
+      // 이관 분석 요청 (비동기 - 메시지 로드와 병렬 처리)
       setIsAnalyzing(true);
-      try {
-        const handoverResult = await analyzeHandover({
-          session_id: session.session_id,
-          trigger_reason: '상담원 이관 분석'
-        });
+      analyzeHandover({
+        session_id: session.session_id,
+        trigger_reason: '상담원 이관 분석'
+      }).then(async (handoverResult) => {
         setAnalysisResult(handoverResult.analysis_result);
-      } catch (error) {
-        console.error('이관 분석 실패:', error);
-      } finally {
-        setIsAnalyzing(false);
-      }
 
-      // 폴링 시작 (30초마다 - 폴링 간격 대폭 증가)
+        // 분석 완료 후 최신 세션 정보 다시 가져오기 (collected_info 갱신)
+        try {
+          const updatedSessions = await getHandoverSessions();
+          const updatedSession = updatedSessions.find(s => s.session_id === session.session_id);
+          if (updatedSession) {
+            setSelectedSession(updatedSession);
+            setHandoverSessions(updatedSessions);
+            console.log('세션 정보 갱신 완료:', updatedSession.collected_info);
+          }
+        } catch (err) {
+          console.error('세션 정보 갱신 실패:', err);
+        }
+      }).catch(error => {
+        console.error('이관 분석 실패:', error);
+      }).finally(() => {
+        setIsAnalyzing(false);
+      });
+
+      // 폴링 시작 (2초마다 - 메시지 로드 직후 바로 시작)
       pollingIntervalRef.current = setInterval(async () => {
         try {
-          const newMessages = await getSessionMessages(session.session_id, lastMessageIdRef.current);
+          const newMessages = await getSessionMessages(session.session_id, lastMessageIdRef.current, false);
           if (newMessages.length > 0) {
             const newConverted: Message[] = newMessages.map((m: DBMessage) => ({
               id: m.id,
@@ -972,6 +1020,37 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // 세션 수락 핸들러 (상담사가 세션 선택 시 호출)
+  const handleAcceptSession = async () => {
+    if (!selectedSession || isSessionAccepted) return;
+
+    setIsAccepting(true);
+    try {
+      await acceptSession(selectedSession.session_id, 'agent_001'); // 임시 상담사 ID
+      setIsSessionAccepted(true);
+      console.log('세션 수락 완료:', selectedSession.session_id);
+
+      // 수락 완료 후 분석 정보 로드
+      setIsAnalyzing(true);
+      try {
+        const handoverResult = await analyzeHandover({
+          session_id: selectedSession.session_id,
+          trigger_reason: '상담원 이관 분석'
+        });
+        setAnalysisResult(handoverResult.analysis_result);
+      } catch (error) {
+        console.error('이관 분석 실패:', error);
+      } finally {
+        setIsAnalyzing(false);
+      }
+    } catch (error: any) {
+      console.error('세션 수락 실패:', error);
+      alert(error.message || '세션 수락에 실패했습니다.');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
   // 마이크 버튼 클릭 핸들러
   const handleMicClick = async () => {
     if (isRecording) {
@@ -1031,17 +1110,28 @@ const Dashboard: React.FC = () => {
         </SessionSelect>
         <RefreshButton
           onClick={() => fetchHandoverSessions(true)}
-          isLoading={isRefreshing}
+          $isLoading={isRefreshing}
           disabled={isRefreshing}
         >
           {isRefreshing ? '조회 중...' : '새로고침'}
         </RefreshButton>
+        {selectedSession && !isSessionAccepted && !isSessionClosed && (
+          <AcceptSessionButton
+            onClick={handleAcceptSession}
+            disabled={isAccepting}
+          >
+            {isAccepting ? '수락 중...' : '상담 수락'}
+          </AcceptSessionButton>
+        )}
+        {isSessionAccepted && (
+          <span style={{ color: '#4CAF50', fontWeight: 500, marginLeft: 12 }}>✓ 수락됨</span>
+        )}
         {handoverSessions.length === 0 && (
           <NoSessionText>현재 연결 대기 중인 고객이 없습니다</NoSessionText>
         )}
         <MicButton
-          isRecording={isRecording}
-          isProcessing={isTranscribing}
+          $isRecording={isRecording}
+          $isProcessing={isTranscribing}
           onClick={handleMicClick}
           disabled={isTranscribing}
           title={isRecording ? '녹음 중지 (STT 변환)' : '음성 입력 시작'}
@@ -1059,7 +1149,7 @@ const Dashboard: React.FC = () => {
         {/* 왼쪽: 상담 연결 상태 */}
         <ConnectionStatusArea>
           <ConnectionTitle>{isSessionClosed ? '상담 종료' : '상담 연결'}</ConnectionTitle>
-          <StatusIndicator isConnected={selectedSession !== null} isClosed={isSessionClosed} />
+          <StatusIndicator $isConnected={selectedSession !== null} $isClosed={isSessionClosed} />
         </ConnectionStatusArea>
 
         {/* 중앙: Slot Filling 정보 */}
@@ -1124,11 +1214,11 @@ const Dashboard: React.FC = () => {
                     align={msg.speaker === 'customer' ? 'right' : msg.speaker === 'system' ? 'center' : 'left'}
                   >
                     {msg.speaker !== 'system' && (
-                      <MessageLabel type={msg.speaker} isAi={msg.isAiGenerated}>
+                      <MessageLabel type={msg.speaker} $isAi={msg.isAiGenerated}>
                         {msg.speaker === 'customer' ? '고객' : (msg.isAiGenerated ? 'AI 상담' : '상담사')}
                       </MessageLabel>
                     )}
-                    <MessageBubble type={msg.speaker} isAi={msg.isAiGenerated}>
+                    <MessageBubble type={msg.speaker} $isAi={msg.isAiGenerated}>
                       {msg.message}
                     </MessageBubble>
                     <MessageTime>{msg.timestamp}</MessageTime>
@@ -1189,7 +1279,7 @@ const Dashboard: React.FC = () => {
                 <SummaryBlock>
                   <SummaryTitle>
                     고객 감정 분석
-                    <SentimentBadge sentiment={analysisResult.customer_sentiment} style={{ marginLeft: '10px' }}>
+                    <SentimentBadge $sentiment={analysisResult.customer_sentiment} style={{ marginLeft: '10px' }}>
                       {getSentimentText(analysisResult.customer_sentiment)}
                     </SentimentBadge>
                   </SummaryTitle>
@@ -1232,8 +1322,8 @@ const Dashboard: React.FC = () => {
       </MainContent>
 
       {/* 사이드바: 종료된 상담 기록 */}
-      <SidebarOverlay isOpen={isSidebarOpen} onClick={handleCloseSidebar} />
-      <Sidebar isOpen={isSidebarOpen}>
+      <SidebarOverlay $isOpen={isSidebarOpen} onClick={handleCloseSidebar} />
+      <Sidebar $isOpen={isSidebarOpen}>
         <SidebarHeader>
           상담 기록
           <SidebarCloseButton onClick={handleCloseSidebar}>×</SidebarCloseButton>

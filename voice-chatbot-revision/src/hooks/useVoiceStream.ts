@@ -79,6 +79,7 @@ interface UseVoiceStreamReturn {
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<StopRecordingResult | null>;
   disconnect: () => void;
+  stopTTS: () => void;  // TTS 재생 중지 (HANDOVER 등에서 사용)
   setOnAutoStop: (callback: (result: StopRecordingResult | null) => void) => void;  // VAD 자동 중지 콜백 (결과 포함)
   setOnTTSComplete: (callback: () => void) => void;  // TTS 재생 완료 콜백
   setOnBargeIn: (callback: () => void) => void;  // Barge-in 콜백 (TTS 중 사용자 말하기)
@@ -340,8 +341,9 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
           break;
 
         case 'error':
-          console.error('[VoiceStream] 오류:', data.message);
-          setError(data.message || '알 수 없는 오류');
+          const errorMsg = data.message || (data as Record<string, unknown>).error as string || '알 수 없는 오류';
+          console.error('[VoiceStream] 오류:', errorMsg);
+          setError(errorMsg);
           setIsProcessing(false);
 
           if (responseResolverRef.current) {
@@ -680,6 +682,7 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
     startRecording,
     stopRecording,
     disconnect,
+    stopTTS,
     setOnAutoStop,
     setOnTTSComplete,
     setOnBargeIn,

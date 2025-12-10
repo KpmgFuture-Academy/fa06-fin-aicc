@@ -22,3 +22,5 @@ class ChatResponse(BaseModel):
     source_documents: List[SourceDocument] = []
     # 정보 수집 완료 여부 (True일 때만 상담원 연결 모드 활성화)
     info_collection_complete: bool = False
+    # 핸드오버 상태 (pending, accepted, declined, timeout)
+    handover_status: Optional[str] = None

@@ -177,6 +177,29 @@ export const closeSession = async (
   return response.json();
 };
 
+// 세션 수락 (상담사가 세션 선택)
+export const acceptSession = async (
+  sessionId: string,
+  agentId?: string
+): Promise<{ success: boolean; message: string; handover_status: string }> => {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/accept`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ agent_id: agentId }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error('이미 다른 상담사가 수락한 세션입니다.');
+    }
+    throw new Error(`Accept session API error: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 // 종료된 세션 목록 조회 (상담 기록)
 export const getClosedSessions = async (): Promise<HandoverSession[]> => {
   const response = await fetch(`${API_BASE_URL}/sessions/closed`);

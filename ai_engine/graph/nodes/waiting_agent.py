@@ -320,7 +320,20 @@ def waiting_agent_node(state: GraphState) -> GraphState:
             # 부족한 정보에 대해 질문 생성
             state["info_collection_complete"] = False
             question = _generate_collection_question(missing_slots, collected_info, slot_loader)
-            state["ai_message"] = question
+
+            # 첫 번째 질문인 경우 (수집된 슬롯이 거의 없는 경우) 안내 메시지 추가
+            # _로 시작하는 내부 필드 제외하고 실제 수집된 슬롯 수 확인
+            actual_collected = {k: v for k, v in collected_info.items() if not k.startswith("_") and v}
+            if len(actual_collected) == 0:
+                # 첫 번째 질문 - 안내 메시지 + 질문
+                intro_message = "고객님, 대기 기간 동안 원하시는 내용을 좀 더 구체적으로 알려 주시면 상담사 연결 후 즉시 도움을 드리겠습니다."
+                state["ai_message"] = f"{intro_message} {question}"
+                # 첫 번째 슬롯 수집 시작 = 상담사 대기 시작 (handover_status를 pending으로)
+                state["handover_status"] = "pending"
+                logger.info(f"핸드오버 대기 시작 - 세션: {session_id}, handover_status: pending")
+            else:
+                state["ai_message"] = question
+
             logger.info(f"정보 수집 질문 생성 - 세션: {session_id}, 부족한 슬롯: {missing_slots}")
 
         # 6. source_documents는 빈 리스트로 설정 (정보 수집에는 RAG 사용 안 함)

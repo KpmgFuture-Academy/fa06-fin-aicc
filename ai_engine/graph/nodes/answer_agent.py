@@ -64,9 +64,37 @@ def _handle_error(error_msg: str, state: GraphState) -> None:
     state["metadata"]["answer_error"] = error_msg
 
 
+def _format_conversation_history(conversation_history: list, max_turns: int = 5) -> str:
+    """대화 히스토리를 프롬프트용 문자열로 포맷팅합니다.
+
+    Args:
+        conversation_history: 대화 히스토리 리스트
+        max_turns: 포함할 최대 턴 수 (기본값: 5)
+
+    Returns:
+        포맷팅된 대화 히스토리 문자열
+    """
+    if not conversation_history:
+        return ""
+
+    # 최근 N개 턴만 사용
+    recent_history = conversation_history[-max_turns * 2:] if len(conversation_history) > max_turns * 2 else conversation_history
+
+    formatted_lines = []
+    for msg in recent_history:
+        role = msg.get("role", "unknown")
+        message = msg.get("message", "")
+        if role == "user":
+            formatted_lines.append(f"고객: {message}")
+        elif role == "assistant":
+            formatted_lines.append(f"상담봇: {message}")
+
+    return "\n".join(formatted_lines)
+
+
 def answer_agent_node(state: GraphState) -> GraphState:
     """프롬프트를 구성해 LLM에게 답변 생성을 요청하고 상태를 갱신한다.
-    
+
     triage_decision 값에 따라 다른 프롬프트를 사용하여 처리:
     - SIMPLE_ANSWER: 간단한 자연어 답변 생성
     - AUTO_ANSWER: RAG 문서 기반 답변 생성
@@ -77,6 +105,7 @@ def answer_agent_node(state: GraphState) -> GraphState:
     triage_decision = state.get("triage_decision")
     retrieved_docs = state.get("retrieved_documents", [])
     customer_intent_summary = state.get("customer_intent_summary")
+    conversation_history = state.get("conversation_history", [])
     
     # ========================================================================
     # 티켓별 프롬프트 생성 및 LLM 호출
@@ -90,49 +119,65 @@ def answer_agent_node(state: GraphState) -> GraphState:
         if triage_decision == TriageDecisionType.SIMPLE_ANSWER:
             # customer_intent_summary 정보 포함
             intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
-            
+
+            # 대화 히스토리 포맷팅 (최근 5턴)
+            history_text = _format_conversation_history(conversation_history, max_turns=5)
+            history_section = f"\n\n[이전 대화 내용]\n{history_text}" if history_text else ""
+
             system_message = SystemMessage(content="""당신은 카드사 고객센터의 챗봇 어시스턴트입니다.
-간단하고 자연스러운 응답만 생성하세요.
+이전 대화 맥락을 고려하여 간단하고 자연스러운 응답을 생성하세요.
 
 중요: 당신은 카드/금융 관련 상담만 제공합니다. 다른 주제는 정중히 거절하세요.
 
+**가장 중요한 규칙: 이전 대화 맥락을 항상 고려하세요!**
+- 이전 대화에서 진행 중인 업무(예: 카드 분실 신고)가 있다면, 고객의 현재 메시지는 그 맥락에서 해석해야 합니다.
+- 예: 카드 분실 신고 중 이름/생년월일을 물었고 고객이 "홍길동이고 1990년 1월 1일"이라고 답하면
+     → 이것은 분실 신고에 필요한 정보 제공이므로, 다음 단계(예: 카드 뒷자리 확인)로 진행해야 합니다.
+     → "무엇을 도와드릴까요?"라는 응답은 절대 하지 마세요!
+
 응답 규칙:
-1) 단순 확인/동의/짧은 반응인 경우
+1) 진행 중인 업무의 정보 제공인 경우 (가장 중요!)
+   - 이전 대화에서 특정 정보를 요청했고, 고객이 그 정보를 제공한 경우
+   - → 정보를 확인하고 다음 단계로 진행
+   - 예: "네, 홍길동님 확인되었습니다. 분실하신 카드의 뒷 4자리를 말씀해 주시겠어요?"
+
+2) 단순 확인/동의/짧은 반응인 경우
    - 예: "네", "넵", "맞아요", "그거요", "알겠어요", "계속 해주세요"
    - → 이전 답변을 인정/확인하는 짧은 응답만 생성
    - 예: "네, 알겠습니다. 계속 진행하겠습니다."
 
-2) 감사 인사/끝맺음인 경우
+3) 감사 인사/끝맺음인 경우
    - 예: "감사합니다", "덕분에 해결됐어요", "수고하세요", "고마워요"
    - → 간단한 인사로 대답
    - 예: "도움이 되어서 다행입니다. 추가 요청사항이 있으신가요?"
 
-3) 시스템/잡음/의미 없는 입력인 경우
+4) 시스템/잡음/의미 없는 입력인 경우 (대화 맥락이 없을 때만!)
    - 예: "", "…", "음", "아아", "ㅋㅋㅋ", "ㅎㅎㅎ", STT 오류로 보이는 텍스트
-   - → 재입력을 요청하는 간단한 문장만 생성
-   - 예: "죄송하지만, 무엇을 도와드릴까요? 카드 관련 문의사항이 있으시면 말씀해 주세요."
+   - 단, 진행 중인 대화가 있으면 재확인 요청
+   - 예: "죄송합니다. 잘 못 들었습니다. 다시 한 번 말씀해 주시겠어요?"
 
-4) 카드/금융과 무관한 질문인 경우 (중요!)
+5) 카드/금융과 무관한 질문인 경우 (대화 맥락 없을 때)
    - 예: "피자 주문", "날씨", "주식 투자", "맛집 추천", "영화 추천" 등
    - → 정중히 거절하고 카드 관련 문의를 안내
-   - 예: "죄송합니다. 저는 카드 및 금융 관련 상담만 도와드릴 수 있습니다. 카드 이용, 결제, 한도, 분실 신고 등에 대해 문의해 주세요."
+   - 예: "죄송합니다. 저는 카드 및 금융 관련 상담만 도와드릴 수 있습니다."
 
-5) 욕설/비속어/부적절한 표현인 경우
+6) 욕설/비속어/부적절한 표현인 경우
    - → 정중하게 대화 예절을 요청
-   - 예: "원활한 상담을 위해 정중한 표현을 부탁드립니다. 카드 관련 문의사항이 있으시면 말씀해 주세요."
+   - 예: "원활한 상담을 위해 정중한 표현을 부탁드립니다."
 
-6) 영어 또는 외국어 입력인 경우
+7) 영어 또는 외국어 입력인 경우
    - → 한국어 사용을 요청
-   - 예: "죄송합니다. 현재 한국어 상담만 지원하고 있습니다. 한국어로 다시 말씀해 주시겠어요?"
+   - 예: "죄송합니다. 현재 한국어 상담만 지원하고 있습니다."
 
-7) 직전 턴에 이미 충분히 답변이 끝난 경우
+8) 직전 턴에 이미 충분히 답변이 끝난 경우
    - 추가 질문이 전혀 없는 단순 리액션
    - → 대화를 마무리하거나 짧게 응답
    - 예: "추가 질문이 없으시면, 언제든 다시 문의해 주세요.""")
-            
-            human_message = HumanMessage(content=f"""간단하고 자연스러운 응답을 생성해주세요.
 
-[고객 메시지]
+            human_message = HumanMessage(content=f"""이전 대화 맥락을 고려하여 자연스러운 응답을 생성해주세요.
+{history_section}
+
+[현재 고객 메시지]
 {user_message}
 {intent_summary_hint}""")
             
@@ -198,19 +243,29 @@ def answer_agent_node(state: GraphState) -> GraphState:
         elif triage_decision == TriageDecisionType.NEED_MORE_INFO:
             # customer_intent_summary 정보 포함
             intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
-            
+
+            # 대화 히스토리 포맷팅 (최근 5턴)
+            history_text = _format_conversation_history(conversation_history, max_turns=5)
+            history_section = f"\n\n[이전 대화 내용]\n{history_text}" if history_text else ""
+
             system_message = SystemMessage(content="""당신은 고객에게 추가 정보를 요청하는 챗봇 어시스턴트입니다.
-답변을 위해 필요한 추가 정보를 정중하게 질문하세요.
+이전 대화 맥락을 고려하여 필요한 추가 정보를 정중하게 질문하세요.
+
+**중요: 이전 대화에서 이미 수집한 정보는 다시 물어보지 마세요!**
+- 이전 대화에서 고객이 제공한 정보(예: 이름, 카드 종류, 생년월일 등)가 있다면 참고하세요.
+- 아직 수집하지 않은 정보만 질문하세요.
 
 질문 생성 시 주의사항:
 - 한 번에 하나의 구체적인 질문만 하세요
 - 예의바르고 친절한 톤을 유지하세요
 - 고객이 쉽게 답변할 수 있는 질문으로 하세요
-- 불필요한 정보를 요청하지 마세요""")
-            
-            human_message = HumanMessage(content=f"""답변을 위해 필요한 추가 정보를 정중하게 질문해주세요.
+- 불필요한 정보를 요청하지 마세요
+- 이미 제공받은 정보는 확인/인정하고 다음 단계로 진행하세요""")
 
-[고객 질문]
+            human_message = HumanMessage(content=f"""이전 대화를 참고하여 필요한 추가 정보를 정중하게 질문해주세요.
+{history_section}
+
+[현재 고객 질문]
 {user_message}
 {intent_summary_hint}""")
             
@@ -303,27 +358,39 @@ def answer_agent_node(state: GraphState) -> GraphState:
                 # SIMPLE_ANSWER 로직 사용 (Fallback)
                 intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
 
+                # 대화 히스토리 포맷팅 (최근 5턴)
+                history_text = _format_conversation_history(conversation_history, max_turns=5)
+                history_section = f"\n\n[이전 대화 내용]\n{history_text}" if history_text else ""
+
                 system_message = SystemMessage(content="""당신은 카드사 고객센터의 챗봇 어시스턴트입니다.
-간단하고 자연스러운 응답만 생성하세요.
+이전 대화 맥락을 고려하여 간단하고 자연스러운 응답을 생성하세요.
 
 중요: 당신은 카드/금융 관련 상담만 제공합니다. 다른 주제는 정중히 거절하세요.
 
-응답 규칙:
-1) 카드/금융과 무관한 질문인 경우
-   - → "죄송합니다. 저는 카드 및 금융 관련 상담만 도와드릴 수 있습니다. 카드 이용, 결제, 한도, 분실 신고 등에 대해 문의해 주세요."
+**가장 중요한 규칙: 이전 대화 맥락을 항상 고려하세요!**
+- 이전 대화에서 진행 중인 업무가 있다면, 고객의 현재 메시지는 그 맥락에서 해석해야 합니다.
 
-2) 의미 없는 입력/잡음인 경우
+응답 규칙:
+1) 진행 중인 업무의 정보 제공인 경우
+   - 이전 대화에서 특정 정보를 요청했고, 고객이 그 정보를 제공한 경우
+   - → 정보를 확인하고 다음 단계로 진행
+
+2) 카드/금융과 무관한 질문인 경우 (대화 맥락 없을 때)
+   - → "죄송합니다. 저는 카드 및 금융 관련 상담만 도와드릴 수 있습니다."
+
+3) 의미 없는 입력/잡음인 경우 (대화 맥락 없을 때)
    - → "무엇을 도와드릴까요? 카드 관련 문의사항이 있으시면 말씀해 주세요."
 
-3) 욕설/비속어인 경우
+4) 욕설/비속어인 경우
    - → "원활한 상담을 위해 정중한 표현을 부탁드립니다."
 
-4) 영어/외국어인 경우
+5) 영어/외국어인 경우
    - → "죄송합니다. 현재 한국어 상담만 지원하고 있습니다." """)
 
-                human_message = HumanMessage(content=f"""간단하고 자연스러운 응답을 생성해주세요.
+                human_message = HumanMessage(content=f"""이전 대화 맥락을 고려하여 자연스러운 응답을 생성해주세요.
+{history_section}
 
-[고객 메시지]
+[현재 고객 메시지]
 {user_message}
 {intent_summary_hint}""")
 

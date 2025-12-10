@@ -23,6 +23,8 @@ export interface TextChatResponse {
     content: string;
     score: number;
   }>;
+  info_collection_complete?: boolean;
+  handover_status?: 'pending' | 'accepted' | 'declined' | 'timeout' | null;
 }
 
 export interface HandoverResponse {
@@ -37,6 +39,14 @@ export interface HandoverResponse {
       relevance_score: number;
     }>;
   };
+}
+
+export interface HandoverStatusResponse {
+  session_id: string;
+  handover_status: 'pending' | 'accepted' | 'declined' | 'timeout' | null;
+  handover_requested_at: string | null;
+  handover_accepted_at: string | null;
+  assigned_agent_id: string | null;
 }
 
 export const voiceApi = {
@@ -133,6 +143,47 @@ export const voiceApi = {
     );
     return response.data;
   },
+
+  /**
+   * 핸드오버 요청 (상담사 연결 대기 시작)
+   */
+  requestHandoverWithStatus: async (
+    sessionId: string
+  ): Promise<{ success: boolean; message: string; handover_status: string }> => {
+    const response = await axios.post(
+      `${API_BASE_URL}/sessions/${sessionId}/request-handover`
+    );
+    return response.data;
+  },
+
+  /**
+   * 핸드오버 상태 조회 (폴링용)
+   */
+  getHandoverStatus: async (
+    sessionId: string
+  ): Promise<HandoverStatusResponse> => {
+    const response = await axios.get<HandoverStatusResponse>(
+      `${API_BASE_URL}/sessions/${sessionId}/handover-status`
+    );
+    return response.data;
+  },
+
+  /**
+   * 고객이 상담사 연결 확인 (accepted 상태에서)
+   * 실제 핸드오버 모드로 전환
+   */
+  confirmHandover: async (
+    sessionId: string
+  ): Promise<HandoverResponse> => {
+    const response = await axios.post<HandoverResponse>(
+      `${API_BASE_URL}/handover/request`,
+      {
+        session_id: sessionId,
+        trigger_reason: 'CUSTOMER_CONFIRMED',
+      }
+    );
+    return response.data;
+  },
 };
 
 /**
@@ -183,7 +234,7 @@ export const formatSessionIdForDisplay = (sessionId: string): string => {
   // 새 형식 (YYYYMMDD_HHmm_XXX)
   const newFormatMatch = sessionId.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})_(\d{3})$/);
   if (newFormatMatch) {
-    const [, year, month, day, hour, minute, seq] = newFormatMatch;
+    const [, , month, day, hour, minute, seq] = newFormatMatch;
     return `${month}-${day} ${hour}:${minute} #${seq}`;
   }
 

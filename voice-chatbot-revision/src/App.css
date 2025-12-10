@@ -49,6 +49,67 @@
   gap: 12px;
 }
 
+/* 음성 모드 토글 스위치 */
+.voice-mode-toggle {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 10px;
+  border-radius: 16px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.toggle-label span.active {
+  color: white;
+  font-weight: 600;
+}
+
+.toggle-label input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 36px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 9px;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.toggle-label input:checked + .toggle-slider {
+  background: rgba(100, 200, 100, 0.6);
+}
+
+.toggle-label input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
+
+.toggle-label input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 헤더 내 세션 정보 */
 .session-info-header {
   display: flex;
@@ -487,6 +548,122 @@
   }
 }
 
+/* 상담사 대기 중 표시 */
+.waiting-indicator {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  z-index: 100;
+  animation: float 2s ease-in-out infinite;
+}
+
+.waiting-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 모달 버튼 그룹 */
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: center;
+}
+
+.modal-confirm-button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-confirm-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.modal-confirm-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-cancel-button {
+  padding: 12px 24px;
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-cancel-button:hover:not(:disabled) {
+  background: #eee;
+}
+
+.modal-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 상담사 연결 확인 모달 */
+.agent-confirm-modal h2 {
+  color: #4CAF50;
+}
+
+.agent-confirm-modal p {
+  color: #333;
+  font-size: 1.1rem;
+  margin: 16px 0;
+}
+
+/* 타임아웃 모달 */
+.timeout-modal h2 {
+  color: #ff9800;
+}
+
+.timeout-modal p {
+  color: #333;
+  font-size: 1rem;
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
 /* 반응형 */
 @media (max-width: 768px) {
   .chat-window {
@@ -514,5 +691,15 @@
   .session-id {
     max-width: none;
     flex: 1;
+  }
+
+  .modal-buttons {
+    flex-direction: column;
+  }
+
+  .waiting-indicator {
+    bottom: 80px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
   }
 }

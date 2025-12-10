@@ -29,6 +29,12 @@ class ChatSession(Base):
     collected_info = Column(Text, nullable=True)  # JSON 형태로 저장 (예: {"customer_name": "홍길동"})
     info_collection_complete = Column(Integer, default=0, nullable=False)  # 1: True, 0: False
     triage_decision = Column(String(50), nullable=True)  # SIMPLE_ANSWER, AUTO_ANSWER, NEED_MORE_INFO, HUMAN_REQUIRED
+
+    # ========== 핸드오버 상태 관리 ==========
+    handover_status = Column(String(20), nullable=True)  # pending, accepted, declined, timeout
+    handover_requested_at = Column(DateTime, nullable=True)  # 핸드오버 요청 시각
+    handover_accepted_at = Column(DateTime, nullable=True)  # 상담사 수락 시각
+    assigned_agent_id = Column(String(100), nullable=True)  # 배정된 상담사 ID
     
     # 관계
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
