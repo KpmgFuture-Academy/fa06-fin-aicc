@@ -233,6 +233,42 @@ class SessionManager:
         finally:
             db.close()
 
+    def is_handover_mode(self, session_id: str) -> bool:
+        """세션이 상담원 이관 모드인지 확인
+
+        이관 모드 조건:
+        - triage_decision이 HUMAN_REQUIRED이고
+        - info_collection_complete가 True인 경우
+
+        Returns:
+            bool: 이관 모드이면 True, 아니면 False
+        """
+        db = SessionLocal()
+        try:
+            chat_session = db.query(ChatSession).filter(
+                ChatSession.session_id == session_id
+            ).first()
+
+            if not chat_session:
+                return False
+
+            # 이관 상태 확인: HUMAN_REQUIRED + 정보 수집 완료
+            is_handover = (
+                chat_session.triage_decision == TriageDecisionType.HUMAN_REQUIRED.value
+                and chat_session.info_collection_complete == 1
+            )
+
+            if is_handover:
+                logger.info(f"[SessionManager] 이관 모드 감지 - 세션: {session_id}")
+
+            return is_handover
+
+        except Exception as e:
+            logger.error(f"이관 상태 확인 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+            return False
+        finally:
+            db.close()
+
 
 # 전역 세션 매니저 인스턴스
 session_manager = SessionManager()

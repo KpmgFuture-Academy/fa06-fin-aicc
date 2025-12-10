@@ -234,20 +234,29 @@ async def stt_only(
 async def tts_only(request: TTSRequest):
     """
     🔊 TTS 전용 엔드포인트 (테스트/디버깅용)
-    
+
     텍스트를 음성으로 변환합니다.
     """
     try:
+        logger.info(f"[TTS] 요청 수신 - 텍스트 길이: {len(request.text)}, format: {request.format}")
         tts_service = AICCGoogleTTSService.get_instance()
         audio_bytes = tts_service.synthesize(
             request.text,
             voice=request.voice,
             format=request.format,
         )
+        logger.info(f"[TTS] 성공 - 오디오 크기: {len(audio_bytes)} bytes")
     except TTSError as e:
+        logger.error(f"[TTS] TTSError 발생: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"음성 합성 실패: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"[TTS] 예기치 않은 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"음성 합성 중 오류 발생: {str(e)}"
         )
     
     return TTSResponse(

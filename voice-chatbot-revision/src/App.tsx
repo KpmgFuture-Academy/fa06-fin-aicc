@@ -2,8 +2,12 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import VoiceButton from './components/VoiceButton';
 import ChatMessage, { Message } from './components/ChatMessage';
 import { useVoiceStream } from './hooks/useVoiceStream';
-import { voiceApi, getOrCreateSessionId, resetSessionId, HandoverResponse } from './services/api';
+import { voiceApi, getOrCreateSessionId, resetSessionId, formatSessionIdForDisplay, HandoverResponse } from './services/api';
 import './App.css';
+
+// 자동 인사 메시지 설정
+const WELCOME_MESSAGE = "안녕하세요 고객님, 카드 상담 보이스봇에 연결되었습니다. 무엇을 도와 드릴까요? 음성 상담 및 텍스트 상담 모두 가능합니다.";
+const WELCOME_DELAY_MS = 2000; // 2초 후 인사
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -11,7 +15,12 @@ function App() {
   const [handoverData, setHandoverData] = useState<HandoverResponse | null>(null);
   const [isHandoverMode, setIsHandoverMode] = useState(false);  // 상담원 연결 모드
   const [isHandoverLoading, setIsHandoverLoading] = useState(false);  // 상담원 연결 로딩 상태
+  const [textInput, setTextInput] = useState('');  // 텍스트 입력 상태
+  const [isTextSending, setIsTextSending] = useState(false);  // 텍스트 전송 중 상태
+  const [hasGreeted, setHasGreeted] = useState(false);  // 인사 메시지 표시 여부
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
+  const isHandoverModeRef = useRef(false);  // 클로저 문제 해결용 ref
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastMessageIdRef = useRef<number>(0);  // 마지막 메시지 ID (폴링용)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -42,6 +51,12 @@ function App() {
   // 현재 표시할 텍스트 (확정 + 부분)
   const currentTranscript = finalTranscript + (transcript ? ` ${transcript}` : '');
 
+  // isHandoverMode가 변경될 때 ref도 업데이트 (클로저 문제 해결)
+  useEffect(() => {
+    isHandoverModeRef.current = isHandoverMode;
+    console.log('[App] isHandoverMode 변경:', isHandoverMode);
+  }, [isHandoverMode]);
+
   // 메시지 추가 시 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,6 +72,40 @@ function App() {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
   };
+
+  // 자동 인사 메시지 (화면 로드 2초 후)
+  useEffect(() => {
+    if (hasGreeted) return;
+
+    const timer = setTimeout(async () => {
+      // 인사 메시지 추가
+      const greetingMessage: Message = {
+        id: `msg_${Date.now()}_greeting`,
+        role: 'assistant',
+        content: WELCOME_MESSAGE,
+        timestamp: new Date(),
+      };
+      setMessages([greetingMessage]);
+      setHasGreeted(true);
+
+      // TTS 재생
+      try {
+        const ttsResponse = await voiceApi.requestTTS(WELCOME_MESSAGE);
+        if (ttsResponse.audio_base64) {
+          const audioBlob = base64ToBlob(ttsResponse.audio_base64, 'audio/mp3');
+          const audioUrl = URL.createObjectURL(audioBlob);
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            audioRef.current.play();
+          }
+        }
+      } catch (err) {
+        console.warn('인사 TTS 재생 실패:', err);
+      }
+    }, WELCOME_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [hasGreeted]);
 
   // TTS 오디오 재생
   const playAudio = useCallback((base64Audio: string) => {
@@ -98,12 +147,13 @@ function App() {
             // 이미 표시된 메시지인지 확인
             if (msg.id <= lastMessageIdRef.current) continue;
 
-            // 메시지 추가
+            // 메시지 추가 (인간 상담사 메시지로 표시)
             const newMessage: Message = {
               id: `msg_agent_${msg.id}`,
               role: 'assistant',
               content: msg.message,
               timestamp: new Date(msg.created_at),
+              isAgent: true,  // 인간 상담사 메시지
             };
             setMessages((prev) => [...prev, newMessage]);
 
@@ -149,7 +199,7 @@ function App() {
 
   // 녹음 중지 및 메시지 처리 (공통 로직)
   const processStopRecording = useCallback(async () => {
-    console.log('[App] 녹음 중지 시작...');
+    console.log('[App] 녹음 중지 시작...', 'isHandoverMode:', isHandoverMode);
     const result = await stopRecording();
     console.log('[App] stopRecording 결과:', result);
 
@@ -168,12 +218,24 @@ function App() {
           isVoice: true,
         };
         setMessages((prev) => [...prev, userMessage]);
+
+        // 이관 모드일 때: AI 응답 무시하고 상담원에게 메시지 전송
+        if (isHandoverMode) {
+          console.log('[App] 이관 모드 - 상담원에게 메시지 전송:', result.userText);
+          try {
+            await voiceApi.sendCustomerMessage(sessionId, result.userText.trim());
+            console.log('[App] 상담원에게 메시지 전송 완료');
+          } catch (err) {
+            console.error('[App] 상담원에게 메시지 전송 실패:', err);
+          }
+          return; // AI 응답 처리 건너뛰기
+        }
       } else {
         console.log('[App] userText가 비어있음');
       }
 
-      // AI 응답 메시지 추가 (훅에서 자동으로 TTS 재생됨)
-      if (result.aiResponse?.text) {
+      // AI 응답 메시지 추가 (이관 모드가 아닐 때만, 훅에서 자동으로 TTS 재생됨)
+      if (!isHandoverMode && result.aiResponse?.text) {
         console.log('[App] AI 응답 메시지 추가:', result.aiResponse.text);
         const assistantMessage: Message = {
           id: `msg_${Date.now()}_assistant`,
@@ -182,7 +244,7 @@ function App() {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
-      } else {
+      } else if (!isHandoverMode) {
         console.log('[App] aiResponse가 없거나 text가 비어있음');
       }
     } else {
@@ -204,13 +266,15 @@ function App() {
         emptyInputCountRef.current = 0;  // 카운터 초기화
       }
     }
-  }, [stopRecording, isContinuousMode, isHandoverMode, startRecording]);
+  }, [stopRecording, isContinuousMode, isHandoverMode, startRecording, sessionId]);
 
   // VAD 자동 중지 콜백 설정 (2초 침묵 시 자동 전송)
   // 백엔드에서 처리 완료 후 결과를 직접 받음 (EOS 전송 없이)
+  // 중요: isHandoverModeRef.current를 사용하여 클로저 문제 해결
   useEffect(() => {
-    setOnAutoStop((result) => {
-      console.log('[App] VAD 자동 중지 결과:', result);
+    setOnAutoStop(async (result) => {
+      const currentHandoverMode = isHandoverModeRef.current;
+      console.log('[App] VAD 자동 중지 결과:', result, 'isHandoverMode (ref):', currentHandoverMode);
 
       if (result) {
         // 사용자 메시지 추가
@@ -226,12 +290,24 @@ function App() {
             isVoice: true,
           };
           setMessages((prev) => [...prev, userMessage]);
+
+          // 이관 모드일 때: AI 응답 무시하고 상담원에게 메시지 전송
+          if (currentHandoverMode) {
+            console.log('[App] 이관 모드 - 상담원에게 메시지 전송:', result.userText);
+            try {
+              await voiceApi.sendCustomerMessage(sessionId, result.userText.trim());
+              console.log('[App] 상담원에게 메시지 전송 완료');
+            } catch (err) {
+              console.error('[App] 상담원에게 메시지 전송 실패:', err);
+            }
+            return; // AI 응답 처리 건너뛰기
+          }
         } else {
           console.log('[App] userText가 비어있음');
         }
 
-        // AI 응답 메시지 추가
-        if (result.aiResponse?.text) {
+        // AI 응답 메시지 추가 (이관 모드가 아닐 때만)
+        if (!currentHandoverMode && result.aiResponse?.text) {
           console.log('[App] AI 응답 메시지 추가:', result.aiResponse.text);
           const assistantMessage: Message = {
             id: `msg_${Date.now()}_assistant`,
@@ -240,7 +316,7 @@ function App() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMessage]);
-        } else {
+        } else if (!currentHandoverMode) {
           console.log('[App] aiResponse가 없거나 text가 비어있음');
         }
       } else {
@@ -248,7 +324,8 @@ function App() {
         emptyInputCountRef.current += 1;
         console.log(`[App] result가 null - 빈 입력 횟수: ${emptyInputCountRef.current}/${MAX_EMPTY_INPUTS}`);
 
-        if (isContinuousMode && !isHandoverMode && emptyInputCountRef.current < MAX_EMPTY_INPUTS) {
+        const currentHandoverMode = isHandoverModeRef.current;
+        if (isContinuousMode && !currentHandoverMode && emptyInputCountRef.current < MAX_EMPTY_INPUTS) {
           setTimeout(() => {
             startRecording().catch((err) => {
               console.error('[App] 재녹음 시작 실패:', err);
@@ -260,19 +337,21 @@ function App() {
         }
       }
     });
-  }, [setOnAutoStop, isContinuousMode, isHandoverMode, startRecording]);
+  }, [setOnAutoStop, isContinuousMode, startRecording, sessionId]);
 
   // TTS 재생 완료 콜백 설정 (연속 대화 모드일 때 자동 녹음 시작)
+  // 중요: isHandoverModeRef.current를 사용하여 클로저 문제 해결
   useEffect(() => {
     setOnTTSComplete(() => {
-      if (isContinuousMode && !isHandoverMode) {
+      const currentHandoverMode = isHandoverModeRef.current;
+      if (isContinuousMode && !currentHandoverMode) {
         console.log('[App] TTS 완료 - 자동 녹음 시작');
         startRecording().catch((err) => {
           console.error('[App] 자동 녹음 시작 실패:', err);
         });
       }
     });
-  }, [setOnTTSComplete, isContinuousMode, isHandoverMode, startRecording]);
+  }, [setOnTTSComplete, isContinuousMode, startRecording]);
 
   // Barge-in 콜백 설정 (TTS 재생 중 사용자가 말하면 TTS 중단 + 녹음 시작)
   useEffect(() => {
@@ -348,6 +427,83 @@ function App() {
     setHandoverData(null);
   }, []);
 
+  // 텍스트 메시지 전송
+  const handleTextSubmit = useCallback(async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    const trimmedInput = textInput.trim();
+    if (!trimmedInput || isTextSending) return;
+
+    setIsTextSending(true);
+    setTextInput('');
+
+    // 사용자 메시지 추가
+    const userMessage: Message = {
+      id: `msg_${Date.now()}_user`,
+      role: 'user',
+      content: trimmedInput,
+      timestamp: new Date(),
+      isVoice: false,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+
+    try {
+      // 이관 모드일 때: 상담원에게 메시지 전송
+      if (isHandoverMode) {
+        await voiceApi.sendCustomerMessage(sessionId, trimmedInput);
+        console.log('[App] 상담원에게 텍스트 메시지 전송 완료');
+      } else {
+        // 일반 모드: AI 응답 받기
+        const response = await voiceApi.sendTextMessage(sessionId, trimmedInput);
+
+        // AI 응답 메시지 추가
+        const assistantMessage: Message = {
+          id: `msg_${Date.now()}_assistant`,
+          role: 'assistant',
+          content: response.ai_message,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // TTS 재생
+        try {
+          const ttsResponse = await voiceApi.requestTTS(response.ai_message);
+          if (ttsResponse.audio_base64) {
+            const audioBlob = base64ToBlob(ttsResponse.audio_base64, 'audio/mp3');
+            const audioUrl = URL.createObjectURL(audioBlob);
+            if (audioRef.current) {
+              audioRef.current.src = audioUrl;
+              audioRef.current.play();
+            }
+          }
+        } catch (ttsErr) {
+          console.warn('TTS 재생 실패:', ttsErr);
+        }
+      }
+    } catch (err) {
+      console.error('텍스트 메시지 전송 실패:', err);
+      // 에러 메시지 표시
+      const errorMessage: Message = {
+        id: `msg_${Date.now()}_error`,
+        role: 'assistant',
+        content: '죄송합니다. 메시지 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsTextSending(false);
+      textInputRef.current?.focus();
+    }
+  }, [textInput, isTextSending, isHandoverMode, sessionId]);
+
+  // Enter 키 핸들러
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleTextSubmit();
+    }
+  }, [handleTextSubmit]);
+
   const hasMessages = messages.length > 0;
 
   return (
@@ -359,30 +515,39 @@ function App() {
             <h1>Bank AICC 상담 보이스봇</h1>
             <p>음성 AI 기반 고객 상담 서비스</p>
           </div>
-          <button
-            className="handover-button"
-            onClick={handleRequestHandover}
-            disabled={isHandoverLoading || isProcessing}
-          >
-            상담원 연결
-          </button>
+          <div className="header-actions">
+            <div className="session-info-header">
+              <span className="session-id">세션: {formatSessionIdForDisplay(sessionId)}</span>
+              <button onClick={handleResetSession} className="reset-button-header">
+                새 상담
+              </button>
+            </div>
+            <button
+              className="handover-button"
+              onClick={handleRequestHandover}
+              disabled={isHandoverLoading || isProcessing}
+            >
+              상담원 연결
+            </button>
+          </div>
         </div>
 
         {/* 메시지 영역 */}
         <div className="chat-messages">
-          {!hasMessages && !isRecording ? (
-            <div className="welcome-message">
-              <VoiceButton
-                isRecording={isRecording}
-                isProcessing={isProcessing}
-                onClick={handleVoiceButtonClick}
-                size="large"
-              />
-              <h2>안녕하세요! 무엇을 도와드릴까요?</h2>
-              <p>마이크 버튼을 눌러 말씀해주세요</p>
-              {sttError && <p className="error-message">{sttError}</p>}
+          {/* 로딩 중 표시 (인사 메시지 대기) */}
+          {!hasMessages && !hasGreeted && (
+            <div className="loading-welcome">
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <p>연결 중...</p>
             </div>
-          ) : (
+          )}
+
+          {/* 메시지 목록 */}
+          {hasMessages && (
             <>
               {messages.map((message) => (
                 <ChatMessage key={message.id} message={message} />
@@ -436,35 +601,36 @@ function App() {
         </div>
 
         {/* 하단 입력 영역 */}
-        {(hasMessages || isRecording) && (
-          <div className="chat-input-area">
-            <VoiceButton
-              isRecording={isRecording}
-              isProcessing={isProcessing}
-              onClick={handleVoiceButtonClick}
-              size="small"
+        <div className="chat-input-area">
+          {/* 텍스트 입력 */}
+          <form className="text-input-form" onSubmit={handleTextSubmit}>
+            <input
+              ref={textInputRef}
+              type="text"
+              className="text-input"
+              placeholder={isHandoverMode ? "상담원에게 메시지 입력..." : "메시지를 입력하세요..."}
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isTextSending || isRecording || isProcessing}
             />
-            <span className="input-hint">
-              {isRecording
-                ? isConnected
-                  ? '말씀하세요... (2초 침묵 시 자동 전송)'
-                  : '연결 중...'
-                : isPlayingTTS
-                  ? '응답 재생 중... (말씀하시면 중단)'
-                  : isContinuousMode
-                    ? 'TTS 완료 후 자동 녹음 시작'
-                    : '버튼을 눌러 음성 입력'}
-            </span>
-          </div>
-        )}
-      </div>
+            <button
+              type="submit"
+              className="send-button"
+              disabled={!textInput.trim() || isTextSending || isRecording || isProcessing}
+            >
+              {isTextSending ? '전송중...' : '전송'}
+            </button>
+          </form>
 
-      {/* 세션 정보 */}
-      <div className="session-info">
-        <span>세션: {sessionId}</span>
-        <button onClick={handleResetSession} className="reset-button">
-          새 상담 시작
-        </button>
+          {/* 음성 버튼 */}
+          <VoiceButton
+            isRecording={isRecording}
+            isProcessing={isProcessing}
+            onClick={handleVoiceButtonClick}
+            size="small"
+          />
+        </div>
       </div>
 
       {/* 숨겨진 오디오 플레이어 */}
@@ -475,40 +641,43 @@ function App() {
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>상담원 연결 요청 완료</h2>
-            <p>{handoverData.message}</p>
+            <p>상담 내용이 분석되었습니다.</p>
 
             <div className="analysis-section">
               <h3>AI 분석 결과</h3>
               <div className="analysis-item">
-                <span className="analysis-label">의도:</span>
-                <span className="analysis-value">{handoverData.ai_analysis.intent}</span>
+                <span className="analysis-label">고객 감정:</span>
+                <span className="analysis-value">{handoverData.analysis_result.customer_sentiment}</span>
               </div>
-              <div className="analysis-item">
-                <span className="analysis-label">감정:</span>
-                <span className="analysis-value">{handoverData.ai_analysis.sentiment}</span>
+              <div className="analysis-item" style={{ marginTop: '12px' }}>
+                <span className="analysis-label">요약:</span>
+                <span className="analysis-value">{handoverData.analysis_result.summary}</span>
               </div>
-              <div className="analysis-item">
-                <span className="analysis-label">담당 부서:</span>
-                <span className="analysis-value">{handoverData.ai_analysis.recommended_department}</span>
-              </div>
-              <div className="analysis-item">
-                <span className="analysis-label">우선순위:</span>
-                <span className="analysis-value">{handoverData.priority}</span>
-              </div>
-              {handoverData.ai_analysis.key_issues.length > 0 && (
+              {handoverData.analysis_result.extracted_keywords.length > 0 && (
                 <div className="key-issues">
-                  <span className="analysis-label">핵심 이슈:</span>
+                  <span className="analysis-label">핵심 키워드:</span>
                   <ul>
-                    {handoverData.ai_analysis.key_issues.map((issue, idx) => (
-                      <li key={idx}>{issue}</li>
+                    {handoverData.analysis_result.extracted_keywords.map((keyword, idx) => (
+                      <li key={idx}>{keyword}</li>
                     ))}
                   </ul>
                 </div>
               )}
-              <div className="analysis-item" style={{ marginTop: '12px' }}>
-                <span className="analysis-label">요약:</span>
-                <span className="analysis-value">{handoverData.ai_analysis.summary}</span>
-              </div>
+              {handoverData.analysis_result.kms_recommendations.length > 0 && (
+                <div className="key-issues" style={{ marginTop: '12px' }}>
+                  <span className="analysis-label">추천 문서:</span>
+                  <ul>
+                    {handoverData.analysis_result.kms_recommendations.map((rec, idx) => (
+                      <li key={idx}>
+                        <a href={rec.url} target="_blank" rel="noopener noreferrer">
+                          {rec.title}
+                        </a>
+                        <span style={{ fontSize: '0.8em', color: '#888' }}> (관련도: {(rec.relevance_score * 100).toFixed(0)}%)</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <button className="modal-close-button" onClick={handleCloseModal}>

@@ -38,11 +38,43 @@
   border-bottom-right-radius: 4px;
 }
 
-.chat-message--assistant .message-content {
+/* AI 상담사 메시지 (기본 assistant 스타일) */
+.chat-message--ai .message-content {
   background: white;
   color: #333;
   border-bottom-left-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 인간 상담사 메시지 (초록색 계열) */
+.chat-message--agent .message-content {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(17, 153, 142, 0.3);
+}
+
+/* 메시지 라벨 */
+.message-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding: 0 8px;
+}
+
+.chat-message--user .message-label {
+  text-align: right;
+  color: #667eea;
+}
+
+.chat-message--ai .message-label {
+  text-align: left;
+  color: #666;
+}
+
+.chat-message--agent .message-label {
+  text-align: left;
+  color: #11998e;
 }
 
 .voice-indicator {

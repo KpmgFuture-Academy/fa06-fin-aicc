@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post("/request", response_model=HandoverResponse)
 @router.post("/analyze", response_model=HandoverResponse)
 async def analyze_handover(request: HandoverRequest):
     """

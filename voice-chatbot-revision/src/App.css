@@ -42,6 +42,47 @@
   opacity: 0.9;
 }
 
+/* 헤더 액션 영역 */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 헤더 내 세션 정보 */
+.session-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6px 12px;
+  border-radius: 16px;
+}
+
+.session-id {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reset-button-header {
+  padding: 4px 10px;
+  background: rgba(255, 100, 100, 0.8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.reset-button-header:hover {
+  background: rgba(255, 80, 80, 1);
+}
+
 /* 상담원 연결 버튼 */
 .handover-button {
   padding: 10px 20px;
@@ -177,8 +218,8 @@
   border-radius: 3px;
 }
 
-/* 환영 메시지 */
-.welcome-message {
+/* 로딩 화면 (인사 메시지 대기) */
+.loading-welcome {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -186,16 +227,10 @@
   height: 100%;
   text-align: center;
   color: #666;
-  gap: 20px;
+  gap: 16px;
 }
 
-.welcome-message h2 {
-  font-size: 1.5rem;
-  color: #333;
-  margin: 0;
-}
-
-.welcome-message p {
+.loading-welcome p {
   font-size: 1rem;
   color: #888;
   margin: 0;
@@ -254,10 +289,65 @@
 .chat-input-area {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   padding: 16px 24px;
   background: white;
   border-top: 1px solid #eee;
+}
+
+/* 텍스트 입력 폼 */
+.text-input-form {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.text-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 24px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.text-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.text-input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.text-input::placeholder {
+  color: #aaa;
+}
+
+.send-button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.send-button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .input-hint {
@@ -265,36 +355,6 @@
   font-size: 0.9rem;
 }
 
-/* 세션 정보 */
-.session-info {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  color: #666;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.reset-button {
-  padding: 6px 12px;
-  background: #f44336;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.reset-button:hover {
-  background: #d32f2f;
-}
 
 /* 실시간 STT 표시 */
 .realtime-transcript {
@@ -435,10 +495,24 @@
     border-radius: 0;
   }
 
-  .session-info {
-    bottom: 10px;
-    right: 10px;
-    font-size: 0.75rem;
-    padding: 6px 12px;
+  .chat-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .session-info-header {
+    order: 2;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .session-id {
+    max-width: none;
+    flex: 1;
   }
 }

@@ -1,10 +1,28 @@
 """LangGraph 워크플로우 서비스
 API에서 워크플로우를 호출하고 상태 변환을 처리하는 서비스
+
+## 입력 검증 레이어 (External Validation Layer)
+====================================================
+LangGraph 워크플로우 진입 전에 입력을 검증하여 시스템 안정성을 보장합니다.
+
+### 검증 항목:
+1. 빈 입력 검증: 2자 미만의 입력은 조기 반환
+2. 매우 긴 입력 검증: 2000자 초과 입력은 조기 반환
+3. (LangGraph 내부에서 처리): RAG/Intent 실패, LLM API 오류 등
+
+### 동작 방식:
+- validate_input() 함수가 입력을 검증
+- 유효하지 않은 입력은 LangGraph 워크플로우를 실행하지 않고 즉시 응답 반환
+- 유효한 입력만 LangGraph 워크플로우로 전달
+
+### 변경 이력:
+- 2025-12-09: 입력 검증 레이어 추가 (빈 입력, 매우 긴 입력 처리)
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
+from dataclasses import dataclass
 from ai_engine.graph.workflow import build_workflow
 from ai_engine.graph.state import GraphState, ConversationMessage
 from app.schemas.chat import ChatRequest, ChatResponse, SourceDocument
@@ -14,6 +32,95 @@ from app.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
 
+
+# ============================================================
+# 입력 검증 레이어 (External Validation Layer)
+# ============================================================
+
+# 검증 설정 상수
+MIN_INPUT_LENGTH = 2       # 최소 입력 길이 (2자 미만은 빈 입력으로 처리)
+MAX_INPUT_LENGTH = 2000    # 최대 입력 길이 (2000자 초과는 너무 긴 입력으로 처리)
+
+
+@dataclass
+class ValidationResult:
+    """입력 검증 결과"""
+    is_valid: bool
+    error_type: Optional[str] = None  # "empty", "too_long", None
+    error_message: Optional[str] = None
+
+
+def validate_input(user_message: str) -> ValidationResult:
+    """
+    사용자 입력 검증 (LangGraph 워크플로우 진입 전 외부 검증)
+
+    Args:
+        user_message: 사용자 입력 메시지
+
+    Returns:
+        ValidationResult: 검증 결과
+
+    검증 항목:
+        1. 빈 입력 검증: None, 빈 문자열, 공백만 있는 문자열, 2자 미만
+        2. 매우 긴 입력 검증: 2000자 초과
+
+    Note:
+        - 이 검증은 LangGraph 워크플로우 외부에서 수행됩니다.
+        - LangGraph 내부의 RAG/Intent 실패, LLM API 오류 등은
+          각 노드에서 별도로 처리됩니다.
+    """
+    # 1. 빈 입력 검증
+    if not user_message or not user_message.strip():
+        return ValidationResult(
+            is_valid=False,
+            error_type="empty",
+            error_message="메시지를 입력해 주세요."
+        )
+
+    # 공백 제거 후 길이 확인
+    stripped_message = user_message.strip()
+
+    # 2. 너무 짧은 입력 검증 (2자 미만)
+    if len(stripped_message) < MIN_INPUT_LENGTH:
+        return ValidationResult(
+            is_valid=False,
+            error_type="empty",
+            error_message="메시지를 입력해 주세요."
+        )
+
+    # 3. 매우 긴 입력 검증 (2000자 초과)
+    if len(stripped_message) > MAX_INPUT_LENGTH:
+        return ValidationResult(
+            is_valid=False,
+            error_type="too_long",
+            error_message=f"입력이 너무 깁니다. {MAX_INPUT_LENGTH}자 이하로 입력해 주세요. (현재: {len(stripped_message)}자)"
+        )
+
+    # 모든 검증 통과
+    return ValidationResult(is_valid=True)
+
+
+def create_validation_error_response(validation_result: ValidationResult) -> ChatResponse:
+    """
+    검증 실패 시 즉시 반환할 ChatResponse 생성
+
+    Args:
+        validation_result: 검증 실패 결과
+
+    Returns:
+        ChatResponse: 에러 응답
+    """
+    return ChatResponse(
+        ai_message=validation_result.error_message,
+        intent=IntentType.INFO_REQ,
+        suggested_action=ActionType.CONTINUE,
+        source_documents=[]
+    )
+
+
+# ============================================================
+# 워크플로우 관리
+# ============================================================
 
 # 워크플로우 인스턴스 (싱글톤)
 _workflow = None
@@ -162,10 +269,40 @@ def state_to_handover_response(state: GraphState) -> HandoverResponse:
 
 
 async def process_chat_message(request: ChatRequest) -> ChatResponse:
-    """채팅 메시지 처리 (LangGraph 워크플로우 실행)"""
+    """채팅 메시지 처리 (LangGraph 워크플로우 실행)
+
+    처리 흐름:
+        1. 입력 검증 (External Validation Layer)
+           - 빈 입력 검증 (2자 미만)
+           - 매우 긴 입력 검증 (2000자 초과)
+           - 검증 실패 시 LangGraph 워크플로우를 실행하지 않고 즉시 응답 반환
+
+        2. LangGraph 워크플로우 실행
+           - triage_agent → answer_agent → chat_db_storage
+           - 내부적으로 RAG/Intent 실패, LLM API 오류 등 처리
+    """
     try:
         logger.info(f"워크플로우 시작 - 세션: {request.session_id}")
-        
+
+        # ============================================================
+        # Step 1: 입력 검증 (External Validation Layer)
+        # ============================================================
+        validation_result = validate_input(request.user_message)
+
+        if not validation_result.is_valid:
+            logger.warning(
+                f"입력 검증 실패 - 세션: {request.session_id}, "
+                f"유형: {validation_result.error_type}, "
+                f"메시지 길이: {len(request.user_message) if request.user_message else 0}"
+            )
+            # 검증 실패 시 LangGraph 워크플로우를 실행하지 않고 즉시 응답 반환
+            return create_validation_error_response(validation_result)
+
+        logger.debug(f"입력 검증 통과 - 세션: {request.session_id}")
+
+        # ============================================================
+        # Step 2: LangGraph 워크플로우 실행
+        # ============================================================
         # ChatRequest를 GraphState로 변환
         initial_state = chat_request_to_state(request)
         logger.debug(f"초기 상태 생성 완료 - 대화 이력 수: {len(initial_state.get('conversation_history', []))}")

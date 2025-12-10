@@ -280,7 +280,9 @@ def search_documents(
                 vector_results = []
                 for doc, score in vector_results_with_score:
                     distance = float(score)
-                    similarity_score = max(0.0, 1.0 - distance)
+                    # L2 거리를 유사도 점수로 변환 (0~1 범위)
+                    # L2 거리는 0~∞ 범위이므로 1/(1+distance) 공식 사용
+                    similarity_score = 1.0 / (1.0 + distance)
                     vector_results.append({
                         "content": doc.page_content,
                         "source": doc.metadata.get("source", "unknown"),
@@ -415,14 +417,12 @@ def search_documents(
     # 결과 포맷팅
     formatted_results = []
     for doc, score in results:
-        # ChromaDB는 거리(distance)를 반환합니다
-        # normalize_embeddings=True로 설정했으므로 코사인 거리를 사용
-        # 코사인 거리 = 1 - 코사인 유사도
-        # 따라서 코사인 유사도 = 1 - 코사인 거리
+        # ChromaDB는 L2 거리(distance)를 반환합니다
         distance = float(score)
-        
-        # 코사인 거리를 코사인 유사도로 변환 (0~1 범위)
-        similarity_score = max(0.0, 1.0 - distance)
+
+        # L2 거리를 유사도 점수로 변환 (0~1 범위)
+        # L2 거리는 0~∞ 범위이므로 1/(1+distance) 공식 사용
+        similarity_score = 1.0 / (1.0 + distance)
         
         formatted_results.append({
             "content": doc.page_content,

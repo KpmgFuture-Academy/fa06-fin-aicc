@@ -14,19 +14,29 @@ export interface VoiceChatResponse {
   total_duration_ms: number;
 }
 
+export interface TextChatResponse {
+  ai_message: string;
+  intent: string;
+  suggested_action: string;
+  source_documents: Array<{
+    title: string;
+    content: string;
+    score: number;
+  }>;
+}
+
 export interface HandoverResponse {
-  session_id: string;
   status: string;
-  trigger_reason: string;
-  priority: string;
-  ai_analysis: {
-    intent: string;
-    sentiment: string;
-    key_issues: string[];
-    recommended_department: string;
+  analysis_result: {
+    customer_sentiment: string;
     summary: string;
+    extracted_keywords: string[];
+    kms_recommendations: Array<{
+      title: string;
+      url: string;
+      relevance_score: number;
+    }>;
   };
-  message: string;
 }
 
 export const voiceApi = {
@@ -72,18 +82,114 @@ export const voiceApi = {
     );
     return response.data;
   },
+
+  /**
+   * 고객 메시지 전송 (이관 모드에서 상담원에게)
+   * AI를 거치지 않고 직접 DB에 저장
+   */
+  sendCustomerMessage: async (
+    sessionId: string,
+    message: string
+  ): Promise<{ success: boolean; message_id: number; created_at: string }> => {
+    const response = await axios.post(
+      `${API_BASE_URL}/sessions/${sessionId}/customer-message`,
+      { message }
+    );
+    return response.data;
+  },
+
+  /**
+   * 텍스트 메시지 전송 (텍스트 → AI)
+   */
+  sendTextMessage: async (
+    sessionId: string,
+    userMessage: string
+  ): Promise<TextChatResponse> => {
+    const response = await axios.post<TextChatResponse>(
+      `${API_BASE_URL}/chat/message`,
+      {
+        session_id: sessionId,
+        user_message: userMessage,
+      },
+      {
+        timeout: 60000, // 60초 타임아웃
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * TTS 요청 (텍스트 → 음성)
+   */
+  requestTTS: async (
+    text: string
+  ): Promise<{ audio_base64: string; format: string }> => {
+    const response = await axios.post(
+      `${API_BASE_URL}/voice/tts`,
+      { text },
+      {
+        timeout: 30000,
+      }
+    );
+    return response.data;
+  },
 };
 
 /**
  * 세션 ID 생성/조회
+ * 형식: YYYYMMDD_HHmm_XXX (날짜_시간_순번)
+ * 예: 20251210_1430_001
  */
 export const getOrCreateSessionId = (): string => {
   const key = 'voice_session_id';
   let sessionId = localStorage.getItem(key);
 
   if (!sessionId) {
-    sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    sessionId = generateSessionId();
     localStorage.setItem(key, sessionId);
+  }
+
+  return sessionId;
+};
+
+/**
+ * 세션 ID 포맷 생성
+ */
+const generateSessionId = (): string => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+
+  // 오늘 날짜 기준 순번 (localStorage에 저장)
+  const dateKey = `${year}${month}${day}`;
+  const counterKey = `session_counter_${dateKey}`;
+  let counter = parseInt(localStorage.getItem(counterKey) || '0', 10) + 1;
+  localStorage.setItem(counterKey, String(counter));
+
+  const seq = String(counter).padStart(3, '0');
+
+  return `${year}${month}${day}_${hour}${minute}_${seq}`;
+};
+
+/**
+ * 세션 ID를 보기 좋게 포맷팅
+ * 예: 20251210_1430_001 → 2025-12-10 14:30 #001
+ */
+export const formatSessionIdForDisplay = (sessionId: string): string => {
+  // 새 형식 (YYYYMMDD_HHmm_XXX)
+  const newFormatMatch = sessionId.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})_(\d{3})$/);
+  if (newFormatMatch) {
+    const [, year, month, day, hour, minute, seq] = newFormatMatch;
+    return `${month}-${day} ${hour}:${minute} #${seq}`;
+  }
+
+  // 기존 형식 (sess_timestamp_random) - 호환성 유지
+  if (sessionId.startsWith('sess_')) {
+    return sessionId.slice(0, 15) + '...';
   }
 
   return sessionId;

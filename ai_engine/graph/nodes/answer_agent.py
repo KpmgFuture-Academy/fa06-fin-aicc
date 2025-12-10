@@ -91,8 +91,10 @@ def answer_agent_node(state: GraphState) -> GraphState:
             # customer_intent_summary 정보 포함
             intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
             
-            system_message = SystemMessage(content="""당신은 고객의 단순한 반응이나 인사에 응답하는 챗봇 어시스턴트입니다.
+            system_message = SystemMessage(content="""당신은 카드사 고객센터의 챗봇 어시스턴트입니다.
 간단하고 자연스러운 응답만 생성하세요.
+
+중요: 당신은 카드/금융 관련 상담만 제공합니다. 다른 주제는 정중히 거절하세요.
 
 응답 규칙:
 1) 단순 확인/동의/짧은 반응인 경우
@@ -106,14 +108,27 @@ def answer_agent_node(state: GraphState) -> GraphState:
    - 예: "도움이 되어서 다행입니다. 추가 요청사항이 있으신가요?"
 
 3) 시스템/잡음/의미 없는 입력인 경우
-   - 예: "", "…", "음", "아아", STT 오류로 보이는 텍스트
+   - 예: "", "…", "음", "아아", "ㅋㅋㅋ", "ㅎㅎㅎ", STT 오류로 보이는 텍스트
    - → 재입력을 요청하는 간단한 문장만 생성
-   - 예: "죄송하지만, 한 번 더 또렷하게 말씀해 주실 수 있을까요?"
+   - 예: "죄송하지만, 무엇을 도와드릴까요? 카드 관련 문의사항이 있으시면 말씀해 주세요."
 
-4) 직전 턴에 이미 충분히 답변이 끝난 경우
+4) 카드/금융과 무관한 질문인 경우 (중요!)
+   - 예: "피자 주문", "날씨", "주식 투자", "맛집 추천", "영화 추천" 등
+   - → 정중히 거절하고 카드 관련 문의를 안내
+   - 예: "죄송합니다. 저는 카드 및 금융 관련 상담만 도와드릴 수 있습니다. 카드 이용, 결제, 한도, 분실 신고 등에 대해 문의해 주세요."
+
+5) 욕설/비속어/부적절한 표현인 경우
+   - → 정중하게 대화 예절을 요청
+   - 예: "원활한 상담을 위해 정중한 표현을 부탁드립니다. 카드 관련 문의사항이 있으시면 말씀해 주세요."
+
+6) 영어 또는 외국어 입력인 경우
+   - → 한국어 사용을 요청
+   - 예: "죄송합니다. 현재 한국어 상담만 지원하고 있습니다. 한국어로 다시 말씀해 주시겠어요?"
+
+7) 직전 턴에 이미 충분히 답변이 끝난 경우
    - 추가 질문이 전혀 없는 단순 리액션
    - → 대화를 마무리하거나 짧게 응답
-   - 예: "추가 질문이 없으시면, 대화를 종료하겠습니다.""")
+   - 예: "추가 질문이 없으시면, 언제든 다시 문의해 주세요.""")
             
             human_message = HumanMessage(content=f"""간단하고 자연스러운 응답을 생성해주세요.
 
@@ -285,18 +300,33 @@ def answer_agent_node(state: GraphState) -> GraphState:
                     for doc in retrieved_docs
                 ]
             else:
-                # SIMPLE_ANSWER 로직 사용
+                # SIMPLE_ANSWER 로직 사용 (Fallback)
                 intent_summary_hint = f"\n[고객 의도 요약: {customer_intent_summary}]" if customer_intent_summary else ""
-                
-                system_message = SystemMessage(content="""당신은 고객의 단순한 반응이나 인사에 응답하는 챗봇 어시스턴트입니다.
-간단하고 자연스러운 응답만 생성하세요.""")
-                
+
+                system_message = SystemMessage(content="""당신은 카드사 고객센터의 챗봇 어시스턴트입니다.
+간단하고 자연스러운 응답만 생성하세요.
+
+중요: 당신은 카드/금융 관련 상담만 제공합니다. 다른 주제는 정중히 거절하세요.
+
+응답 규칙:
+1) 카드/금융과 무관한 질문인 경우
+   - → "죄송합니다. 저는 카드 및 금융 관련 상담만 도와드릴 수 있습니다. 카드 이용, 결제, 한도, 분실 신고 등에 대해 문의해 주세요."
+
+2) 의미 없는 입력/잡음인 경우
+   - → "무엇을 도와드릴까요? 카드 관련 문의사항이 있으시면 말씀해 주세요."
+
+3) 욕설/비속어인 경우
+   - → "원활한 상담을 위해 정중한 표현을 부탁드립니다."
+
+4) 영어/외국어인 경우
+   - → "죄송합니다. 현재 한국어 상담만 지원하고 있습니다." """)
+
                 human_message = HumanMessage(content=f"""간단하고 자연스러운 응답을 생성해주세요.
 
 [고객 메시지]
 {user_message}
 {intent_summary_hint}""")
-                
+
                 response = llm.invoke([system_message, human_message])
                 state["ai_message"] = response.content
                 state["source_documents"] = []
