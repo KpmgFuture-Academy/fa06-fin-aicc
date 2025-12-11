@@ -1,0 +1,877 @@
+{
+  "timestamp": "2025-12-09T11:13:07.924724",
+  "config_mode": "quick",
+  "module_results": {
+    "stt": {
+      "module_name": "STT",
+      "timestamp": "2025-12-09T11:13:07.927740",
+      "metrics": [
+        {
+          "name": "CER (Character Error Rate)",
+          "value": 5.000145598268039,
+          "unit": "%",
+          "target": 10.0,
+          "level": "world_class",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "min": 0.0,
+            "max": 17.647058823529413,
+            "samples": 10
+          }
+        },
+        {
+          "name": "WER (Word Error Rate)",
+          "value": 10.579365079365079,
+          "unit": "%",
+          "target": 15.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": {
+            "min": 0.0,
+            "max": 30.0,
+            "samples": 10
+          }
+        },
+        {
+          "name": "Segmentation Count",
+          "value": 1.0,
+          "unit": "개",
+          "target": 8.0,
+          "level": "world_class",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        {
+          "name": "Wrong Segmentation Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 10.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Financial Term Accuracy",
+          "value": 97.5,
+          "unit": "%",
+          "target": 95.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Latency (TTFB)",
+          "value": 100.0,
+          "unit": "ms",
+          "target": 300.0,
+          "level": "world_class",
+          "priority": "P1",
+          "passed": true,
+          "details": {
+            "min": 100.0,
+            "max": 100.0,
+            "p95": 100.0
+          }
+        }
+      ],
+      "overall_passed": true,
+      "p0_passed": true,
+      "pass_rate": 100.0,
+      "p0_pass_rate": 100.0,
+      "summary": {
+        "total_samples": 10,
+        "processed_samples": 10,
+        "avg_cer": 5.000145598268039,
+        "avg_wer": 10.579365079365079,
+        "avg_segmentation_count": 1.0,
+        "avg_financial_term_accuracy": 97.5,
+        "avg_latency_ms": 100.0
+      },
+      "errors": [],
+      "duration_seconds": 0.003016
+    },
+    "intent": {
+      "module_name": "Intent Classification",
+      "timestamp": "2025-12-09T11:13:07.927740",
+      "metrics": [
+        {
+          "name": "Intent Accuracy",
+          "value": 80.0,
+          "unit": "%",
+          "target": 75.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "correct": 16,
+            "total": 20
+          }
+        },
+        {
+          "name": "Weighted F1 Score",
+          "value": 78.83333333333333,
+          "unit": "%",
+          "target": 75.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Macro F1 Score",
+          "value": 79.66666666666666,
+          "unit": "%",
+          "target": 65.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "HUMAN_REQUIRED Recall",
+          "value": 33.33333333333333,
+          "unit": "%",
+          "target": 90.0,
+          "level": "critical",
+          "priority": "P0",
+          "passed": false,
+          "details": {
+            "true_positives": 1,
+            "false_positives": 0,
+            "false_negatives": 2,
+            "true_negatives": 17,
+            "precision": 100.0,
+            "recall": 33.33333333333333,
+            "human_labels": [
+              "상담사연결"
+            ]
+          }
+        },
+        {
+          "name": "Top-3 Accuracy",
+          "value": 80.0,
+          "unit": "%",
+          "target": 90.0,
+          "level": "needs_improvement",
+          "priority": "P2",
+          "passed": false,
+          "details": null
+        }
+      ],
+      "overall_passed": false,
+      "p0_passed": false,
+      "pass_rate": 60.0,
+      "p0_pass_rate": 66.66666666666666,
+      "summary": {
+        "total_samples": 20,
+        "unique_labels": 10,
+        "accuracy": 80.0,
+        "class_distribution": {
+          "카드분실/도난신고": 3,
+          "결제내역조회": 2,
+          "한도조정": 2,
+          "포인트/혜택문의": 3,
+          "자동이체관리": 2,
+          "카드재발급": 1,
+          "연회비문의": 1,
+          "해외결제": 2,
+          "분할납부": 1,
+          "상담사연결": 3
+        }
+      },
+      "errors": [],
+      "duration_seconds": 0.0
+    },
+    "rag": {
+      "module_name": "RAG Hybrid Search",
+      "timestamp": "2025-12-09T11:13:07.927740",
+      "metrics": [
+        {
+          "name": "Precision@3",
+          "value": 100.0,
+          "unit": "%",
+          "target": 85.0,
+          "level": "world_class",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "min": 100.0,
+            "max": 100.0
+          }
+        },
+        {
+          "name": "MRR (Mean Reciprocal Rank)",
+          "value": 1.0,
+          "unit": "score",
+          "target": 0.7,
+          "level": "world_class",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "NDCG@3",
+          "value": 1.0,
+          "unit": "score",
+          "target": 0.85,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Low Confidence Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 10.0,
+          "level": "excellent",
+          "priority": "P2",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Faithfulness",
+          "value": 0.0,
+          "unit": "score",
+          "target": 0.85,
+          "level": "critical",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        },
+        {
+          "name": "Answer Relevancy",
+          "value": 0.275,
+          "unit": "score",
+          "target": 0.85,
+          "level": "critical",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        }
+      ],
+      "overall_passed": false,
+      "p0_passed": false,
+      "pass_rate": 66.66666666666666,
+      "p0_pass_rate": 33.33333333333333,
+      "summary": {
+        "total_samples": 10,
+        "processed_samples": 10,
+        "avg_precision_at_3": 100.0,
+        "avg_mrr": 1.0,
+        "avg_faithfulness": 0.0
+      },
+      "errors": [],
+      "duration_seconds": 0.0
+    },
+    "slot_filling": {
+      "module_name": "Slot Filling",
+      "timestamp": "2025-12-09T11:13:07.927740",
+      "metrics": [
+        {
+          "name": "Slot Completion Rate",
+          "value": 75.0,
+          "unit": "%",
+          "target": 90.0,
+          "level": "needs_improvement",
+          "priority": "P0",
+          "passed": false,
+          "details": {
+            "fully_completed": 4,
+            "partial": 4,
+            "none": 0
+          }
+        },
+        {
+          "name": "Customer Name Extraction Accuracy",
+          "value": 50.0,
+          "unit": "%",
+          "target": 90.0,
+          "level": "critical",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        },
+        {
+          "name": "Inquiry Type Extraction Accuracy",
+          "value": 87.5,
+          "unit": "%",
+          "target": 90.0,
+          "level": "needs_improvement",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        },
+        {
+          "name": "Inquiry Detail Extraction Accuracy",
+          "value": 87.5,
+          "unit": "%",
+          "target": 90.0,
+          "level": "needs_improvement",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        },
+        {
+          "name": "Average Slot Filling Turns",
+          "value": 2.5,
+          "unit": "턴",
+          "target": 3.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": {
+            "min": 2,
+            "max": 3,
+            "distribution": {
+              "3": 4,
+              "1-2": 4
+            }
+          }
+        },
+        {
+          "name": "Wrong Field Assignment Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 5.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Slot Failure to Transfer Rate",
+          "value": 12.5,
+          "unit": "%",
+          "target": 10.0,
+          "level": "critical",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        },
+        {
+          "name": "Duplicate Question Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 5.0,
+          "level": "excellent",
+          "priority": "P2",
+          "passed": true,
+          "details": null
+        }
+      ],
+      "overall_passed": false,
+      "p0_passed": false,
+      "pass_rate": 37.5,
+      "p0_pass_rate": 0.0,
+      "summary": {
+        "total_samples": 8,
+        "processed_samples": 8,
+        "avg_completion_rate": 75.0,
+        "avg_customer_name_accuracy": 50.0,
+        "avg_inquiry_type_accuracy": 87.5,
+        "avg_inquiry_detail_accuracy": 87.5,
+        "avg_turns": 2.5,
+        "failure_to_transfer_rate": 12.5
+      },
+      "errors": [],
+      "duration_seconds": 0.0
+    },
+    "summary": {
+      "module_name": "Summary Agent",
+      "timestamp": "2025-12-09T11:13:07.928738",
+      "metrics": [
+        {
+          "name": "ROUGE-L Score",
+          "value": 0.9519005847953217,
+          "unit": "score",
+          "target": 0.65,
+          "level": "world_class",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "min": 0.9333333333333333,
+            "max": 1.0
+          }
+        },
+        {
+          "name": "ROUGE-1 Score",
+          "value": 0.9519005847953217,
+          "unit": "score",
+          "target": 0.6,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "ROUGE-2 Score",
+          "value": 0.9070593149540519,
+          "unit": "score",
+          "target": 0.4,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Information Omission Rate",
+          "value": 3.3333333333333335,
+          "unit": "%",
+          "target": 10.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Hallucination Rate",
+          "value": 54.01327838827839,
+          "unit": "%",
+          "target": 5.0,
+          "level": "critical",
+          "priority": "P0",
+          "passed": false,
+          "details": null
+        },
+        {
+          "name": "Sentiment Classification Accuracy",
+          "value": 100.0,
+          "unit": "%",
+          "target": 80.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Keyword Extraction Accuracy",
+          "value": 90.0,
+          "unit": "%",
+          "target": 80.0,
+          "level": "excellent",
+          "priority": "P2",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Repeat Explanation Request Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 10.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": null
+        }
+      ],
+      "overall_passed": false,
+      "p0_passed": false,
+      "pass_rate": 87.5,
+      "p0_pass_rate": 75.0,
+      "summary": {
+        "total_samples": 6,
+        "processed_samples": 6,
+        "avg_rouge_l": 0.9519005847953217,
+        "avg_omission_rate": 3.3333333333333335,
+        "sentiment_accuracy": 100.0,
+        "repeat_explanation_rate": 0.0
+      },
+      "errors": [],
+      "duration_seconds": 0.000998
+    },
+    "flow": {
+      "module_name": "LangGraph Flow",
+      "timestamp": "2025-12-09T11:13:07.928738",
+      "metrics": [
+        {
+          "name": "Node Transition Accuracy",
+          "value": 100.0,
+          "unit": "%",
+          "target": 95.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "perfect_matches": 8,
+            "partial_matches": 0
+          }
+        },
+        {
+          "name": "Fallback Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 5.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Infinite Loop Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 0.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Session Completion Rate",
+          "value": 100.0,
+          "unit": "%",
+          "target": 95.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "Average Node Visits",
+          "value": 4.75,
+          "unit": "개",
+          "target": 8.0,
+          "level": "excellent",
+          "priority": "P2",
+          "passed": true,
+          "details": {
+            "min": 2,
+            "max": 7
+          }
+        },
+        {
+          "name": "Triage Agent Latency",
+          "value": 481.93006290557787,
+          "unit": "ms",
+          "target": 1500.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": {
+            "min": 377.7570393279897,
+            "max": 565.4692730633091,
+            "p95": 565.4692730633091
+          }
+        },
+        {
+          "name": "Answer Agent Latency",
+          "value": 782.1352948886213,
+          "unit": "ms",
+          "target": 2000.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": {
+            "min": 572.203194938589,
+            "max": 1016.3720431874482,
+            "p95": 1016.3720431874482
+          }
+        },
+        {
+          "name": "Waiting Agent Latency",
+          "value": 1589.1051471659312,
+          "unit": "ms",
+          "target": 1500.0,
+          "level": "needs_improvement",
+          "priority": "P1",
+          "passed": false,
+          "details": {
+            "min": 1394.7868670151904,
+            "max": 1752.071506081659,
+            "p95": 1752.071506081659
+          }
+        },
+        {
+          "name": "Summary Agent Latency",
+          "value": 847.455805843726,
+          "unit": "ms",
+          "target": 2000.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": {
+            "min": 809.27826849925,
+            "max": 885.6333431882019,
+            "p95": 885.6333431882019
+          }
+        }
+      ],
+      "overall_passed": true,
+      "p0_passed": true,
+      "pass_rate": 88.88888888888889,
+      "p0_pass_rate": 100.0,
+      "summary": {
+        "total_samples": 8,
+        "processed_samples": 8,
+        "avg_transition_accuracy": 100.0,
+        "fallback_rate": 0.0,
+        "infinite_loop_rate": 0.0,
+        "session_completion_rate": 100.0,
+        "avg_node_visits": 4.75,
+        "node_latencies": {
+          "triage_agent": 481.93006290557787,
+          "answer_agent": 782.1352948886213,
+          "consent_check_node": 178.03757744077626,
+          "chat_db_storage_node": 297.0975692419562,
+          "waiting_agent": 1589.1051471659312,
+          "summary_agent": 847.455805843726
+        }
+      },
+      "errors": [],
+      "duration_seconds": 0.0
+    },
+    "e2e": {
+      "module_name": "E2E System",
+      "timestamp": "2025-12-09T11:13:07.928738",
+      "metrics": [
+        {
+          "name": "Auto Resolution Rate",
+          "value": 70.0,
+          "unit": "%",
+          "target": 40.0,
+          "level": "world_class",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "auto_resolved": 7,
+            "total": 10
+          }
+        },
+        {
+          "name": "E2E Response Latency",
+          "value": 1904.5662522467678,
+          "unit": "ms",
+          "target": 3000.0,
+          "level": "excellent",
+          "priority": "P0",
+          "passed": true,
+          "details": {
+            "min": 1502.8541067211845,
+            "max": 2406.888710048076,
+            "p95": 2406.888710048076,
+            "under_1s": 0,
+            "under_3s": 10
+          }
+        },
+        {
+          "name": "Transfer Failure Rate",
+          "value": 0.0,
+          "unit": "%",
+          "target": 5.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        },
+        {
+          "name": "CSAT (Customer Satisfaction)",
+          "value": 78.81741851782837,
+          "unit": "%",
+          "target": 80.0,
+          "level": "good",
+          "priority": "P1",
+          "passed": false,
+          "details": {
+            "avg_score": 3.9408709258914185,
+            "responses": 10
+          }
+        },
+        {
+          "name": "FCR (First Contact Resolution)",
+          "value": 70.0,
+          "unit": "%",
+          "target": 70.0,
+          "level": "excellent",
+          "priority": "P1",
+          "passed": true,
+          "details": null
+        }
+      ],
+      "overall_passed": true,
+      "p0_passed": true,
+      "pass_rate": 80.0,
+      "p0_pass_rate": 100.0,
+      "summary": {
+        "total_scenarios": 10,
+        "processed_scenarios": 10,
+        "auto_resolution_rate": 70.0,
+        "avg_e2e_latency_ms": 1904.5662522467678,
+        "transfer_failure_rate": 0.0,
+        "avg_csat": 3.9408709258914185,
+        "fcr_rate": 70.0
+      },
+      "errors": [],
+      "duration_seconds": 0.0
+    }
+  },
+  "overall_passed": false,
+  "p0_passed": false,
+  "total_duration_seconds": 0.0040132999420166016,
+  "summary": {
+    "modules_evaluated": [
+      "stt",
+      "intent",
+      "rag",
+      "slot_filling",
+      "summary",
+      "flow",
+      "e2e"
+    ],
+    "modules_passed": [
+      "stt",
+      "flow",
+      "e2e"
+    ],
+    "modules_failed": [
+      "intent",
+      "rag",
+      "slot_filling",
+      "summary"
+    ],
+    "p0_metrics_summary": {
+      "stt.CER (Character Error Rate)": {
+        "value": 5.000145598268039,
+        "target": 10.0,
+        "passed": true
+      },
+      "stt.Segmentation Count": {
+        "value": 1.0,
+        "target": 8.0,
+        "passed": true
+      },
+      "intent.Intent Accuracy": {
+        "value": 80.0,
+        "target": 75.0,
+        "passed": true
+      },
+      "intent.Weighted F1 Score": {
+        "value": 78.83333333333333,
+        "target": 75.0,
+        "passed": true
+      },
+      "intent.HUMAN_REQUIRED Recall": {
+        "value": 33.33333333333333,
+        "target": 90.0,
+        "passed": false
+      },
+      "rag.Precision@3": {
+        "value": 100.0,
+        "target": 85.0,
+        "passed": true
+      },
+      "rag.Faithfulness": {
+        "value": 0.0,
+        "target": 0.85,
+        "passed": false
+      },
+      "rag.Answer Relevancy": {
+        "value": 0.275,
+        "target": 0.85,
+        "passed": false
+      },
+      "slot_filling.Slot Completion Rate": {
+        "value": 75.0,
+        "target": 90.0,
+        "passed": false
+      },
+      "slot_filling.Customer Name Extraction Accuracy": {
+        "value": 50.0,
+        "target": 90.0,
+        "passed": false
+      },
+      "slot_filling.Inquiry Type Extraction Accuracy": {
+        "value": 87.5,
+        "target": 90.0,
+        "passed": false
+      },
+      "slot_filling.Inquiry Detail Extraction Accuracy": {
+        "value": 87.5,
+        "target": 90.0,
+        "passed": false
+      },
+      "slot_filling.Slot Failure to Transfer Rate": {
+        "value": 12.5,
+        "target": 10.0,
+        "passed": false
+      },
+      "summary.ROUGE-L Score": {
+        "value": 0.9519005847953217,
+        "target": 0.65,
+        "passed": true
+      },
+      "summary.Information Omission Rate": {
+        "value": 3.3333333333333335,
+        "target": 10.0,
+        "passed": true
+      },
+      "summary.Hallucination Rate": {
+        "value": 54.01327838827839,
+        "target": 5.0,
+        "passed": false
+      },
+      "summary.Repeat Explanation Request Rate": {
+        "value": 0.0,
+        "target": 10.0,
+        "passed": true
+      },
+      "flow.Node Transition Accuracy": {
+        "value": 100.0,
+        "target": 95.0,
+        "passed": true
+      },
+      "flow.Fallback Rate": {
+        "value": 0.0,
+        "target": 5.0,
+        "passed": true
+      },
+      "flow.Infinite Loop Rate": {
+        "value": 0.0,
+        "target": 0.0,
+        "passed": true
+      },
+      "e2e.Auto Resolution Rate": {
+        "value": 70.0,
+        "target": 40.0,
+        "passed": true
+      },
+      "e2e.E2E Response Latency": {
+        "value": 1904.5662522467678,
+        "target": 3000.0,
+        "passed": true
+      }
+    },
+    "overall_stats": {
+      "total_metrics": 47,
+      "passed_metrics": 35,
+      "pass_rate": 74.46808510638297,
+      "p0_total": 22,
+      "p0_passed": 13,
+      "p0_pass_rate": 59.09090909090909
+    }
+  },
+  "benchmark_comparison": {
+    "rag": {
+      "Faithfulness": {
+        "current": 0.0,
+        "benchmark": 0.85,
+        "vs_benchmark": "below"
+      }
+    },
+    "e2e": {
+      "Auto Resolution Rate": {
+        "current": 70.0,
+        "benchmark": 50,
+        "vs_benchmark": "above"
+      }
+    }
+  }
+}
