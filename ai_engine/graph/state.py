@@ -96,6 +96,8 @@ class GraphState(TypedDict, total=False):
     collected_info: Dict[str, Any]  # 수집된 고객 정보 (예: {"customer_name": "홍길동", "inquiry_type": "카드 분실"})
     info_collection_complete: bool  # 정보 수집 완료 여부 (True 시 summary_agent로 이동)
     handover_status: Optional[str]  # 핸드오버 상태 (pending, accepted, declined, timeout)
+    out_of_domain_count: int  # 도메인 외 질문 반복 횟수 (3회 이상 시 세션 종료)
+    unclear_count: int  # 불명확 응답 반복 횟수 (3회 이상 시 세션 종료)
     
     # ========== 상담 DB 저장 노드 (chat_db_storage) ==========
     # DB 저장은 별도 처리, 상태는 그대로 유지

@@ -31,6 +31,10 @@ class ChatSession(Base):
     triage_decision = Column(String(50), nullable=True)  # SIMPLE_ANSWER, AUTO_ANSWER, NEED_MORE_INFO, HUMAN_REQUIRED
     context_intent = Column(String(100), nullable=True)  # 38개 카테고리 (예: "도난/분실 신청/해제", "한도 안내")
 
+    # ========== 불명확 응답/도메인 외 질문 카운터 ==========
+    unclear_count = Column(Integer, default=0, nullable=False)  # 불명확 응답 횟수 (3회 이상 시 세션 종료)
+    out_of_domain_count = Column(Integer, default=0, nullable=False)  # 도메인 외 질문 횟수 (3회 이상 시 세션 종료)
+
     # ========== 핸드오버 상태 관리 ==========
     handover_status = Column(String(20), nullable=True)  # pending, accepted, declined, timeout
     handover_requested_at = Column(DateTime, nullable=True)  # 핸드오버 요청 시각

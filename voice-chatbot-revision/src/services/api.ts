@@ -13,6 +13,8 @@ export interface VoiceChatResponse {
   tts_duration_ms: number | null;
   total_duration_ms: number;
   handover_status?: string | null;  // 핸드오버 상태 (pending, accepted, declined, timeout)
+  is_human_required_flow?: boolean;  // HUMAN_REQUIRED 플로우 진입 여부
+  is_session_end?: boolean;  // 세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 true)
 }
 
 export interface TextChatResponse {
@@ -26,6 +28,8 @@ export interface TextChatResponse {
   }>;
   info_collection_complete?: boolean;
   handover_status?: 'pending' | 'accepted' | 'declined' | 'timeout' | null;
+  is_human_required_flow?: boolean;  // HUMAN_REQUIRED 플로우 진입 여부
+  is_session_end?: boolean;  // 세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 true)
 }
 
 export interface HandoverResponse {

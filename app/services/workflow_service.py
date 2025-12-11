@@ -170,6 +170,9 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
         "triage_decision": session_state["triage_decision"],
         # context_intent: 38개 카테고리 (도난/분실 신청/해제 등) - waiting_agent에서 슬롯 결정에 사용
         "context_intent": session_state["context_intent"],
+        # 불명확 응답/도메인 외 질문 카운터 (DB에서 로드)
+        "unclear_count": session_state["unclear_count"],
+        "out_of_domain_count": session_state["out_of_domain_count"],
     }
 
     return state
@@ -221,9 +224,11 @@ def state_to_chat_response(state: GraphState) -> ChatResponse:
     source_documents = state.get("source_documents", [])
     info_collection_complete = state.get("info_collection_complete", False)
     handover_status = state.get("handover_status")  # 핸드오버 상태
+    is_human_required_flow = state.get("is_human_required_flow", False)  # HUMAN_REQUIRED 플로우 여부
+    is_session_end = state.get("is_session_end", False)  # 세션 종료 여부
 
     # 디버그 로그 추가
-    logger.info(f"state_to_chat_response - handover_status: {handover_status}, info_collection_complete: {info_collection_complete}, suggested_action: {suggested_action}")
+    logger.info(f"state_to_chat_response - handover_status: {handover_status}, info_collection_complete: {info_collection_complete}, suggested_action: {suggested_action}, is_human_required_flow: {is_human_required_flow}, is_session_end: {is_session_end}")
 
     return ChatResponse(
         ai_message=ai_message,
@@ -231,7 +236,9 @@ def state_to_chat_response(state: GraphState) -> ChatResponse:
         suggested_action=suggested_action,
         source_documents=source_documents,
         info_collection_complete=info_collection_complete,
-        handover_status=handover_status
+        handover_status=handover_status,
+        is_human_required_flow=is_human_required_flow,
+        is_session_end=is_session_end
     )
 
 

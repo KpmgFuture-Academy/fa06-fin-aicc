@@ -37,6 +37,8 @@ interface ServerMessage {
     intent?: string;
     suggested_action?: string;
     handover_status?: string | null;  // 핸드오버 상태
+    is_human_required_flow?: boolean;  // HUMAN_REQUIRED 플로우 여부
+    is_session_end?: boolean;  // 세션 종료 여부
     // tts_chunk
     audio_base64?: string;
     format?: string;
@@ -59,6 +61,8 @@ interface AIResponse {
   intent: string;
   suggestedAction: string;
   handoverStatus?: string | null;  // 핸드오버 상태 (pending, accepted, declined, timeout)
+  isHumanRequiredFlow?: boolean;  // HUMAN_REQUIRED 플로우 진입 여부
+  isSessionEnd?: boolean;  // 세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 true)
 }
 
 // stopRecording 반환 타입
@@ -290,12 +294,14 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
           break;
 
         case 'ai_response':
-          console.log('[VoiceStream] AI 응답:', data.text, 'handover_status:', data.handover_status);
+          console.log('[VoiceStream] AI 응답:', data.text, 'handover_status:', data.handover_status, 'is_human_required_flow:', data.is_human_required_flow, 'is_session_end:', data.is_session_end);
           const response: AIResponse = {
             text: data.text || '',
             intent: data.intent || '',
             suggestedAction: data.suggested_action || '',
             handoverStatus: data.handover_status || null,  // 핸드오버 상태 추가
+            isHumanRequiredFlow: data.is_human_required_flow || false,  // HUMAN_REQUIRED 플로우 여부
+            isSessionEnd: data.is_session_end || false,  // 세션 종료 여부
           };
           setAiResponse(response);
           latestAiResponseRef.current = response;

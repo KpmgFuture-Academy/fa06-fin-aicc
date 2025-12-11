@@ -17,6 +17,8 @@ export interface VoiceRecordingResult {
     intent: string;
     suggestedAction: string;
     handoverStatus?: string | null;  // 핸드오버 상태 (pending, accepted, declined, timeout)
+    isHumanRequiredFlow?: boolean;  // HUMAN_REQUIRED 플로우 진입 여부
+    isSessionEnd?: boolean;  // 세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 true)
   } | null;
   audioBase64: string | null;
 }
@@ -133,6 +135,8 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
               intent: response.intent,
               suggestedAction: response.suggested_action,
               handoverStatus: response.handover_status || null,  // 핸드오버 상태 추가
+              isHumanRequiredFlow: response.is_human_required_flow || false,  // HUMAN_REQUIRED 플로우 여부
+              isSessionEnd: response.is_session_end || false,  // 세션 종료 여부
             },
             audioBase64: response.audio_base64,
           };

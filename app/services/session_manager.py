@@ -107,7 +107,9 @@ class SessionManager:
                     "collected_info": {},
                     "info_collection_complete": False,
                     "triage_decision": None,
-                    "context_intent": None
+                    "context_intent": None,
+                    "unclear_count": 0,
+                    "out_of_domain_count": 0
                 }
             
             # collected_info JSON 파싱
@@ -132,7 +134,9 @@ class SessionManager:
                 "collected_info": collected_info,
                 "info_collection_complete": bool(chat_session.info_collection_complete),
                 "triage_decision": triage_decision,
-                "context_intent": chat_session.context_intent  # 38개 카테고리 복원
+                "context_intent": chat_session.context_intent,  # 38개 카테고리 복원
+                "unclear_count": chat_session.unclear_count or 0,  # 불명확 응답 카운터
+                "out_of_domain_count": chat_session.out_of_domain_count or 0  # 도메인 외 질문 카운터
             }
 
         except Exception as e:
@@ -143,7 +147,9 @@ class SessionManager:
                 "collected_info": {},
                 "info_collection_complete": False,
                 "triage_decision": None,
-                "context_intent": None
+                "context_intent": None,
+                "unclear_count": 0,
+                "out_of_domain_count": 0
             }
         finally:
             db.close()

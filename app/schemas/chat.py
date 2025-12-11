@@ -24,3 +24,7 @@ class ChatResponse(BaseModel):
     info_collection_complete: bool = False
     # 핸드오버 상태 (pending, accepted, declined, timeout)
     handover_status: Optional[str] = None
+    # HUMAN_REQUIRED 플로우 진입 여부 (consent_check, waiting_agent 단계 포함)
+    is_human_required_flow: bool = False
+    # 세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 True)
+    is_session_end: bool = False

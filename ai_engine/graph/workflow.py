@@ -77,7 +77,7 @@ def _route_after_consent(state: GraphState) -> str:
 
     - customer_consent_received=TRUE → waiting_agent (정보 수집)
     - customer_declined_handover=TRUE → chat_db_storage (거부 메시지 출력 후 종료)
-    - 그 외 → triage_agent (플로우 종료)
+    - 그 외 (도메인 외 질문/불명확) → chat_db_storage (응답 출력 후 종료, 다음 턴에서 다시 consent_check)
     """
     customer_consent_received = state.get("customer_consent_received", False)
     customer_declined_handover = state.get("customer_declined_handover", False)
@@ -88,7 +88,9 @@ def _route_after_consent(state: GraphState) -> str:
     if customer_declined_handover:
         return "chat_db_storage"
 
-    return "triage_agent"
+    # 도메인 외 질문 또는 불명확한 응답 → chat_db_storage (ai_message 출력 후 END)
+    # is_human_required_flow는 유지되므로 다음 턴에서 다시 consent_check로 진입
+    return "chat_db_storage"
 
 
 def _route_after_db_storage(state: GraphState) -> str:

@@ -64,6 +64,8 @@ class VoiceChatResponse(BaseModel):
 
     # 핸드오버 관련
     handover_status: Optional[str] = Field(None, description="핸드오버 상태 (pending, accepted, declined, timeout)")
+    is_human_required_flow: bool = Field(False, description="HUMAN_REQUIRED 플로우 진입 여부")
+    is_session_end: bool = Field(False, description="세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 True)")
 
     # 메타데이터
     stt_duration_ms: Optional[int] = Field(None, description="STT 처리 시간")

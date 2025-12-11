@@ -43,6 +43,17 @@ def init_db():
         "context_intent",
         "VARCHAR(100)"
     )
+    # 불명확 응답/도메인 외 질문 카운터 컬럼 추가 (2025-12-11)
+    _migrate_add_column_if_not_exists(
+        "chat_sessions",
+        "unclear_count",
+        "INTEGER DEFAULT 0"
+    )
+    _migrate_add_column_if_not_exists(
+        "chat_sessions",
+        "out_of_domain_count",
+        "INTEGER DEFAULT 0"
+    )
 
 
 def _migrate_add_column_if_not_exists(table_name: str, column_name: str, column_type: str):

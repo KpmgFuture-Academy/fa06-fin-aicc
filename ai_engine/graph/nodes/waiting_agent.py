@@ -28,7 +28,10 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # 슬롯 수집 중/완료 후 거부 패턴 (상담사 연결 취소 의사)
-CANCEL_PATTERNS = ["됐어", "괜찮아", "취소", "그만", "안 할래", "필요 없", "연결 안", "상담사 안", "그냥 됐"]
+CANCEL_PATTERNS = ["됐어", "괜찮아", "취소", "그만", "안 할래", "필요 없", "연결 안", "상담사 안", "그냥 됐", "아니요", "아니", "싫어", "안해", "안 해"]
+
+# 불명확 응답 최대 허용 횟수 (consent_check_node와 동일)
+MAX_UNCLEAR_COUNT = 3
 
 
 def _check_collection_cancel(user_message: str) -> bool:
@@ -42,6 +45,54 @@ def _check_collection_cancel(user_message: str) -> bool:
     """
     user_message_lower = user_message.strip().lower()
     return any(pattern in user_message_lower for pattern in CANCEL_PATTERNS)
+
+
+def _is_unclear_response(message: str) -> bool:
+    """메시지가 불명확한 응답인지 확인합니다 (consent_check_node와 동일한 로직).
+
+    Args:
+        message: 사용자 메시지
+
+    Returns:
+        불명확한 응답이면 True
+    """
+    import re
+    cleaned = message.replace(" ", "")
+
+    if not cleaned:
+        return True
+
+    # 반복되는 자음/모음만 있는 경우
+    if re.match(r'^[ㅋㅎㅠㅜㄷㅇㄱ]+$', cleaned):
+        return True
+
+    # 반복되는 완성형 글자
+    if re.match(r'^(크|킄|킥|키|ㅋ)+$', cleaned):
+        return True
+    if re.match(r'^(하|히|허|호|흐|ㅎ)+$', cleaned):
+        return True
+    if re.match(r'^(ㅠ|ㅜ|우|유|으)+$', cleaned):
+        return True
+
+    # 특수문자/이모티콘만 있는 경우
+    if re.match(r'^[.;?!~^_\-=+]+$', cleaned):
+        return True
+
+    # 불명확 패턴 목록
+    unclear_patterns = [
+        "ㅋㅋ", "ㅎㅎ", "ㅠㅠ", "ㅜㅜ", "ㄷㄷ", "ㅇㅇ", "ㅇㅋ", "ㄱㄱ",
+        "ㅋ", "ㅎ", "ㅠ", "ㅜ",
+        ";;", "...", "..", "?", "??", "???",
+        "음", "흠", "아", "어", "오", "우", "에",
+        "헐", "헐ㅋ", "헉", "앗", "엥", "잉", "윙",
+        "lol", "ㅇㅅㅇ", "ㅇㅁㅇ", "ㅡㅡ", "^^", "^_^",
+    ]
+
+    for pattern in unclear_patterns:
+        if cleaned == pattern or cleaned == pattern * (len(cleaned) // max(len(pattern), 1)):
+            return True
+
+    return False
 
 
 # LM Studio 또는 OpenAI 사용
@@ -194,11 +245,15 @@ def _generate_collection_question(
     collected_info: Dict[str, Any],
     slot_loader,
     user_message: str = "",
-    current_category: str = ""
+    current_category: str = "",
+    is_first_entry: bool = False
 ) -> str:
     """부족한 슬롯에 대한 질문을 생성합니다.
 
     고객이 다른 문의를 한 경우, 정중하게 안내하면서 현재 진행 중인 슬롯 수집을 계속합니다.
+
+    Args:
+        is_first_entry: 첫 번째 waiting_agent 진입 여부. True면 단순 질문만 반환.
     """
     if not missing_slots:
         return "필요한 정보를 모두 수집했습니다."
@@ -207,6 +262,10 @@ def _generate_collection_question(
     next_slot = missing_slots[0]
     base_question = slot_loader.get_slot_question(next_slot)
     slot_label = slot_loader.get_slot_label(next_slot)
+
+    # 첫 번째 진입 시에는 단순 질문만 반환 (intro_message와 함께 사용됨)
+    if is_first_entry:
+        return base_question
 
     # 이미 수집된 정보가 있으면 맥락에 맞게 질문 생성
     collected_labels = []
@@ -224,22 +283,33 @@ def _generate_collection_question(
 고객의 현재 메시지: "{user_message}"
 
 당신의 역할:
-1. 고객의 메시지가 현재 진행 중인 '{current_category}'와 관련이 없는 다른 문의인지 판단하세요.
-2. 다른 문의라면, 고객의 궁금증을 존중하면서 정중하게 안내해 주세요.
-3. 그 후 자연스럽게 현재 필요한 정보 수집을 계속하세요.
+1. 고객의 메시지가 카드사 업무와 관련이 있는지 먼저 판단하세요.
+2. 카드사 업무 범위: 카드 발급/분실/도난, 결제/청구, 한도, 포인트/마일리지, 대출, 연회비, 할부 등
+3. 카드사 업무와 완전히 무관한 질문(음식 주문, 날씨, 택배 등)에는 "죄송합니다. 저는 카드 관련 상담만 도와드릴 수 있습니다."라고 안내하세요.
+4. 카드사 업무와 관련 있지만 현재 진행 중인 '{current_category}'와 다른 문의인 경우, 상담사 연결 후 안내해 드리겠다고 안내하세요.
+5. 그 후 자연스럽게 현재 필요한 정보 수집을 계속하세요.
 
 응답 규칙:
 1. 항상 친절하고 공손한 어조를 유지하세요.
-2. 고객이 다른 문의를 했다면, "말씀하신 [문의 내용]에 대해서는 상담사 연결 후 자세히 안내해 드리겠습니다."와 같이 공감하며 안내하세요.
-3. 고객이 기분 상하지 않도록 부드럽게 현재 진행 중인 정보 수집으로 돌아오세요.
-4. 2-3문장으로 간결하게 작성하세요.
-5. 고객의 메시지가 현재 카테고리와 관련 있거나 슬롯 정보 제공이면, 단순히 다음 정보를 요청하세요.
+2. 이모티콘, 감탄사, 짧은 반응(ㅋㅋ, ㅎㅎ, ㅠㅠ, 아, 음, 네, 예 등)은 무시하고 바로 다음 질문만 하세요.
+3. 카드사 업무 외 질문: "죄송합니다. 저는 카드 관련 상담만 도와드릴 수 있습니다. {base_question}"
+4. 카드 관련 다른 문의: "말씀하신 [문의 내용]에 대해서는 상담사 연결 후 자세히 안내해 드리겠습니다. [다음 질문]"
+5. 2-3문장으로 간결하게 작성하세요.
+6. 고객의 메시지가 현재 카테고리와 관련 있거나 슬롯 정보 제공이면, 단순히 다음 정보를 요청하세요.
 
-예시 (다른 문의인 경우):
-"결제일에 대해 궁금하신 부분은 상담사 연결 후 자세히 안내해 드리겠습니다. 먼저 카드 분실 처리를 위해 카드 뒤 4자리를 알려주시겠어요?"
+예시 (이모티콘/감탄사/짧은 반응):
+고객: "ㅋㅋㅋ" → "{base_question}"
+고객: "ㅠㅠ" → "{base_question}"
+고객: "아..." → "{base_question}"
+
+예시 (카드사 업무 외 질문):
+"죄송합니다. 저는 카드 관련 상담만 도와드릴 수 있습니다. {base_question}"
+
+예시 (카드 관련 다른 문의):
+"결제일에 대해 궁금하신 부분은 상담사 연결 후 자세히 안내해 드리겠습니다. 먼저 {base_question}"
 
 예시 (관련 있는 경우):
-"감사합니다. 카드 분실 처리를 위해 분실 날짜를 알려주시겠어요?"
+"감사합니다. {base_question}"
 """)
 
     human_message = HumanMessage(content=f"""현재 카테고리: {current_category}
@@ -370,6 +440,7 @@ def waiting_agent_node(state: GraphState) -> GraphState:
     user_message = state.get("user_message", "")
     session_id = state.get("session_id", "unknown")
     conversation_history = state.get("conversation_history", [])
+    unclear_count = state.get("unclear_count", 0)
 
     # 수집된 정보 가져오기 (없으면 빈 딕셔너리)
     collected_info: Dict[str, Any] = state.get("collected_info", {})
@@ -398,6 +469,29 @@ def waiting_agent_node(state: GraphState) -> GraphState:
         state["ai_message"] = "현재 상담사 연결을 기다리고 있습니다. 잠시만 기다려 주세요. 상담사가 곧 연결될 예정입니다."
         state["source_documents"] = []
         return state
+
+    # ========== 불명확 응답 3회 이상 시 세션 종료 ==========
+    if _is_unclear_response(user_message):
+        unclear_count += 1
+        state["unclear_count"] = unclear_count
+
+        if unclear_count >= MAX_UNCLEAR_COUNT:
+            # 3회 이상 불명확 응답 → 세션 종료
+            state["is_human_required_flow"] = False
+            state["customer_consent_received"] = False
+            state["info_collection_complete"] = False
+            state["is_session_end"] = True
+            state["ai_message"] = "죄송합니다. 명확한 응답을 확인하지 못해 상담을 종료합니다. 추가 문의가 있으시면 다시 연락해 주세요. 감사합니다."
+            state["source_documents"] = []
+            logger.info(f"불명확 응답 {unclear_count}회 초과 - 세션: {session_id}, 세션 종료")
+            return state
+        else:
+            # 불명확 응답이지만 아직 3회 미만 → 재질문 메시지 반환
+            logger.info(f"불명확 응답 감지 ({unclear_count}회) - 세션: {session_id}, 메시지: {user_message}")
+            remaining = MAX_UNCLEAR_COUNT - unclear_count
+            state["ai_message"] = f"죄송합니다. 말씀을 정확히 이해하지 못했습니다. 다시 한 번 말씀해 주시겠어요?"
+            state["source_documents"] = []
+            return state
 
     # ========== 슬롯 수집 중/완료 후 거부 감지 ==========
     # "아니요 그냥 됐어요", "취소할게요" 등의 거부 의사 감지 시 플로우 종료
@@ -477,18 +571,19 @@ def waiting_agent_node(state: GraphState) -> GraphState:
         else:
             # 부족한 정보에 대해 질문 생성
             state["info_collection_complete"] = False
-            question = _generate_collection_question(
-                missing_slots,
-                collected_info,
-                slot_loader,
-                user_message=user_message,
-                current_category=category
-            )
 
             if not waiting_intro_shown:
-                # 첫 번째 waiting_agent 진입 - 상담사 확인 안내 메시지 + 질문
-                # 시나리오: "현재 응대 가능한 상담사가 있는지 확인해 보겠습니다. 잠시만 기다려 주시기 바랍니다."
-                intro_message = "현재 응대 가능한 상담사가 있는지 확인해 보겠습니다. 잠시만 기다려 주시기 바랍니다. 대기 중 고객님의 문의 내용을 좀 더 구체적으로 알려 주시면 상담사 연결 후 즉시 도움을 드리겠습니다."
+                # 첫 번째 waiting_agent 진입 - 단순 질문만 반환 (intro_message와 함께)
+                question = _generate_collection_question(
+                    missing_slots,
+                    collected_info,
+                    slot_loader,
+                    user_message=user_message,
+                    current_category=category,
+                    is_first_entry=True  # 첫 진입 시 LLM 없이 단순 질문
+                )
+                # 상담사 확인 안내 메시지 + 질문
+                intro_message = "현재 응대 가능한 상담사가 있는지 확인해 보겠습니다. 잠시만 기다려 주시기 바랍니다."
                 state["ai_message"] = f"{intro_message} {question}"
                 # 안내 메시지 표시 완료 플래그 설정
                 collected_info["_waiting_intro_shown"] = True
@@ -497,6 +592,15 @@ def waiting_agent_node(state: GraphState) -> GraphState:
                 state["handover_status"] = "pending"
                 logger.info(f"핸드오버 대기 시작 - 세션: {session_id}, handover_status: pending")
             else:
+                # 두 번째 이후 - 문맥 기반 응답 생성 (도메인 외 질문 처리 포함)
+                question = _generate_collection_question(
+                    missing_slots,
+                    collected_info,
+                    slot_loader,
+                    user_message=user_message,
+                    current_category=category,
+                    is_first_entry=False  # LLM 기반 문맥 응답
+                )
                 state["ai_message"] = question
 
             logger.info(f"정보 수집 질문 생성 - 세션: {session_id}, 부족한 슬롯: {missing_slots}")

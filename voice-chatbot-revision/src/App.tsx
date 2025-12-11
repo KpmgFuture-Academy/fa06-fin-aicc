@@ -15,6 +15,10 @@ const HANDOVER_POLL_INTERVAL_MS = 2000; // 2초마다 상담사 수락 여부 �
 const HANDOVER_TIMEOUT_MS = 60000; // 60초 타임아웃 (실제로는 필요시 조정)
 const HANDOVER_WAIT_TIME_MESSAGE = "현재 모든 상담사가 상담 중입니다. 예상 대기 시간은 약 10분입니다.";
 
+// 고객 비활성 리마인더 설정
+const INACTIVITY_REMINDER_MS = 30000; // 30초 비활성 시 리마인더
+const INACTIVITY_REMINDER_MESSAGE = "고객님, 아직 계시나요? 상담사 연결을 원하시면 '네'라고 말씀해 주세요.";
+
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState(() => getOrCreateSessionId());
@@ -24,6 +28,7 @@ function App() {
   const [_isHandoverLoading, setIsHandoverLoading] = useState(false);  // 상담원 연결 로딩 상태 (미사용)
   void _isHandoverLoading;
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false);  // 상담사 수락 대기 중
+  const [isHumanRequiredFlow, setIsHumanRequiredFlow] = useState(false);  // HUMAN_REQUIRED 플로우 진입 여부 (consent_check 포함)
   const [_handoverTimeoutReached, setHandoverTimeoutReached] = useState(false);  // 타임아웃 도달 여부 (미사용, 향후 확장용)
   void _handoverTimeoutReached;
   const handoverPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -37,10 +42,13 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   const isHandoverModeRef = useRef(false);  // 클로저 문제 해결용 ref
+  const isHumanRequiredFlowRef = useRef(false);  // 클로저 문제 해결용 ref
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastMessageIdRef = useRef<number>(0);  // 마지막 메시지 ID (폴링용)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConfirmingHandoverRef = useRef(false);  // confirmHandover 중복 호출 방지용
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);  // 고객 비활성 리마인더 타이머
+  const lastActivityTimeRef = useRef<number>(Date.now());  // 마지막 활동 시간
 
   // 양방향 스트리밍 훅 사용 (STT + AI + TTS 통합)
   const {
@@ -97,6 +105,12 @@ function App() {
     isHandoverModeRef.current = isHandoverMode;
     console.log('[App] isHandoverMode 변경:', isHandoverMode);
   }, [isHandoverMode]);
+
+  // isHumanRequiredFlow가 변경될 때 ref도 업데이트 (클로저 문제 해결)
+  useEffect(() => {
+    isHumanRequiredFlowRef.current = isHumanRequiredFlow;
+    console.log('[App] isHumanRequiredFlow 변경:', isHumanRequiredFlow);
+  }, [isHumanRequiredFlow]);
 
   // 메시지 추가 시 스크롤
   useEffect(() => {
@@ -162,6 +176,74 @@ function App() {
       console.error('오디오 재생 실패:', err);
     }
   }, []);
+
+  // 고객 비활성 리마인더 타이머 정리
+  const clearInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+  }, []);
+
+  // 고객 비활성 리마인더 타이머 시작
+  const startInactivityTimer = useCallback(() => {
+    clearInactivityTimer();
+    lastActivityTimeRef.current = Date.now();
+
+    inactivityTimerRef.current = setTimeout(async () => {
+      console.log('[App] 고객 비활성 리마인더 발생');
+
+      // 리마인더 메시지 표시
+      const reminderMessage: Message = {
+        id: `msg_${Date.now()}_reminder`,
+        role: 'assistant',
+        content: INACTIVITY_REMINDER_MESSAGE,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, reminderMessage]);
+
+      // TTS 재생
+      try {
+        const ttsResponse = await voiceApi.requestTTS(INACTIVITY_REMINDER_MESSAGE);
+        if (ttsResponse.audio_base64) {
+          playAudio(ttsResponse.audio_base64);
+        }
+      } catch (ttsErr) {
+        console.warn('리마인더 TTS 재생 실패:', ttsErr);
+      }
+
+      // 리마인더 후 타이머 재시작 (고객이 계속 응답하지 않으면 다시 리마인더)
+      // 단, isHumanRequiredFlow가 여전히 true일 때만
+      if (isHumanRequiredFlowRef.current && !isHandoverModeRef.current) {
+        console.log('[App] 리마인더 후 타이머 재시작');
+        startInactivityTimer();
+      }
+    }, INACTIVITY_REMINDER_MS);
+  }, [clearInactivityTimer, playAudio]);
+
+  // 고객 활동 시 타이머 리셋 (HUMAN_REQUIRED 플로우 상태일 때만)
+  const resetInactivityTimer = useCallback(() => {
+    if (isHumanRequiredFlow && !isHandoverMode) {
+      lastActivityTimeRef.current = Date.now();
+      startInactivityTimer();
+    }
+  }, [isHumanRequiredFlow, isHandoverMode, startInactivityTimer]);
+
+  // HUMAN_REQUIRED 플로우 상태 변경 시 리마인더 타이머 관리
+  useEffect(() => {
+    if (isHumanRequiredFlow && !isHandoverMode) {
+      // HUMAN_REQUIRED 플로우 진입 (consent_check 또는 waiting_agent) → 리마인더 타이머 시작
+      console.log('[App] HUMAN_REQUIRED 플로우 - 비활성 리마인더 타이머 시작');
+      startInactivityTimer();
+    } else {
+      // HUMAN_REQUIRED 플로우가 아님 → 타이머 정리
+      clearInactivityTimer();
+    }
+
+    return () => {
+      clearInactivityTimer();
+    };
+  }, [isHumanRequiredFlow, isHandoverMode, startInactivityTimer, clearInactivityTimer]);
 
   // 상담원 메시지 폴링 (이관 모드일 때만)
   // 이미 처리한 메시지 ID를 추적하는 Set (중복 방지)
@@ -271,6 +353,10 @@ function App() {
   const processStopRecording = useCallback(async () => {
     console.log('[App] ========== processStopRecording 시작 ==========');
     console.log('[App] isHandoverMode:', isHandoverMode, 'isRecordingMode:', isRecordingMode, 'isWaitingForAgent:', isWaitingForAgent);
+
+    // 고객 활동 감지 - 리마인더 타이머 리셋
+    resetInactivityTimer();
+
     const result = await stopRecording();
     console.log('[App] stopRecording 결과 - result 존재:', !!result);
     if (result) {
@@ -329,14 +415,33 @@ function App() {
         console.log('[App] 녹음 모드 - AI 응답 전체:', JSON.stringify(result.aiResponse, null, 2));
         console.log('[App] 녹음 모드 - audioBase64 존재 여부:', !!result.audioBase64, ', 길이:', result.audioBase64?.length || 0);
 
-        // HANDOVER 감지 (녹음 모드에서)
+        // HUMAN_REQUIRED 플로우 감지 (백엔드에서 받은 is_human_required_flow 사용)
+        const backendHumanRequiredFlow = result.aiResponse.isHumanRequiredFlow || false;
+        console.log('[App] 녹음 모드 AI 응답 - suggestedAction:', result.aiResponse.suggestedAction, ', handoverStatus:', result.aiResponse.handoverStatus, ', isHumanRequiredFlow:', backendHumanRequiredFlow);
+
+        // 세션 종료 감지 (불명확 응답/도메인 외 질문 3회 이상)
+        const isSessionEnd = result.aiResponse.isSessionEnd || false;
+        if (isSessionEnd) {
+          console.log('[App] 녹음 모드 - 세션 종료 감지 (is_session_end=true)');
+          setIsHumanRequiredFlow(false);
+          setIsWaitingForAgent(false);
+          cleanupHandoverPolling();
+        }
+        // HUMAN_REQUIRED 플로우 진입/종료 감지
+        else if (backendHumanRequiredFlow && !isHumanRequiredFlow) {
+          console.log('[App] 녹음 모드 - HUMAN_REQUIRED 플로우 진입 감지 (백엔드)');
+          setIsHumanRequiredFlow(true);
+        } else if (!backendHumanRequiredFlow && isHumanRequiredFlow) {
+          console.log('[App] 녹음 모드 - 고객 상담사 연결 거부 - HUMAN_REQUIRED 플로우 종료');
+          setIsHumanRequiredFlow(false);
+        }
+
+        // HANDOVER 감지 (녹음 모드에서 - 메시지 표시용)
         const isHandoverSuggested =
           result.aiResponse.suggestedAction === 'HANDOVER' ||
           result.aiResponse.suggestedAction === 'handover' ||
           result.aiResponse.text.includes('상담사에게 연결해 드리겠습니다') ||
           result.aiResponse.text.includes('상담원에게 연결');
-
-        console.log('[App] 녹음 모드 AI 응답 - suggestedAction:', result.aiResponse.suggestedAction, ', handoverStatus:', result.aiResponse.handoverStatus, ', isHandoverSuggested:', isHandoverSuggested);
 
         // handover_status가 pending이면 상담사 수락 대기 폴링 시작
         // 안내 메시지는 백엔드(waiting_agent)에서 이미 ai_message에 포함됨
@@ -431,7 +536,7 @@ function App() {
         emptyInputCountRef.current = 0;  // 카운터 초기화
       }
     }
-  }, [stopRecording, isContinuousMode, isHandoverMode, startRecording, sessionId, isRecordingMode, playAudio]);
+  }, [stopRecording, isContinuousMode, isHandoverMode, isHumanRequiredFlow, startRecording, sessionId, isRecordingMode, playAudio, resetInactivityTimer]);
 
   // VAD 자동 중지 콜백 설정 (2초 침묵 시 자동 전송)
   // 백엔드에서 처리 완료 후 결과를 직접 받음 (EOS 전송 없이)
@@ -486,14 +591,33 @@ function App() {
 
         // AI 응답 메시지 추가 (이관 모드가 아닐 때만)
         if (!currentHandoverMode && result.aiResponse?.text) {
-          // HANDOVER 감지: suggestedAction 또는 메시지 내용으로 판단
+          // HUMAN_REQUIRED 플로우 감지 (백엔드에서 받은 is_human_required_flow 사용)
+          const backendHumanRequiredFlow = result.aiResponse.isHumanRequiredFlow || false;
+          console.log('[App] AI 응답 처리 - suggestedAction:', result.aiResponse.suggestedAction, ', handoverStatus:', result.aiResponse.handoverStatus, ', isHumanRequiredFlow:', backendHumanRequiredFlow);
+
+          // 세션 종료 감지 (불명확 응답/도메인 외 질문 3회 이상)
+          const isSessionEnd = result.aiResponse.isSessionEnd || false;
+          if (isSessionEnd) {
+            console.log('[App] 스트리밍 모드 - 세션 종료 감지 (is_session_end=true)');
+            setIsHumanRequiredFlow(false);
+            setIsWaitingForAgent(false);
+          }
+          // HUMAN_REQUIRED 플로우 진입/종료 감지
+          const currentHumanRequiredFlow = isHumanRequiredFlowRef.current;
+          if (!isSessionEnd && backendHumanRequiredFlow && !currentHumanRequiredFlow) {
+            console.log('[App] 스트리밍 모드 - HUMAN_REQUIRED 플로우 진입 감지 (백엔드)');
+            setIsHumanRequiredFlow(true);
+          } else if (!isSessionEnd && !backendHumanRequiredFlow && currentHumanRequiredFlow) {
+            console.log('[App] 스트리밍 모드 - 고객 상담사 연결 거부 - HUMAN_REQUIRED 플로우 종료');
+            setIsHumanRequiredFlow(false);
+          }
+
+          // HANDOVER 감지: suggestedAction 또는 메시지 내용으로 판단 (메시지 표시용)
           const isHandoverSuggested =
             result.aiResponse.suggestedAction === 'HANDOVER' ||
             result.aiResponse.suggestedAction === 'handover' ||
             result.aiResponse.text.includes('상담사에게 연결해 드리겠습니다') ||
             result.aiResponse.text.includes('상담원에게 연결');
-
-          console.log('[App] AI 응답 처리 - suggestedAction:', result.aiResponse.suggestedAction, ', handoverStatus:', result.aiResponse.handoverStatus, ', isHandoverSuggested:', isHandoverSuggested);
 
           // handover_status가 pending이면 상담사 수락 대기 폴링 시작
           // 안내 메시지는 백엔드(waiting_agent)에서 이미 ai_message에 포함됨
@@ -610,6 +734,7 @@ function App() {
       setIsContinuousMode(false);
       setIsHandoverMode(false);
       setIsWaitingForAgent(false);
+      setIsHumanRequiredFlow(false);  // HUMAN_REQUIRED 플로우 초기화
       setHandoverData(null);
       emptyInputCountRef.current = 0;
       lastMessageIdRef.current = 0;
@@ -684,6 +809,7 @@ function App() {
           // 상담사가 수락함 → 모달 없이 바로 연결
           cleanupHandoverPolling();
           setIsWaitingForAgent(false);
+          setIsHumanRequiredFlow(false);  // HUMAN_REQUIRED 플로우 종료
           setIsHandoverMode(true);  // 상담사 메시지 폴링 시작
 
           // 연결 완료 안내 메시지
@@ -705,11 +831,12 @@ function App() {
           } catch (ttsErr) {
             console.warn('TTS 재생 실패:', ttsErr);
           }
-        } else if (status.handover_status === 'cancelled') {
-          // 고객이 상담사 연결을 취소함
-          console.log('[App] 핸드오버 취소됨 - 폴링 중지');
+        } else if (status.handover_status === 'declined') {
+          // 고객이 상담사 연결을 거부함
+          console.log('[App] 핸드오버 거부됨 - 폴링 중지');
           cleanupHandoverPolling();
           setIsWaitingForAgent(false);
+          setIsHumanRequiredFlow(false);  // HUMAN_REQUIRED 플로우 종료
           // isHandoverMode는 false로 유지 (일반 대화로 복귀)
         }
       } catch (err) {
@@ -896,6 +1023,9 @@ function App() {
     const trimmedInput = textInput.trim();
     if (!trimmedInput || isTextSending) return;
 
+    // 고객 활동 감지 - 리마인더 타이머 리셋
+    resetInactivityTimer();
+
     setIsTextSending(true);
     setTextInput('');
 
@@ -943,6 +1073,24 @@ function App() {
           console.warn('TTS 재생 실패:', ttsErr);
         }
 
+        // 세션 종료 감지 (불명확 응답/도메인 외 질문 3회 이상)
+        const isSessionEnd = response.is_session_end || false;
+        console.log('[App] is_human_required_flow:', response.is_human_required_flow, ', is_session_end:', isSessionEnd, ', 현재 상태:', isHumanRequiredFlow);
+
+        if (isSessionEnd) {
+          console.log('[App] 텍스트 모드 - 세션 종료 감지 (is_session_end=true)');
+          setIsHumanRequiredFlow(false);
+          setIsWaitingForAgent(false);
+          cleanupHandoverPolling();
+        } else if (response.is_human_required_flow && !isHumanRequiredFlow) {
+          console.log('[App] HUMAN_REQUIRED 플로우 진입 감지 (백엔드)');
+          setIsHumanRequiredFlow(true);
+        } else if (!response.is_human_required_flow && isHumanRequiredFlow) {
+          // 고객이 상담사 연결을 거부한 경우 (is_human_required_flow가 false로 변경됨)
+          console.log('[App] 고객 상담사 연결 거부 - HUMAN_REQUIRED 플로우 종료');
+          setIsHumanRequiredFlow(false);
+        }
+
         // handover_status가 pending이면 상담사 수락 대기 폴링 시작
         // 안내 메시지는 백엔드(waiting_agent)에서 이미 ai_message에 포함되어 있으므로 추가 표시 불필요
         if (response.handover_status === 'pending' && !isWaitingForAgent) {
@@ -966,7 +1114,7 @@ function App() {
       setIsTextSending(false);
       textInputRef.current?.focus();
     }
-  }, [textInput, isTextSending, isHandoverMode, sessionId, isWaitingForAgent, startHandoverPolling, playAudio]);
+  }, [textInput, isTextSending, isHandoverMode, sessionId, isWaitingForAgent, isHumanRequiredFlow, startHandoverPolling, playAudio, resetInactivityTimer]);
 
   // Enter 키 핸들러
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {

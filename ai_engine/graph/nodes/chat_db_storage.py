@@ -39,6 +39,8 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
     context_intent = state.get("context_intent")  # 38개 카테고리 (도난/분실 신청/해제 등)
     requires_consultant = state.get("requires_consultant", False)
     handover_status = state.get("handover_status")  # waiting_agent에서 설정된 핸드오버 상태
+    unclear_count = state.get("unclear_count", 0)  # 불명확 응답 카운터
+    out_of_domain_count = state.get("out_of_domain_count", 0)  # 도메인 외 질문 카운터
 
     # suggested_action 결정 로직
     # 1. state에 이미 설정되어 있으면 사용 (human_transfer 노드에서 설정)
@@ -80,7 +82,9 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
                 collected_info=json.dumps(collected_info, ensure_ascii=False) if collected_info else None,  # collected_info 컬럼 (JSON)
                 info_collection_complete=1 if info_collection_complete else 0,   # info_collection_complete 컬럼
                 triage_decision=triage_decision.value if triage_decision else None,  # triage_decision 컬럼
-                context_intent=context_intent  # context_intent 컬럼 (38개 카테고리)
+                context_intent=context_intent,  # context_intent 컬럼 (38개 카테고리)
+                unclear_count=unclear_count,  # 불명확 응답 카운터
+                out_of_domain_count=out_of_domain_count  # 도메인 외 질문 카운터
             )
             db.add(chat_session)
             db.flush()  # ID를 얻기 위해 flush
@@ -95,11 +99,18 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
             # context_intent 저장 (triage_agent에서 분류한 38개 카테고리)
             if context_intent:
                 chat_session.context_intent = context_intent
-            # 핸드오버 상태 저장 (waiting_agent에서 pending으로 설정된 경우)
-            if handover_status:
+            # 불명확 응답/도메인 외 질문 카운터 저장
+            chat_session.unclear_count = unclear_count
+            chat_session.out_of_domain_count = out_of_domain_count
+            # 핸드오버 상태 저장 (waiting_agent에서 pending으로 설정되거나, 거부 시 None으로 초기화)
+            if handover_status is not None:
                 chat_session.handover_status = handover_status
                 chat_session.handover_requested_at = get_kst_now()
                 logger.info(f"핸드오버 상태 DB 저장 - 세션: {session_id}, status: {handover_status}")
+            elif "handover_status" in state and state["handover_status"] is None:
+                # 명시적으로 None이 설정된 경우 (거부 시) DB도 초기화
+                chat_session.handover_status = None
+                logger.info(f"핸드오버 상태 초기화 - 세션: {session_id}")
 
         # ========== [chat_messages 테이블] 대화 메시지 저장 ==========
         # [chat_messages] 사용자 메시지 INSERT (role=USER)

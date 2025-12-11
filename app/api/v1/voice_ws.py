@@ -325,7 +325,7 @@ async def process_text_and_respond(
         )
         chat_response = await process_chat_message(chat_request)
 
-        # AI 응답 전송 (handover_status 포함)
+        # AI 응답 전송 (handover_status, is_human_required_flow, is_session_end 포함)
         await ws_manager.send_message(
             session_id,
             WSMessageType.AI_RESPONSE,
@@ -334,6 +334,8 @@ async def process_text_and_respond(
                 "intent": chat_response.intent.value if hasattr(chat_response.intent, 'value') else str(chat_response.intent),
                 "suggested_action": chat_response.suggested_action.value if hasattr(chat_response.suggested_action, 'value') else str(chat_response.suggested_action),
                 "handover_status": chat_response.handover_status,  # 핸드오버 상태 추가
+                "is_human_required_flow": chat_response.is_human_required_flow,  # HUMAN_REQUIRED 플로우 여부
+                "is_session_end": chat_response.is_session_end,  # 세션 종료 여부
             }
         )
 
@@ -526,12 +528,14 @@ class VoiceStreamSession:
             )
             chat_response = await process_chat_message(chat_request)
 
-            # AI 응답 전송 (handover_status 포함)
+            # AI 응답 전송 (handover_status, is_human_required_flow, is_session_end 포함)
             await self.send_message('ai_response', {
                 'text': chat_response.ai_message,
                 'intent': chat_response.intent.value if hasattr(chat_response.intent, 'value') else str(chat_response.intent),
                 'suggested_action': chat_response.suggested_action.value if hasattr(chat_response.suggested_action, 'value') else str(chat_response.suggested_action),
                 'handover_status': chat_response.handover_status,  # 핸드오버 상태 추가
+                'is_human_required_flow': chat_response.is_human_required_flow,  # HUMAN_REQUIRED 플로우 여부
+                'is_session_end': chat_response.is_session_end,  # 세션 종료 여부
             })
 
             # 3. TTS (Google TTS 사용)
