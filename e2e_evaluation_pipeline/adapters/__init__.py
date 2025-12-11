@@ -15,7 +15,7 @@ E2E 평가 파이프라인에서 실제 AI 엔진 모듈들과 연동하기 위�
     # Intent 분류 테스트
     intent_adapter = IntentAdapter()
     result = intent_adapter.classify("카드 분실했어요")
-    print(result.predicted_intent)  # "분실/도난 신고"
+    print(result.predicted_intent)  # "도난/분실 신청/해제"
 
     # RAG 검색 테스트
     rag_adapter = RAGAdapter()
@@ -24,7 +24,7 @@ E2E 평가 파이프라인에서 실제 AI 엔진 모듈들과 연동하기 위�
 
     # 슬롯 추출 테스트
     slot_adapter = SlotAdapter()
-    result = slot_adapter.extract_slots([], "카드 뒤 4자리는 1234입니다", "분실/도난 신고")
+    result = slot_adapter.extract_slots([], "카드 뒤 4자리는 1234입니다", "도난/분실 신청/해제")
     print(result.extracted_slots)  # {"card_last_4_digits": "1234"}
 
     # 전체 워크플로우 테스트

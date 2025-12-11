@@ -57,7 +57,7 @@ Examples:
 
     parser.add_argument(
         "--module",
-        choices=["stt", "intent", "rag", "slot_filling", "summary", "flow", "e2e"],
+        choices=["stt", "tts", "intent", "rag", "slot_filling", "summary", "flow", "e2e"],
         help="특정 모듈만 평가"
     )
 
@@ -103,6 +103,37 @@ Examples:
     if args.module:
         # 단일 모듈 평가
         print(f"Running {args.module.upper()} module evaluation...")
+
+        # TTS는 별도 처리 (ModuleEvaluationRunner를 사용하지 않음)
+        if args.module == "tts":
+            from e2e_evaluation_pipeline.datasets.data_loader import get_sample_tts_data
+            from e2e_evaluation_pipeline.adapters.tts_adapter import TTSAdapter
+
+            test_texts = get_sample_tts_data()
+            adapter = TTSAdapter(use_google=True)
+
+            print(f"\nEvaluating {len(test_texts)} TTS samples...\n")
+
+            # TTS 배치 평가 실행
+            eval_result = adapter.evaluate_batch(test_texts)
+
+            print("=" * 50)
+            print("  TTS Evaluation Results")
+            print("=" * 50)
+            print(f"  Samples: {eval_result['count']}")
+            print(f"  Success Rate: {eval_result['success_rate'] * 100:.1f}%")
+            print(f"  Avg Synthesis Time: {eval_result['avg_synthesis_time_ms']:.1f}ms")
+            print(f"  Avg Audio Size: {eval_result['avg_audio_size_bytes']:.0f} bytes")
+            print(f"  Avg Chars/Second: {eval_result['avg_chars_per_second']:.1f}")
+            print("=" * 50)
+
+            # P0 기준: 성공률 95% 이상, 평균 합성 시간 2000ms 이하
+            p0_passed = eval_result['success_rate'] >= 0.95 and eval_result['avg_synthesis_time_ms'] <= 2000
+            print(f"\n  P0 Status: {'PASSED' if p0_passed else 'FAILED'}")
+            print(f"    - Success Rate >= 95%: {'YES' if eval_result['success_rate'] >= 0.95 else 'NO'}")
+            print(f"    - Avg Time <= 2000ms: {'YES' if eval_result['avg_synthesis_time_ms'] <= 2000 else 'NO'}")
+
+            return  # TTS는 별도 처리 후 종료
 
         config = EvaluationConfig.for_module(args.module)
         runner = ModuleEvaluationRunner(args.module, config)

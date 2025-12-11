@@ -98,6 +98,8 @@ export interface HandoverSession {
   created_at: string;
   updated_at: string;
   collected_info: Record<string, string>;
+  handover_status?: string;  // pending, accepted, declined, timeout
+  handover_accepted_at?: string;  // 상담사 수락 시간
 }
 
 // DB 메시지 정보

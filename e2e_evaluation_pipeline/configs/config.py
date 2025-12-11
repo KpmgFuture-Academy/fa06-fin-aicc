@@ -60,6 +60,7 @@ class PathConfig:
         (self.datasets_dir / "golden_qa").mkdir(exist_ok=True)
         (self.datasets_dir / "intent_test").mkdir(exist_ok=True)
         (self.datasets_dir / "stt_test").mkdir(exist_ok=True)
+        (self.datasets_dir / "tts_test").mkdir(exist_ok=True)
         (self.datasets_dir / "slot_test").mkdir(exist_ok=True)
         (self.datasets_dir / "summary_test").mkdir(exist_ok=True)
 
@@ -129,6 +130,16 @@ class FlowEvalConfig:
 
 
 @dataclass
+class TTSEvalConfig:
+    """TTS 평가 설정"""
+    enabled: bool = True
+    use_google: bool = True  # False면 OpenAI TTS
+    test_data_file: str = "datasets/tts_test/test_data.json"
+    default_voice: Optional[str] = None
+    sample_size: Optional[int] = None  # None이면 전체
+
+
+@dataclass
 class E2EEvalConfig:
     """E2E 통합 평가 설정"""
     enabled: bool = True
@@ -155,6 +166,7 @@ class EvaluationConfig:
 
     # 모듈별 설정
     stt: STTEvalConfig = field(default_factory=STTEvalConfig)
+    tts: TTSEvalConfig = field(default_factory=TTSEvalConfig)
     intent: IntentEvalConfig = field(default_factory=IntentEvalConfig)
     rag: RAGEvalConfig = field(default_factory=RAGEvalConfig)
     slot_filling: SlotFillingEvalConfig = field(default_factory=SlotFillingEvalConfig)
@@ -198,6 +210,7 @@ class EvaluationConfig:
 
         # 모든 모듈 비활성화
         config.stt.enabled = False
+        config.tts.enabled = False
         config.intent.enabled = False
         config.rag.enabled = False
         config.slot_filling.enabled = False
@@ -208,6 +221,7 @@ class EvaluationConfig:
         # 지정 모듈만 활성화
         module_map = {
             "stt": config.stt,
+            "tts": config.tts,
             "intent": config.intent,
             "rag": config.rag,
             "slot_filling": config.slot_filling,

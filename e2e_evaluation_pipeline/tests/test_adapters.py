@@ -44,8 +44,8 @@ class TestIntentAdapter:
         assert result.confidence > 0
         assert len(result.top_k_results) > 0
 
-        # 분실/도난 신고 또는 SEC_CARD 도메인이어야 함
-        assert result.domain == "SEC_CARD" or "분실" in result.predicted_intent
+        # 도난/분실 신청/해제 또는 SEC_CARD 도메인이어야 함
+        assert result.domain == "SEC_CARD" or "분실" in result.predicted_intent or "도난" in result.predicted_intent
         logger.info(f"카드 분실 분류 결과: {result.predicted_intent} ({result.confidence:.2f})")
 
     def test_classify_payment_date(self, adapter):
@@ -80,20 +80,20 @@ class TestIntentAdapter:
 
     def test_domain_mapping(self, adapter):
         """도메인 매핑 테스트"""
-        # 카테고리 -> 도메인 매핑 확인
-        assert adapter.get_domain_for_category("분실/도난 신고") == "SEC_CARD"
+        # 카테고리 -> 도메인 매핑 확인 (38개 카테고리 기준)
+        assert adapter.get_domain_for_category("도난/분실 신청/해제") == "SEC_CARD"
         assert adapter.get_domain_for_category("결제일 안내/변경") == "PAY_BILL"
-        assert adapter.get_domain_for_category("대출 신청") == "LOAN"
+        assert adapter.get_domain_for_category("단기카드대출 안내/실행") == "LOAN"
 
     def test_evaluate_prediction(self, adapter):
         """예측 평가 테스트"""
         # 정확히 일치
-        is_match, match_type = adapter.evaluate_prediction("분실/도난 신고", "분실/도난 신고")
+        is_match, match_type = adapter.evaluate_prediction("도난/분실 신청/해제", "도난/분실 신청/해제")
         assert is_match
         assert match_type == "exact"
 
         # 도메인 레벨 일치
-        is_match, match_type = adapter.evaluate_prediction("카드 정지/해제", "분실/도난 신고")
+        is_match, match_type = adapter.evaluate_prediction("긴급 배송 신청", "도난/분실 신청/해제")
         assert is_match
         assert match_type == "domain"  # 둘 다 SEC_CARD
 
@@ -169,19 +169,19 @@ class TestSlotAdapter:
 
     def test_get_slots_for_category(self, adapter):
         """카테고리별 슬롯 조회 테스트"""
-        required, optional = adapter.get_slots_for_category("분실/도난 신고")
+        required, optional = adapter.get_slots_for_category("도난/분실 신청/해제")
 
         assert "card_last_4_digits" in required
         assert "loss_date" in required
-        logger.info(f"분실/도난 신고 필수 슬롯: {required}")
-        logger.info(f"분실/도난 신고 선택 슬롯: {optional}")
+        logger.info(f"도난/분실 신청/해제 필수 슬롯: {required}")
+        logger.info(f"도난/분실 신청/해제 선택 슬롯: {optional}")
 
     def test_extract_slots_card_digits(self, adapter):
         """카드 번호 추출 테스트"""
         result = adapter.extract_slots(
             conversation_history=[],
             current_message="카드 뒤 4자리는 1234입니다",
-            category="분실/도난 신고"
+            category="도난/분실 신청/해제"
         )
 
         assert "card_last_4_digits" in result.extracted_slots
@@ -193,7 +193,7 @@ class TestSlotAdapter:
         result = adapter.extract_slots(
             conversation_history=[],
             current_message="어제 분실했어요",
-            category="분실/도난 신고"
+            category="도난/분실 신청/해제"
         )
 
         assert "loss_date" in result.extracted_slots
@@ -204,7 +204,7 @@ class TestSlotAdapter:
         result = adapter.extract_slots(
             conversation_history=[],
             current_message="카드 분실했어요",
-            category="분실/도난 신고"
+            category="도난/분실 신청/해제"
         )
 
         # 아직 수집 안 된 슬롯들이 missing에 있어야 함
@@ -219,7 +219,7 @@ class TestSlotAdapter:
                 {"role": "user", "message": "카드 뒤 4자리는 5678입니다"}
             ],
             current_message="어제 오후 3시쯤 분실했어요",
-            category="분실/도난 신고"
+            category="도난/분실 신청/해제"
         )
 
         # 필수 슬롯이 모두 수집되었으면 완료
@@ -240,7 +240,7 @@ class TestSlotAdapter:
     def test_simulate_multi_turn(self, adapter):
         """멀티턴 슬롯 수집 시뮬레이션"""
         results = adapter.simulate_multi_turn_collection(
-            category="분실/도난 신고",
+            category="도난/분실 신청/해제",
             user_responses=[
                 "카드 분실했어요",
                 "카드 뒤 4자리는 1234입니다",

@@ -36,6 +36,7 @@ interface ServerMessage {
     // ai_response
     intent?: string;
     suggested_action?: string;
+    handover_status?: string | null;  // 핸드오버 상태
     // tts_chunk
     audio_base64?: string;
     format?: string;
@@ -57,6 +58,7 @@ interface AIResponse {
   text: string;
   intent: string;
   suggestedAction: string;
+  handoverStatus?: string | null;  // 핸드오버 상태 (pending, accepted, declined, timeout)
 }
 
 // stopRecording 반환 타입
@@ -288,11 +290,12 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
           break;
 
         case 'ai_response':
-          console.log('[VoiceStream] AI 응답:', data.text);
+          console.log('[VoiceStream] AI 응답:', data.text, 'handover_status:', data.handover_status);
           const response: AIResponse = {
             text: data.text || '',
             intent: data.intent || '',
             suggestedAction: data.suggested_action || '',
+            handoverStatus: data.handover_status || null,  // 핸드오버 상태 추가
           };
           setAiResponse(response);
           latestAiResponseRef.current = response;

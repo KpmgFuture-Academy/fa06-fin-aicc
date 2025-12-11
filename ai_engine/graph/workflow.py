@@ -74,17 +74,20 @@ def _entry_router(state: GraphState) -> str:
 
 def _route_after_consent(state: GraphState) -> str:
     """consent_check_node 이후 분기.
-    
+
     - customer_consent_received=TRUE → waiting_agent (정보 수집)
-    - is_human_required_flow=FALSE → triage_agent (플로우 종료)
+    - customer_declined_handover=TRUE → chat_db_storage (거부 메시지 출력 후 종료)
+    - 그 외 → triage_agent (플로우 종료)
     """
     customer_consent_received = state.get("customer_consent_received", False)
-    is_human_required_flow = state.get("is_human_required_flow", True)
-    
+    customer_declined_handover = state.get("customer_declined_handover", False)
+
     if customer_consent_received:
         return "waiting_agent"
-    
-    # 동의하지 않음 (is_human_required_flow=FALSE로 설정됨)
+
+    if customer_declined_handover:
+        return "chat_db_storage"
+
     return "triage_agent"
 
 
@@ -149,8 +152,9 @@ def build_workflow() -> Any:
         "consent_check",
         _route_after_consent,
         {
-            "waiting_agent": "waiting_agent",  # 동의함
-            "triage_agent": "triage_agent",    # 동의하지 않음
+            "waiting_agent": "waiting_agent",      # 동의함
+            "chat_db_storage": "chat_db_storage",  # 거부함 (ai_message 출력 후 종료)
+            "triage_agent": "triage_agent",        # 불명확한 응답
         },
     )
 

@@ -724,6 +724,8 @@ const Dashboard: React.FC = () => {
   const agentSentMessageIds = useRef<Set<number>>(new Set());
   // 폴링용 마지막 메시지 ID
   const lastMessageIdRef = useRef<number | undefined>(undefined);
+  // 핸드오버 수락 시간 (ref로 저장하여 폴링에서 참조)
+  const handoverAcceptedAtRef = useRef<Date | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -861,19 +863,38 @@ const Dashboard: React.FC = () => {
     // 기존 메시지 로드 (HANDOVER 이전 대화 포함 - 전체 대화 표시)
     try {
       const dbMessages = await getSessionMessages(session.session_id, undefined, false);
-      const converted: Message[] = dbMessages.map((m: DBMessage) => ({
-        id: m.id,
-        speaker: m.role === 'user' ? 'customer' : 'agent',
-        message: m.message,
-        timestamp: new Date(m.created_at).toLocaleTimeString('ko-KR', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }),
-        // DB에서 불러온 assistant 메시지는 AI가 생성한 것으로 표시
-        isAiGenerated: m.role === 'assistant'
-      }));
+
+      // 핸드오버 수락 시간 (세션 정보에서 가져옴)
+      const handoverAcceptedAt = session.handover_accepted_at
+        ? new Date(session.handover_accepted_at)
+        : null;
+      // ref에도 저장 (폴링에서 참조용)
+      handoverAcceptedAtRef.current = handoverAcceptedAt;
+
+      const converted: Message[] = dbMessages.map((m: DBMessage) => {
+        const messageTime = new Date(m.created_at);
+
+        // AI 생성 여부 판단:
+        // - user 메시지는 항상 false
+        // - assistant 메시지 중 핸드오버 수락 이전은 AI 생성
+        // - assistant 메시지 중 핸드오버 수락 이후는 상담사 (AI 아님)
+        const isAiGenerated = m.role === 'assistant' && (
+          !handoverAcceptedAt || messageTime < handoverAcceptedAt
+        );
+
+        return {
+          id: m.id,
+          speaker: m.role === 'user' ? 'customer' : 'agent',
+          message: m.message,
+          timestamp: messageTime.toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          }),
+          isAiGenerated
+        };
+      });
       setMessages(converted);
 
       if (dbMessages.length > 0) {
@@ -911,19 +932,33 @@ const Dashboard: React.FC = () => {
         try {
           const newMessages = await getSessionMessages(session.session_id, lastMessageIdRef.current, false);
           if (newMessages.length > 0) {
-            const newConverted: Message[] = newMessages.map((m: DBMessage) => ({
-              id: m.id,
-              speaker: m.role === 'user' ? 'customer' : 'agent',
-              message: m.message,
-              timestamp: new Date(m.created_at).toLocaleTimeString('ko-KR', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-              }),
-              // 상담원이 직접 보낸 메시지가 아니면 AI 생성으로 표시
-              isAiGenerated: m.role === 'assistant' && !agentSentMessageIds.current.has(m.id)
-            }));
+            const newConverted: Message[] = newMessages.map((m: DBMessage) => {
+              const messageTime = new Date(m.created_at);
+              const handoverAcceptedAt = handoverAcceptedAtRef.current;
+
+              // AI 생성 여부 판단:
+              // - user 메시지는 항상 false
+              // - 상담원이 직접 보낸 메시지(agentSentMessageIds에 있음)는 false
+              // - 핸드오버 수락 이후의 assistant 메시지는 상담사 메시지로 간주 (false)
+              // - 그 외는 AI 생성
+              const isAiGenerated = m.role === 'assistant' && (
+                !agentSentMessageIds.current.has(m.id) &&
+                (!handoverAcceptedAt || messageTime < handoverAcceptedAt)
+              );
+
+              return {
+                id: m.id,
+                speaker: m.role === 'user' ? 'customer' : 'agent',
+                message: m.message,
+                timestamp: messageTime.toLocaleTimeString('ko-KR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                }),
+                isAiGenerated
+              };
+            });
             setMessages(prev => [...prev, ...newConverted]);
             lastMessageIdRef.current = Math.max(...newMessages.map((m: DBMessage) => m.id));
           }
@@ -1028,6 +1063,8 @@ const Dashboard: React.FC = () => {
     try {
       await acceptSession(selectedSession.session_id, 'agent_001'); // 임시 상담사 ID
       setIsSessionAccepted(true);
+      // 수락 시간 기록 (이후 메시지는 상담사 메시지로 간주)
+      handoverAcceptedAtRef.current = new Date();
       console.log('세션 수락 완료:', selectedSession.session_id);
 
       // 수락 완료 후 분석 정보 로드
@@ -1104,7 +1141,7 @@ const Dashboard: React.FC = () => {
           <option value="">-- 세션 선택 --</option>
           {handoverSessions.map(session => (
             <option key={session.session_id} value={session.session_id}>
-              {session.session_id} {session.collected_info?.customer_name ? `(${session.collected_info.customer_name})` : ''}
+              {session.session_id} {session.collected_info?._category ? `(${session.collected_info._category})` : ''}
             </option>
           ))}
         </SessionSelect>
@@ -1164,7 +1201,7 @@ const Dashboard: React.FC = () => {
           </SlotItem>
           {/* 동적 슬롯 표시 - 내부 필드(_로 시작)와 기본 필드 제외 */}
           {selectedSession?.collected_info && Object.entries(selectedSession.collected_info)
-            .filter(([key]) => !key.startsWith('_') && !['inquiry_type', 'inquiry_detail'].includes(key))
+            .filter(([key, value]) => !key.startsWith('_') && !['inquiry_type', 'inquiry_detail', 'customer_name'].includes(key) && value !== null)
             .map(([key, value]) => (
               <SlotItem key={key}>
                 <SlotLabel>{getSlotLabel(key)}:</SlotLabel>
@@ -1342,7 +1379,7 @@ const Dashboard: React.FC = () => {
                   {new Date(session.updated_at).toLocaleString('ko-KR')}
                 </ClosedSessionDate>
                 <ClosedSessionName>
-                  {session.collected_info?.customer_name || '(이름 없음)'}
+                  {session.collected_info?._category || session.collected_info?.inquiry_detail || '(상세 없음)'}
                 </ClosedSessionName>
                 <ClosedSessionType>
                   {session.collected_info?.inquiry_type || '(유형 없음)'}

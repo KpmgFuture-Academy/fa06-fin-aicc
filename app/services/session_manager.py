@@ -91,6 +91,7 @@ class SessionManager:
             - collected_info: dict
             - info_collection_complete: bool
             - triage_decision: Optional[TriageDecisionType]
+            - context_intent: Optional[str]
         """
         db = SessionLocal()
         try:
@@ -98,14 +99,15 @@ class SessionManager:
             chat_session = db.query(ChatSession).filter(
                 ChatSession.session_id == session_id
             ).first()
-            
+
             if not chat_session:
                 return {
                     "is_human_required_flow": False,
                     "customer_consent_received": False,
                     "collected_info": {},
                     "info_collection_complete": False,
-                    "triage_decision": None
+                    "triage_decision": None,
+                    "context_intent": None
                 }
             
             # collected_info JSON 파싱
@@ -129,9 +131,10 @@ class SessionManager:
                 "customer_consent_received": bool(chat_session.customer_consent_received),
                 "collected_info": collected_info,
                 "info_collection_complete": bool(chat_session.info_collection_complete),
-                "triage_decision": triage_decision
+                "triage_decision": triage_decision,
+                "context_intent": chat_session.context_intent  # 38개 카테고리 복원
             }
-            
+
         except Exception as e:
             logger.error(f"세션 상태 조회 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
             return {
@@ -139,7 +142,8 @@ class SessionManager:
                 "customer_consent_received": False,
                 "collected_info": {},
                 "info_collection_complete": False,
-                "triage_decision": None
+                "triage_decision": None,
+                "context_intent": None
             }
         finally:
             db.close()

@@ -218,5 +218,70 @@
     "label": "문의 상세 내용",
     "question": "문의하신 내용을 좀 더 자세히 말씀해 주시겠어요?",
     "validation": null
+  },
+  "reservation_type": {
+    "label": "예약 유형",
+    "question": "가상계좌 예약을 원하시나요, 아니면 취소를 원하시나요?",
+    "validation": null
+  },
+  "reservation_date": {
+    "label": "예약 일시",
+    "question": "예약하실 날짜를 알려주시겠어요?",
+    "validation": null
+  },
+  "service_type": {
+    "label": "서비스 종류",
+    "question": "어떤 서비스에 대한 이용방법을 알고 싶으신가요?",
+    "validation": null
+  },
+  "new_address": {
+    "label": "새 주소",
+    "question": "청구서를 받으실 새 주소를 알려주시겠어요?",
+    "validation": null
+  },
+  "delivery_method": {
+    "label": "수령 방법",
+    "question": "청구서를 우편, 이메일 중 어떤 방식으로 받으시겠어요?",
+    "validation": null
+  },
+  "cancellation_reason": {
+    "label": "해지 사유",
+    "question": "해지하시려는 사유를 알려주시겠어요?",
+    "validation": null
+  },
+  "installment_months": {
+    "label": "할부 개월",
+    "question": "할부 개월 수를 알려주시겠어요?",
+    "validation": null
+  },
+  "conversion_destination": {
+    "label": "전환 대상",
+    "question": "포인트를 어디로 전환하시겠어요? (예: 현금, 마일리지, 기프트카드)",
+    "validation": null
+  },
+  "conversion_amount": {
+    "label": "전환 금액",
+    "question": "얼마를 전환하시겠어요?",
+    "validation": null
+  },
+  "voucher_type": {
+    "label": "바우처 종류",
+    "question": "어떤 바우처에 대한 문의이신가요?",
+    "validation": null
+  },
+  "event_type": {
+    "label": "이벤트 종류",
+    "question": "어떤 이벤트에 대해 알고 싶으신가요?",
+    "validation": null
+  },
+  "document_type": {
+    "label": "증명서 종류",
+    "question": "어떤 종류의 증명서가 필요하신가요? (예: 이용확인서, 거래내역서)",
+    "validation": null
+  },
+  "contact_phone": {
+    "label": "연락처",
+    "question": "연락받으실 전화번호를 알려주시겠어요?",
+    "validation": null
   }
 }

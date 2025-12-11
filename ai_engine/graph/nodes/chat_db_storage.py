@@ -36,6 +36,7 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
     collected_info = state.get("collected_info", {})
     info_collection_complete = state.get("info_collection_complete", False)
     triage_decision = state.get("triage_decision")
+    context_intent = state.get("context_intent")  # 38개 카테고리 (도난/분실 신청/해제 등)
     requires_consultant = state.get("requires_consultant", False)
     handover_status = state.get("handover_status")  # waiting_agent에서 설정된 핸드오버 상태
 
@@ -78,7 +79,8 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
                 customer_consent_received=1 if customer_consent_received else 0, # customer_consent_received 컬럼
                 collected_info=json.dumps(collected_info, ensure_ascii=False) if collected_info else None,  # collected_info 컬럼 (JSON)
                 info_collection_complete=1 if info_collection_complete else 0,   # info_collection_complete 컬럼
-                triage_decision=triage_decision.value if triage_decision else None  # triage_decision 컬럼
+                triage_decision=triage_decision.value if triage_decision else None,  # triage_decision 컬럼
+                context_intent=context_intent  # context_intent 컬럼 (38개 카테고리)
             )
             db.add(chat_session)
             db.flush()  # ID를 얻기 위해 flush
@@ -90,6 +92,9 @@ def chat_db_storage_node(state: GraphState) -> GraphState:
             chat_session.info_collection_complete = 1 if info_collection_complete else 0
             if triage_decision:
                 chat_session.triage_decision = triage_decision.value if hasattr(triage_decision, 'value') else str(triage_decision)
+            # context_intent 저장 (triage_agent에서 분류한 38개 카테고리)
+            if context_intent:
+                chat_session.context_intent = context_intent
             # 핸드오버 상태 저장 (waiting_agent에서 pending으로 설정된 경우)
             if handover_status:
                 chat_session.handover_status = handover_status

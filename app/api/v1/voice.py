@@ -159,6 +159,7 @@ async def voice_chat_message(
             intent=chat_response.intent,
             suggested_action=chat_response.suggested_action,
             transcribed_text=transcribed_text,
+            handover_status=chat_response.handover_status,  # 핸드오버 상태 추가
             stt_duration_ms=stt_duration,
             tts_duration_ms=tts_duration,
             total_duration_ms=total_duration,

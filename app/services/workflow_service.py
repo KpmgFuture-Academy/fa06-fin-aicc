@@ -168,8 +168,10 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
         "info_collection_complete": session_state["info_collection_complete"],
         # triage_decision도 이전 턴 값 복원 (참고용)
         "triage_decision": session_state["triage_decision"],
+        # context_intent: 38개 카테고리 (도난/분실 신청/해제 등) - waiting_agent에서 슬롯 결정에 사용
+        "context_intent": session_state["context_intent"],
     }
-    
+
     return state
 
 
@@ -219,6 +221,9 @@ def state_to_chat_response(state: GraphState) -> ChatResponse:
     source_documents = state.get("source_documents", [])
     info_collection_complete = state.get("info_collection_complete", False)
     handover_status = state.get("handover_status")  # 핸드오버 상태
+
+    # 디버그 로그 추가
+    logger.info(f"state_to_chat_response - handover_status: {handover_status}, info_collection_complete: {info_collection_complete}, suggested_action: {suggested_action}")
 
     return ChatResponse(
         ai_message=ai_message,
@@ -451,12 +456,12 @@ async def _extract_slot_info_from_conversation(
 대화 내용을 보고 고객의 문의 유형을 분류하세요.
 
 분류 카테고리:
-- 분실/도난 신고
-- 카드 재발급
-- 결제/승인 오류
-- 한도 조회/변경
-- 계좌 조회
-- 이체/송금
+- 도난/분실 신청/해제
+- 긴급 배송 신청
+- 결제대금 안내
+- 결제일 안내/변경
+- 한도 안내
+- 한도상향 접수/처리
 - 기타 문의
 
 한 단어로만 응답하세요. 위 카테고리 중 하나만 응답하세요.""")

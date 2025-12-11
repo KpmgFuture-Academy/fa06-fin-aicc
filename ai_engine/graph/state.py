@@ -92,8 +92,10 @@ class GraphState(TypedDict, total=False):
     # ========== HUMAN_REQUIRED 플로우 관련 ==========
     is_human_required_flow: bool  # HUMAN_REQUIRED 플로우 진입 여부
     customer_consent_received: bool  # 고객 동의 확인 여부 ("네" 응답 시 True)
+    customer_declined_handover: bool  # 고객이 상담사 연결을 거부했는지 여부 ("아니오" 응답 시 True)
     collected_info: Dict[str, Any]  # 수집된 고객 정보 (예: {"customer_name": "홍길동", "inquiry_type": "카드 분실"})
     info_collection_complete: bool  # 정보 수집 완료 여부 (True 시 summary_agent로 이동)
+    handover_status: Optional[str]  # 핸드오버 상태 (pending, accepted, declined, timeout)
     
     # ========== 상담 DB 저장 노드 (chat_db_storage) ==========
     # DB 저장은 별도 처리, 상태는 그대로 유지

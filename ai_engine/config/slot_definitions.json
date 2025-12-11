@@ -1,53 +1,19 @@
 {
-  "SEC_CARD": {
-    "domain_name": "분실/보안",
-    "categories": {
-      "분실/도난 신고": {
-        "required_slots": ["card_last_4_digits", "loss_date"],
-        "optional_slots": ["loss_location"]
-      },
-      "카드 정지/해제": {
-        "required_slots": ["card_last_4_digits", "request_type"],
-        "optional_slots": []
-      },
-      "비밀번호 관련": {
-        "required_slots": ["card_last_4_digits"],
-        "optional_slots": []
-      },
-      "부정사용 신고": {
-        "required_slots": ["card_last_4_digits", "fraud_date", "fraud_amount"],
-        "optional_slots": ["fraud_merchant"]
-      }
-    }
-  },
-  "LIMIT_AUTH": {
-    "domain_name": "한도/승인",
-    "categories": {
-      "한도 안내": {
-        "required_slots": ["card_type"],
-        "optional_slots": []
-      },
-      "한도상향 접수/처리": {
-        "required_slots": ["card_type", "requested_limit"],
-        "optional_slots": ["purpose"]
-      },
-      "승인취소/매출취소": {
-        "required_slots": ["transaction_date", "transaction_amount"],
-        "optional_slots": ["merchant_name"]
-      },
-      "심사 진행사항": {
-        "required_slots": [],
-        "optional_slots": ["receipt_number", "receipt_date"]
-      },
-      "신용공여기간 안내": {
-        "required_slots": ["card_type"],
-        "optional_slots": []
-      }
-    }
-  },
   "PAY_BILL": {
     "domain_name": "결제/청구",
     "categories": {
+      "가상계좌 안내": {
+        "required_slots": [],
+        "optional_slots": []
+      },
+      "가상계좌 예약/취소": {
+        "required_slots": ["reservation_type"],
+        "optional_slots": ["reservation_date"]
+      },
+      "결제계좌 안내/변경": {
+        "required_slots": [],
+        "optional_slots": ["new_bank", "new_account_number"]
+      },
       "결제대금 안내": {
         "required_slots": [],
         "optional_slots": ["payment_month"]
@@ -56,41 +22,54 @@
         "required_slots": [],
         "optional_slots": ["desired_payment_date"]
       },
-      "결제계좌 안내/변경": {
+      "입금내역 안내": {
         "required_slots": [],
-        "optional_slots": ["new_bank", "new_account_number"]
+        "optional_slots": ["inquiry_period"]
       },
       "이용내역 안내": {
         "required_slots": [],
         "optional_slots": ["inquiry_period"]
       },
-      "가상계좌 안내": {
+      "이용방법 안내": {
         "required_slots": [],
-        "optional_slots": []
+        "optional_slots": ["service_type"]
+      },
+      "청구지 안내/변경": {
+        "required_slots": [],
+        "optional_slots": ["new_address", "delivery_method"]
+      },
+      "쇼핑케어": {
+        "required_slots": [],
+        "optional_slots": ["transaction_date", "merchant_name"]
       },
       "매출구분 변경": {
         "required_slots": ["transaction_date", "change_type"],
         "optional_slots": ["transaction_amount"]
-      },
-      "선결제 안내/처리": {
+      }
+    }
+  },
+  "LIMIT_AUTH": {
+    "domain_name": "한도/승인",
+    "categories": {
+      "한도 안내": {
         "required_slots": [],
-        "optional_slots": ["prepay_amount"]
+        "optional_slots": ["card_type"]
       },
-      "해외이용 안내": {
+      "한도상향 접수/처리": {
+        "required_slots": ["card_type", "requested_limit"],
+        "optional_slots": ["purpose"]
+      },
+      "승인취소/매출취소 안내": {
+        "required_slots": ["transaction_date", "transaction_amount"],
+        "optional_slots": ["merchant_name"]
+      },
+      "심사 진행사항 안내": {
         "required_slots": [],
-        "optional_slots": []
+        "optional_slots": ["receipt_number", "receipt_date"]
       },
-      "대금청구서 안내": {
+      "신용공여기간 안내": {
         "required_slots": [],
-        "optional_slots": []
-      },
-      "결제 오류/문의": {
-        "required_slots": ["error_date"],
-        "optional_slots": ["error_description"]
-      },
-      "자동결제 관련": {
-        "required_slots": [],
-        "optional_slots": ["auto_payment_service"]
+        "optional_slots": ["card_type"]
       }
     }
   },
@@ -109,84 +88,105 @@
         "required_slots": ["payment_amount"],
         "optional_slots": ["withdrawal_account"]
       },
-      "일부결제대금이월약정": {
-        "required_slots": ["payment_ratio"],
+      "일부결제대금이월약정 안내": {
+        "required_slots": [],
         "optional_slots": []
+      },
+      "일부결제대금이월약정 해지": {
+        "required_slots": [],
+        "optional_slots": ["cancellation_reason"]
       }
     }
   },
   "LOAN": {
-    "domain_name": "대출/현금서비스",
+    "domain_name": "대출",
     "categories": {
-      "대출 한도/금리 안내": {
+      "단기카드대출 안내/실행": {
         "required_slots": [],
-        "optional_slots": ["desired_loan_amount"]
+        "optional_slots": ["desired_amount", "repayment_period"]
       },
-      "대출 신청": {
-        "required_slots": ["desired_amount", "repayment_period"],
-        "optional_slots": []
-      },
-      "대출 상환": {
-        "required_slots": ["repayment_amount", "repayment_type"],
-        "optional_slots": []
-      },
-      "카드론/현금서비스": {
+      "장기카드대출 안내": {
         "required_slots": [],
         "optional_slots": ["desired_amount"]
+      },
+      "오토할부/오토캐쉬백 안내/신청/취소": {
+        "required_slots": ["request_type"],
+        "optional_slots": ["installment_months"]
       }
     }
   },
   "BENEFIT": {
-    "domain_name": "혜택/포인트",
+    "domain_name": "포인트/혜택/바우처",
     "categories": {
-      "포인트 조회/사용": {
+      "포인트/마일리지 안내": {
         "required_slots": [],
-        "optional_slots": ["usage_destination"]
+        "optional_slots": []
       },
-      "할인 혜택 안내": {
+      "포인트/마일리지 전환등록": {
+        "required_slots": ["conversion_destination"],
+        "optional_slots": ["conversion_amount"]
+      },
+      "정부지원 바우처 (등유, 임신 등)": {
+        "required_slots": ["voucher_type"],
+        "optional_slots": []
+      },
+      "프리미엄 바우처 안내/발급": {
+        "required_slots": [],
+        "optional_slots": ["voucher_type"]
+      },
+      "이벤트 안내": {
+        "required_slots": [],
+        "optional_slots": ["event_type"]
+      },
+      "연회비 안내": {
         "required_slots": [],
         "optional_slots": ["card_type"]
-      },
-      "제휴 서비스": {
-        "required_slots": [],
-        "optional_slots": ["partner_name"]
-      },
-      "연회비 안내/환불": {
-        "required_slots": ["card_type"],
-        "optional_slots": []
-      }
-    }
-  },
-  "UTILITY": {
-    "domain_name": "이용/부가서비스",
-    "categories": {
-      "앱/홈페이지 이용": {
-        "required_slots": [],
-        "optional_slots": ["inquiry_type"]
-      },
-      "명세서 발급": {
-        "required_slots": ["issue_period"],
-        "optional_slots": ["issue_method"]
-      },
-      "카드 재발급/배송": {
-        "required_slots": ["reissue_reason"],
-        "optional_slots": ["delivery_address"]
       }
     }
   },
   "DOC_TAX": {
-    "domain_name": "증빙/세금",
+    "domain_name": "증명/세금",
     "categories": {
-      "소득공제 자료": {
+      "증명서/확인서 발급": {
+        "required_slots": ["document_type", "issue_period"],
+        "optional_slots": ["issue_method"]
+      },
+      "교육비": {
         "required_slots": ["inquiry_year"],
         "optional_slots": []
       },
-      "이용확인서 발급": {
-        "required_slots": ["issue_period"],
-        "optional_slots": []
+      "금리인하요구권 안내/신청": {
+        "required_slots": [],
+        "optional_slots": ["request_type"]
+      }
+    }
+  },
+  "UTILITY": {
+    "domain_name": "공과금",
+    "categories": {
+      "도시가스": {
+        "required_slots": [],
+        "optional_slots": ["inquiry_type"]
       },
-      "세금계산서": {
-        "required_slots": ["issue_period", "business_number"],
+      "전화요금": {
+        "required_slots": [],
+        "optional_slots": ["inquiry_type"]
+      }
+    }
+  },
+  "SEC_CARD": {
+    "domain_name": "인증/보안/카드관리",
+    "categories": {
+      "도난/분실 신청/해제": {
+        "required_slots": ["card_last_4_digits", "loss_date"],
+        "optional_slots": ["loss_location"]
+      },
+      "긴급 배송 신청": {
+        "required_slots": ["delivery_address"],
+        "optional_slots": ["contact_phone"]
+      },
+      "기타": {
+        "required_slots": ["inquiry_detail"],
         "optional_slots": []
       }
     }

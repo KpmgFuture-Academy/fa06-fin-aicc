@@ -12,6 +12,7 @@ export interface VoiceChatResponse {
   stt_duration_ms: number;
   tts_duration_ms: number | null;
   total_duration_ms: number;
+  handover_status?: string | null;  // 핸드오버 상태 (pending, accepted, declined, timeout)
 }
 
 export interface TextChatResponse {

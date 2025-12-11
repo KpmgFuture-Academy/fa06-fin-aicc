@@ -71,7 +71,7 @@ class SlotLoader:
         """카테고리명으로 도메인 코드를 찾습니다.
 
         Args:
-            category: 카테고리명 (예: "분실/도난 신고")
+            category: 카테고리명 (예: "도난/분실 신청/해제")
 
         Returns:
             도메인 코드 (예: "SEC_CARD") 또는 None
@@ -94,7 +94,7 @@ class SlotLoader:
         """카테고리에 필요한 슬롯 목록을 반환합니다.
 
         Args:
-            category: 카테고리명 (예: "분실/도난 신고")
+            category: 카테고리명 (예: "도난/분실 신청/해제")
 
         Returns:
             (required_slots, optional_slots) 튜플
@@ -156,11 +156,11 @@ class SlotLoader:
         Returns:
             {
                 "domain_code": "SEC_CARD",
-                "domain_name": "분실/보안",
-                "category": "분실/도난 신고",
+                "domain_name": "인증/보안/카드관리",
+                "category": "도난/분실 신청/해제",
                 "required_slots": [
-                    {"name": "customer_name", "label": "고객명", "question": "..."},
                     {"name": "card_last_4_digits", "label": "카드 뒤 4자리", "question": "..."},
+                    {"name": "loss_date", "label": "분실 일시", "question": "..."},
                 ],
                 "optional_slots": [...]
             }

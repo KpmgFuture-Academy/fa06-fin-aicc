@@ -26,72 +26,77 @@ class IntentClassificationResult:
     error: Optional[str] = None
 
 
-# 38개 카테고리 → 8개 도메인 매핑
+# 38개 카테고리 → 8개 도메인 매핑 (slot_definitions.json 기준)
 CATEGORY_TO_DOMAIN = {
-    # SEC_CARD (분실/보안)
-    "분실/도난 신고": "SEC_CARD",
-    "카드 정지/해제": "SEC_CARD",
-    "비밀번호 관련": "SEC_CARD",
-    "부정사용 신고": "SEC_CARD",
+    # SEC_CARD (인증/보안/카드관리)
+    "도난/분실 신청/해제": "SEC_CARD",
+    "긴급 배송 신청": "SEC_CARD",
+    "기타": "SEC_CARD",
 
     # LIMIT_AUTH (한도/승인)
     "한도 안내": "LIMIT_AUTH",
     "한도상향 접수/처리": "LIMIT_AUTH",
-    "승인취소/매출취소": "LIMIT_AUTH",
-    "심사 진행사항": "LIMIT_AUTH",
+    "승인취소/매출취소 안내": "LIMIT_AUTH",
+    "심사 진행사항 안내": "LIMIT_AUTH",
     "신용공여기간 안내": "LIMIT_AUTH",
 
     # PAY_BILL (결제/청구)
+    "가상계좌 안내": "PAY_BILL",
+    "가상계좌 예약/취소": "PAY_BILL",
+    "결제계좌 안내/변경": "PAY_BILL",
     "결제대금 안내": "PAY_BILL",
     "결제일 안내/변경": "PAY_BILL",
-    "결제계좌 안내/변경": "PAY_BILL",
+    "입금내역 안내": "PAY_BILL",
     "이용내역 안내": "PAY_BILL",
-    "가상계좌 안내": "PAY_BILL",
+    "이용방법 안내": "PAY_BILL",
+    "청구지 안내/변경": "PAY_BILL",
+    "쇼핑케어": "PAY_BILL",
     "매출구분 변경": "PAY_BILL",
-    "선결제/즉시출금": "PAY_BILL",
-    "결제 오류": "PAY_BILL",
-    "자동결제 등록/해지": "PAY_BILL",
-    "결제일 안내/변경/취소": "PAY_BILL",  # 대체 이름
-    "비밀번호": "PAY_BILL",
 
     # DELINQ (연체/수납)
     "연체대금 안내": "DELINQ",
     "연체대금 즉시출금": "DELINQ",
-    "일부결제대금이월약정": "DELINQ",
+    "선결제/즉시출금": "DELINQ",
+    "일부결제대금이월약정 안내": "DELINQ",
+    "일부결제대금이월약정 해지": "DELINQ",
 
-    # LOAN (대출/현금서비스)
-    "대출 한도/금리 안내": "LOAN",
-    "대출 신청": "LOAN",
-    "대출 상환": "LOAN",
-    "카드론/현금서비스": "LOAN",
+    # LOAN (대출)
+    "단기카드대출 안내/실행": "LOAN",
+    "장기카드대출 안내": "LOAN",
+    "오토할부/오토캐쉬백 안내/신청/취소": "LOAN",
 
-    # BENEFIT (혜택/포인트)
-    "포인트 조회/사용": "BENEFIT",
-    "할인 혜택 안내": "BENEFIT",
-    "제휴 서비스": "BENEFIT",
-    "연회비 안내/환불": "BENEFIT",
+    # BENEFIT (포인트/혜택/바우처)
+    "포인트/마일리지 안내": "BENEFIT",
+    "포인트/마일리지 전환등록": "BENEFIT",
+    "정부지원 바우처 (등유, 임신 등)": "BENEFIT",
+    "프리미엄 바우처 안내/발급": "BENEFIT",
+    "이벤트 안내": "BENEFIT",
+    "연회비 안내": "BENEFIT",
 
-    # UTILITY (이용/부가서비스)
-    "앱/홈페이지 이용": "UTILITY",
-    "명세서 발급": "UTILITY",
-    "카드 재발급/배송": "UTILITY",
+    # DOC_TAX (증명/세금)
+    "증명서/확인서 발급": "DOC_TAX",
+    "교육비": "DOC_TAX",
+    "금리인하요구권 안내/신청": "DOC_TAX",
 
-    # DOC_TAX (증빙/세금)
-    "소득공제 자료": "DOC_TAX",
-    "이용확인서 발급": "DOC_TAX",
-    "세금계산서": "DOC_TAX",
+    # UTILITY (공과금)
+    "도시가스": "UTILITY",
+    "전화요금": "UTILITY",
+
+    # _DEFAULT (기타)
+    "기타 문의": "_DEFAULT",
 }
 
-# 도메인 한글명 매핑
+# 도메인 한글명 매핑 (slot_definitions.json 기준)
 DOMAIN_NAMES = {
-    "SEC_CARD": "분실/보안",
+    "SEC_CARD": "인증/보안/카드관리",
     "LIMIT_AUTH": "한도/승인",
     "PAY_BILL": "결제/청구",
     "DELINQ": "연체/수납",
-    "LOAN": "대출/현금서비스",
-    "BENEFIT": "혜택/포인트",
-    "UTILITY": "이용/부가서비스",
-    "DOC_TAX": "증빙/세금"
+    "LOAN": "대출",
+    "BENEFIT": "포인트/혜택/바우처",
+    "UTILITY": "공과금",
+    "DOC_TAX": "증명/세금",
+    "_DEFAULT": "기타"
 }
 
 

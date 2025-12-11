@@ -4,6 +4,7 @@ Metrics modules for E2E Evaluation Pipeline
 
 from .base import BaseMetrics, MetricResult, EvaluationResult
 from .stt_metrics import STTMetrics
+from .tts_metrics import TTSMetrics
 from .intent_metrics import IntentMetrics
 from .rag_metrics import RAGMetrics
 from .slot_metrics import SlotFillingMetrics

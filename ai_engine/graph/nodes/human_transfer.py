@@ -13,9 +13,11 @@ def consultant_transfer_node(state: GraphState) -> GraphState:
     """
     # suggested_action 설정
     state["suggested_action"] = ActionType.HANDOVER
-    
+
     # 상담사 연결 안내 메시지 설정 (ChatResponse의 ai_message로 사용됨)
-    state["ai_message"] = "상담사 연결이 필요하신 것으로 확인되었습니다. 곧 상담사가 연결될 예정입니다. 잠시만 기다려주세요."
+    # waiting_agent에서 이미 설정한 메시지가 있으면 유지
+    if not state.get("ai_message"):
+        state["ai_message"] = "상담사 연결이 필요하신 것으로 확인되었습니다. 곧 상담사가 연결될 예정입니다. 잠시만 기다려주세요."
     
     # summary_agent 결과를 handover_analysis_result로 변환
     summary = state.get("summary", "요약 정보가 없습니다.")

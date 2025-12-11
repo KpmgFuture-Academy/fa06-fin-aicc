@@ -29,6 +29,8 @@ class HandoverSessionResponse(BaseModel):
     created_at: str
     updated_at: str
     collected_info: dict
+    handover_status: Optional[str] = None  # pending, accepted, declined, timeout
+    handover_accepted_at: Optional[str] = None  # 상담사 수락 시간
 
     class Config:
         from_attributes = True
@@ -108,7 +110,9 @@ async def get_handover_sessions():
                 session_id=session.session_id,
                 created_at=session.created_at.isoformat(),
                 updated_at=session.updated_at.isoformat(),
-                collected_info=collected_info
+                collected_info=collected_info,
+                handover_status=session.handover_status,
+                handover_accepted_at=session.handover_accepted_at.isoformat() if session.handover_accepted_at else None
             ))
 
         # 로그 레벨을 DEBUG로 변경하여 불필요한 로그 줄이기 (변경 사항이 있을 때만 INFO)
@@ -154,7 +158,9 @@ async def get_closed_sessions():
                 session_id=session.session_id,
                 created_at=session.created_at.isoformat(),
                 updated_at=session.updated_at.isoformat(),
-                collected_info=collected_info
+                collected_info=collected_info,
+                handover_status=session.handover_status,
+                handover_accepted_at=session.handover_accepted_at.isoformat() if session.handover_accepted_at else None
             ))
 
         logger.info(f"종료된 세션 조회: {len(result)}개")
