@@ -18,16 +18,18 @@ const HANDOVER_WAIT_TIME_MESSAGE = "현재 모든 상담사가 상담 중입니�
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState(() => getOrCreateSessionId());
-  const [handoverData, setHandoverData] = useState<HandoverResponse | null>(null);
+  const [_handoverData, setHandoverData] = useState<HandoverResponse | null>(null);
+  void _handoverData;  // 미사용 (향후 확장용)
   const [isHandoverMode, setIsHandoverMode] = useState(false);  // 상담원 연결 모드 (실제 상담 중)
-  const [isHandoverLoading, setIsHandoverLoading] = useState(false);  // 상담원 연결 로딩 상태
+  const [_isHandoverLoading, setIsHandoverLoading] = useState(false);  // 상담원 연결 로딩 상태 (미사용)
+  void _isHandoverLoading;
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false);  // 상담사 수락 대기 중
-  const [showAgentConfirmModal, setShowAgentConfirmModal] = useState(false);  // 상담사 연결 확인 모달
   const [_handoverTimeoutReached, setHandoverTimeoutReached] = useState(false);  // 타임아웃 도달 여부 (미사용, 향후 확장용)
   void _handoverTimeoutReached;
   const handoverPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const handoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startHandoverPollingRef = useRef<(() => void) | null>(null);  // 클로저 문제 해결용
+  const handoverAcceptedProcessingRef = useRef<boolean>(false);  // accepted 상태 처리 중복 방지
   const [textInput, setTextInput] = useState('');  // 텍스트 입력 상태
   const [isTextSending, setIsTextSending] = useState(false);  // 텍스트 전송 중 상태
   const [hasGreeted, setHasGreeted] = useState(false);  // 인사 메시지 표시 여부
@@ -267,9 +269,15 @@ function App() {
 
   // 녹음 중지 및 메시지 처리 (공통 로직)
   const processStopRecording = useCallback(async () => {
-    console.log('[App] 녹음 중지 시작...', 'isHandoverMode:', isHandoverMode, 'isRecordingMode:', isRecordingMode);
+    console.log('[App] ========== processStopRecording 시작 ==========');
+    console.log('[App] isHandoverMode:', isHandoverMode, 'isRecordingMode:', isRecordingMode, 'isWaitingForAgent:', isWaitingForAgent);
     const result = await stopRecording();
-    console.log('[App] stopRecording 결과:', result);
+    console.log('[App] stopRecording 결과 - result 존재:', !!result);
+    if (result) {
+      console.log('[App] stopRecording 결과 - userText:', result.userText);
+      console.log('[App] stopRecording 결과 - aiResponse:', JSON.stringify(result.aiResponse, null, 2));
+      console.log('[App] stopRecording 결과 - audioBase64 존재:', !!result.audioBase64, ', 길이:', result.audioBase64?.length || 0);
+    }
 
     if (result) {
       // 사용자 메시지 추가 (서버에서 받은 final_text 사용)
@@ -317,6 +325,10 @@ function App() {
 
       // AI 응답 메시지 추가 (이관 모드가 아닐 때만)
       if (!isHandoverMode && result.aiResponse?.text) {
+        // 디버그: AI 응답 전체 내용 출력
+        console.log('[App] 녹음 모드 - AI 응답 전체:', JSON.stringify(result.aiResponse, null, 2));
+        console.log('[App] 녹음 모드 - audioBase64 존재 여부:', !!result.audioBase64, ', 길이:', result.audioBase64?.length || 0);
+
         // HANDOVER 감지 (녹음 모드에서)
         const isHandoverSuggested =
           result.aiResponse.suggestedAction === 'HANDOVER' ||
@@ -324,8 +336,21 @@ function App() {
           result.aiResponse.text.includes('상담사에게 연결해 드리겠습니다') ||
           result.aiResponse.text.includes('상담원에게 연결');
 
+        console.log('[App] 녹음 모드 AI 응답 - suggestedAction:', result.aiResponse.suggestedAction, ', handoverStatus:', result.aiResponse.handoverStatus, ', isHandoverSuggested:', isHandoverSuggested);
+
+        // handover_status가 pending이면 상담사 수락 대기 폴링 시작
+        // 안내 메시지는 백엔드(waiting_agent)에서 이미 ai_message에 포함됨
+        console.log('[App] 녹음 모드 - isWaitingForAgent 상태:', isWaitingForAgent);
+        if (result.aiResponse.handoverStatus === 'pending' && !isWaitingForAgent) {
+          console.log('[App] 녹음 모드 - handover_status=pending 감지 - 상담사 수락 대기 폴링 시작');
+          setIsWaitingForAgent(true);
+          setHandoverTimeoutReached(false);
+          startHandoverPolling();
+        }
+
         if (isHandoverSuggested) {
-          console.log('[App] 녹음 모드 - HANDOVER 감지, 고객 동의 대기');
+          console.log('[App] 녹음 모드 - HANDOVER 감지, 메시지 표시 및 TTS 재생 시작');
+          console.log('[App] 녹음 모드 - 표시할 메시지:', result.aiResponse.text);
 
           // AI 응답 메시지만 표시 (고객에게 동의 요청)
           // 고객이 "네"라고 응답하면 백엔드의 consent_check_node가 처리함
@@ -340,14 +365,19 @@ function App() {
 
           // AI 응답 TTS 재생 (녹음 모드에서는 수동 재생)
           const recordResult = result as VoiceRecordingResult;
+          console.log('[App] 녹음 모드 - TTS 재생 시도, audioBase64 존재:', !!recordResult.audioBase64);
           if (recordResult.audioBase64) {
+            console.log('[App] 녹음 모드 - TTS 재생 시작, 오디오 길이:', recordResult.audioBase64.length);
             playAudio(recordResult.audioBase64);
+          } else {
+            console.warn('[App] 녹음 모드 - audioBase64가 없어 TTS 재생 불가');
           }
 
           // 고객이 "네"라고 응답할 때까지 대기
           // 다음 메시지에서 백엔드가 consent_check_node → waiting_agent 플로우를 처리함
         } else {
-          // 일반 AI 응답 메시지 추가
+          // 일반 AI 응답 메시지 추가 (HANDOVER가 아닌 경우)
+          console.log('[App] 녹음 모드 - 일반 AI 응답 (HANDOVER 아님), 메시지 표시 시작');
           console.log('[App] AI 응답 메시지 추가:', result.aiResponse.text);
           const aiMessageContent = result.aiResponse.text;
           const assistantMessage: Message = {
@@ -463,7 +493,16 @@ function App() {
             result.aiResponse.text.includes('상담사에게 연결해 드리겠습니다') ||
             result.aiResponse.text.includes('상담원에게 연결');
 
-          console.log('[App] AI 응답 처리 - suggestedAction:', result.aiResponse.suggestedAction, ', isHandoverSuggested:', isHandoverSuggested);
+          console.log('[App] AI 응답 처리 - suggestedAction:', result.aiResponse.suggestedAction, ', handoverStatus:', result.aiResponse.handoverStatus, ', isHandoverSuggested:', isHandoverSuggested);
+
+          // handover_status가 pending이면 상담사 수락 대기 폴링 시작
+          // 안내 메시지는 백엔드(waiting_agent)에서 이미 ai_message에 포함됨
+          if (result.aiResponse.handoverStatus === 'pending') {
+            console.log('[App] 음성 모드 - handover_status=pending 감지 - 상담사 수락 대기 폴링 시작');
+            setIsWaitingForAgent(true);
+            setHandoverTimeoutReached(false);
+            startHandoverPollingRef.current?.();
+          }
 
           // AI가 HANDOVER를 권장한 경우: AI 응답만 표시하고 고객 동의 대기
           if (isHandoverSuggested) {
@@ -575,6 +614,7 @@ function App() {
       emptyInputCountRef.current = 0;
       lastMessageIdRef.current = 0;
       processedAgentMessageIdsRef.current.clear();
+      handoverAcceptedProcessingRef.current = false;  // 핸드오버 처리 플래그 초기화
 
       // 세션 ID 리셋 및 새 세션 ID 생성
       resetSessionId();
@@ -618,37 +658,59 @@ function App() {
   const startHandoverPolling = useCallback(() => {
     // 기존 폴링 정리
     cleanupHandoverPolling();
+    // accepted 처리 플래그 초기화 (새로운 폴링 시작)
+    handoverAcceptedProcessingRef.current = false;
 
     // 상담사 수락 여부 폴링
     handoverPollIntervalRef.current = setInterval(async () => {
+      // 이미 accepted 처리 중이면 스킵 (중복 방지)
+      if (handoverAcceptedProcessingRef.current) {
+        console.log('[App] 핸드오버 accepted 처리 중 - 스킵');
+        return;
+      }
+
       try {
         const status = await voiceApi.getHandoverStatus(sessionId);
         console.log('[App] 핸드오버 상태:', status.handover_status);
 
         if (status.handover_status === 'accepted') {
-          // 상담사가 수락함 → 확인 모달 표시
+          // 중복 처리 방지 플래그 설정
+          if (handoverAcceptedProcessingRef.current) {
+            console.log('[App] 핸드오버 accepted 이미 처리됨 - 스킵');
+            return;
+          }
+          handoverAcceptedProcessingRef.current = true;
+
+          // 상담사가 수락함 → 모달 없이 바로 연결
           cleanupHandoverPolling();
           setIsWaitingForAgent(false);
-          setShowAgentConfirmModal(true);
+          setIsHandoverMode(true);  // 상담사 메시지 폴링 시작
 
-          // TTS로 안내 메시지 재생
-          const confirmMessage = '상담사가 응대 가능합니다. 연결시켜드릴까요?';
+          // 연결 완료 안내 메시지
+          const connectedMessage = '상담사에게 연결되었습니다. 상담을 시작합니다.';
           const aiMessage: Message = {
-            id: `msg_${Date.now()}_agent_available`,
+            id: `msg_${Date.now()}_agent_connected`,
             role: 'assistant',
-            content: confirmMessage,
+            content: connectedMessage,
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, aiMessage]);
 
+          // TTS로 연결 완료 메시지 재생
           try {
-            const ttsResponse = await voiceApi.requestTTS(confirmMessage);
+            const ttsResponse = await voiceApi.requestTTS(connectedMessage);
             if (ttsResponse.audio_base64) {
               playAudio(ttsResponse.audio_base64);
             }
           } catch (ttsErr) {
             console.warn('TTS 재생 실패:', ttsErr);
           }
+        } else if (status.handover_status === 'cancelled') {
+          // 고객이 상담사 연결을 취소함
+          console.log('[App] 핸드오버 취소됨 - 폴링 중지');
+          cleanupHandoverPolling();
+          setIsWaitingForAgent(false);
+          // isHandoverMode는 false로 유지 (일반 대화로 복귀)
         }
       } catch (err) {
         console.error('[App] 핸드오버 상태 폴링 실패:', err);
@@ -727,10 +789,8 @@ function App() {
   }, [sessionId, playAudio, startHandoverPolling]);
   void handleRequestHandover; // Reserved for future use
 
-  // 고객이 상담사 연결 확인
-  const handleConfirmAgentConnection = useCallback(async () => {
-    setShowAgentConfirmModal(false);
-
+  // 고객이 상담사 연결 확인 (미사용 - 모달 제거로 자동 연결됨)
+  const _handleConfirmAgentConnection = useCallback(async () => {
     // 중복 호출 방지
     if (isConfirmingHandoverRef.current) {
       console.log('[App] confirmHandover 이미 진행 중 - 스킵 (버튼)');
@@ -771,12 +831,13 @@ function App() {
       isConfirmingHandoverRef.current = false;
     }
   }, [sessionId, playAudio]);
+  void _handleConfirmAgentConnection;
 
-  // 고객이 상담사 연결 거부 (대기 안 함)
-  const handleDeclineAgentConnection = useCallback(async () => {
-    setShowAgentConfirmModal(false);
+  // 고객이 상담사 연결 거부 (미사용 - 모달 제거됨)
+  const _handleDeclineAgentConnection = useCallback(async () => {
     setIsWaitingForAgent(false);
     setHandoverTimeoutReached(false);
+    setIsHandoverMode(false);  // 상담사 메시지 폴링 중지
     cleanupHandoverPolling();
 
     // 안내 메시지
@@ -798,6 +859,7 @@ function App() {
       console.warn('TTS 재생 실패:', ttsErr);
     }
   }, [cleanupHandoverPolling, playAudio]);
+  void _handleDeclineAgentConnection;
 
   // 타임아웃 후 계속 대기 선택 (향후 확장용)
   const _handleContinueWaiting = useCallback(() => {
@@ -821,10 +883,11 @@ function App() {
     };
   }, [cleanupHandoverPolling]);
 
-  // 모달 닫기
-  const handleCloseModal = useCallback(() => {
+  // 모달 닫기 (미사용 - 향후 확장용)
+  const _handleCloseModal = useCallback(() => {
     setHandoverData(null);
   }, []);
+  void _handleCloseModal;
 
   // 텍스트 메시지 전송
   const handleTextSubmit = useCallback(async (e?: React.FormEvent) => {
@@ -881,6 +944,7 @@ function App() {
         }
 
         // handover_status가 pending이면 상담사 수락 대기 폴링 시작
+        // 안내 메시지는 백엔드(waiting_agent)에서 이미 ai_message에 포함되어 있으므로 추가 표시 불필요
         if (response.handover_status === 'pending' && !isWaitingForAgent) {
           console.log('[App] handover_status=pending 감지 - 상담사 수락 대기 폴링 시작');
           setIsWaitingForAgent(true);
@@ -1056,83 +1120,7 @@ function App() {
       {/* 숨겨진 오디오 플레이어 */}
       <audio ref={audioRef} style={{ display: 'none' }} />
 
-      {/* 상담원 이관 모달 */}
-      {handoverData && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>상담원 연결 요청 완료</h2>
-            <p>상담 내용이 분석되었습니다.</p>
-
-            <div className="analysis-section">
-              <h3>AI 분석 결과</h3>
-              <div className="analysis-item">
-                <span className="analysis-label">고객 감정:</span>
-                <span className="analysis-value">{handoverData.analysis_result.customer_sentiment}</span>
-              </div>
-              <div className="analysis-item" style={{ marginTop: '12px' }}>
-                <span className="analysis-label">요약:</span>
-                <span className="analysis-value">{handoverData.analysis_result.summary}</span>
-              </div>
-              {handoverData.analysis_result.extracted_keywords.length > 0 && (
-                <div className="key-issues">
-                  <span className="analysis-label">핵심 키워드:</span>
-                  <ul>
-                    {handoverData.analysis_result.extracted_keywords.map((keyword, idx) => (
-                      <li key={idx}>{keyword}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {handoverData.analysis_result.kms_recommendations.length > 0 && (
-                <div className="key-issues" style={{ marginTop: '12px' }}>
-                  <span className="analysis-label">추천 문서:</span>
-                  <ul>
-                    {handoverData.analysis_result.kms_recommendations.map((rec, idx) => (
-                      <li key={idx}>
-                        <a href={rec.url} target="_blank" rel="noopener noreferrer">
-                          {rec.title}
-                        </a>
-                        <span style={{ fontSize: '0.8em', color: '#888' }}> (관련도: {(rec.relevance_score * 100).toFixed(0)}%)</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <button className="modal-close-button" onClick={handleCloseModal}>
-              확인
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 상담사 연결 확인 모달 */}
-      {showAgentConfirmModal && (
-        <div className="modal-overlay">
-          <div className="modal-content agent-confirm-modal">
-            <h2>상담사 연결 가능</h2>
-            <p>상담사가 응대 가능합니다. 연결시켜드릴까요?</p>
-
-            <div className="modal-buttons">
-              <button
-                className="modal-confirm-button"
-                onClick={handleConfirmAgentConnection}
-                disabled={isHandoverLoading}
-              >
-                {isHandoverLoading ? '연결 중...' : '네, 연결해주세요'}
-              </button>
-              <button
-                className="modal-cancel-button"
-                onClick={handleDeclineAgentConnection}
-                disabled={isHandoverLoading}
-              >
-                아니요, 괜찮습니다
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 모달들이 제거됨 - 상담사 수락 시 자동 연결 */}
 
       {/* 상담사 대기 중 표시 */}
       {isWaitingForAgent && (

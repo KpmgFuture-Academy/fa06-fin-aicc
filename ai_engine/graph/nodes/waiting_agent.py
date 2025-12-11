@@ -27,6 +27,23 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# 슬롯 수집 중/완료 후 거부 패턴 (상담사 연결 취소 의사)
+CANCEL_PATTERNS = ["됐어", "괜찮아", "취소", "그만", "안 할래", "필요 없", "연결 안", "상담사 안", "그냥 됐"]
+
+
+def _check_collection_cancel(user_message: str) -> bool:
+    """슬롯 수집 중/완료 후 거부 의사를 감지합니다.
+
+    Args:
+        user_message: 사용자 메시지
+
+    Returns:
+        거부 의사가 감지되면 True
+    """
+    user_message_lower = user_message.strip().lower()
+    return any(pattern in user_message_lower for pattern in CANCEL_PATTERNS)
+
+
 # LM Studio 또는 OpenAI 사용
 if settings.use_lm_studio:
     llm = ChatOpenAI(
@@ -175,9 +192,14 @@ def _extract_info_from_conversation(
 def _generate_collection_question(
     missing_slots: List[str],
     collected_info: Dict[str, Any],
-    slot_loader
+    slot_loader,
+    user_message: str = "",
+    current_category: str = ""
 ) -> str:
-    """부족한 슬롯에 대한 질문을 생성합니다."""
+    """부족한 슬롯에 대한 질문을 생성합니다.
+
+    고객이 다른 문의를 한 경우, 정중하게 안내하면서 현재 진행 중인 슬롯 수집을 계속합니다.
+    """
     if not missing_slots:
         return "필요한 정보를 모두 수집했습니다."
 
@@ -195,55 +217,141 @@ def _generate_collection_question(
 
     collected_summary = ", ".join(collected_labels)
 
-    if collected_summary:
-        system_message = SystemMessage(content="""당신은 친절한 고객 상담 챗봇입니다.
-상담사 연결을 위해 고객 정보를 수집하고 있습니다.
-이미 수집된 정보를 참고하여 자연스럽게 다음 정보를 요청하는 문장을 생성하세요.
+    # 고객이 다른 문의를 했는지 감지하여 정중한 응대 생성
+    system_message = SystemMessage(content=f"""당신은 친절하고 공감 능력이 뛰어난 금융 고객 상담 챗봇입니다.
+현재 '{current_category}' 관련 상담사 연결을 위해 고객 정보를 수집하고 있습니다.
 
-규칙:
-1. 친절하고 공손한 어조를 유지하세요.
-2. 한 번에 하나의 정보만 요청하세요.
-3. 이미 수집된 정보는 다시 물어보지 마세요.
-4. 1-2문장으로 간결하게 작성하세요.
-5. "감사합니다"로 시작하세요.""")
+고객의 현재 메시지: "{user_message}"
 
-        human_message = HumanMessage(content=f"""이미 수집된 정보: {collected_summary}
+당신의 역할:
+1. 고객의 메시지가 현재 진행 중인 '{current_category}'와 관련이 없는 다른 문의인지 판단하세요.
+2. 다른 문의라면, 고객의 궁금증을 존중하면서 정중하게 안내해 주세요.
+3. 그 후 자연스럽게 현재 필요한 정보 수집을 계속하세요.
 
+응답 규칙:
+1. 항상 친절하고 공손한 어조를 유지하세요.
+2. 고객이 다른 문의를 했다면, "말씀하신 [문의 내용]에 대해서는 상담사 연결 후 자세히 안내해 드리겠습니다."와 같이 공감하며 안내하세요.
+3. 고객이 기분 상하지 않도록 부드럽게 현재 진행 중인 정보 수집으로 돌아오세요.
+4. 2-3문장으로 간결하게 작성하세요.
+5. 고객의 메시지가 현재 카테고리와 관련 있거나 슬롯 정보 제공이면, 단순히 다음 정보를 요청하세요.
+
+예시 (다른 문의인 경우):
+"결제일에 대해 궁금하신 부분은 상담사 연결 후 자세히 안내해 드리겠습니다. 먼저 카드 분실 처리를 위해 카드 뒤 4자리를 알려주시겠어요?"
+
+예시 (관련 있는 경우):
+"감사합니다. 카드 분실 처리를 위해 분실 날짜를 알려주시겠어요?"
+""")
+
+    human_message = HumanMessage(content=f"""현재 카테고리: {current_category}
+이미 수집된 정보: {collected_summary if collected_summary else "없음"}
 다음으로 수집할 정보: {slot_label}
 기본 질문: {base_question}
+고객의 현재 메시지: {user_message}
 
-자연스러운 질문 문장을 생성해주세요.""")
+고객에게 응답할 메시지를 생성해주세요.""")
 
-        try:
-            response = llm.invoke([system_message, human_message])
-            return response.content.strip()
-        except Exception as e:
-            logger.error(f"질문 생성 중 오류: {str(e)}")
-            return base_question
-
-    return base_question
+    try:
+        response = llm.invoke([system_message, human_message])
+        return response.content.strip()
+    except Exception as e:
+        logger.error(f"질문 생성 중 오류: {str(e)}")
+        return base_question
 
 
 def _determine_category(state: GraphState) -> str:
     """상태에서 카테고리를 결정합니다.
 
     우선순위:
-    1. context_intent (triage_agent에서 분류한 38개 카테고리)
-    2. collected_info.inquiry_detail (기존 방식 호환)
-    3. 기본값: "기타 문의"
+    1. context_intent (triage_agent에서 분류한 카테고리) - slot_definitions에 있는 경우만
+    2. 대화 내용에서 키워드 기반 카테고리 추론
+    3. collected_info.inquiry_detail (기존 방식 호환)
+    4. 기본값: "기타 문의"
     """
-    # 1. context_intent 확인 (38개 카테고리)
+    slot_loader = get_slot_loader()
+
+    # 1. context_intent 확인 - slot_definitions에 있는 카테고리인 경우만 사용
     context_intent = state.get("context_intent")
     if context_intent and context_intent != "기타":
-        return context_intent
+        # LABEL_X 형태이거나 slot_definitions에 없으면 무시
+        if not context_intent.startswith("LABEL_"):
+            domain_code = slot_loader.get_domain_by_category(context_intent)
+            if domain_code:
+                return context_intent
 
-    # 2. collected_info에서 확인
+    # 2. 대화 내용에서 키워드 기반 카테고리 추론
+    conversation_history = state.get("conversation_history", [])
+    user_message = state.get("user_message", "")
+
+    # 모든 사용자 메시지 합치기
+    all_user_text = user_message + " " + " ".join([
+        msg.get("message", "") for msg in conversation_history
+        if msg.get("role") == "user"
+    ])
+    all_user_text_lower = all_user_text.lower()
+
+    # 키워드 기반 카테고리 매핑 (slot_definitions.json의 38개 카테고리명과 일치)
+    keyword_category_map = {
+        # SEC_CARD (인증/보안/카드관리)
+        ("분실", "도난", "잃어버", "카드를 잃"): "도난/분실 신청/해제",
+        ("긴급 배송", "빨리 받고", "급하게 카드"): "긴급 배송 신청",
+        # LIMIT_AUTH (한도/승인)
+        ("한도 안내", "한도 조회", "한도가 얼마"): "한도 안내",
+        ("한도 상향", "한도 올려", "한도 증액"): "한도상향 접수/처리",
+        ("승인취소", "매출취소", "결제취소"): "승인취소/매출취소 안내",
+        ("심사", "진행사항", "심사 결과"): "심사 진행사항 안내",
+        ("신용공여", "공여기간"): "신용공여기간 안내",
+        # PAY_BILL (결제/청구)
+        ("결제대금", "이번달 결제", "얼마 나왔"): "결제대금 안내",
+        ("결제일 변경", "결제일 안내"): "결제일 안내/변경",
+        ("결제계좌", "계좌 변경"): "결제계좌 안내/변경",
+        ("이용내역", "사용내역"): "이용내역 안내",
+        ("입금내역", "입금 확인"): "입금내역 안내",
+        ("가상계좌 안내", "가상계좌 번호"): "가상계좌 안내",
+        ("가상계좌 예약", "가상계좌 취소"): "가상계좌 예약/취소",
+        ("청구지", "청구서 주소"): "청구지 안내/변경",
+        ("쇼핑케어", "구매안심"): "쇼핑케어",
+        ("매출구분", "일시불 할부", "할부 변경"): "매출구분 변경",
+        ("이용방법", "어떻게 사용"): "이용방법 안내",
+        # DELINQ (연체/수납)
+        ("연체대금", "연체 금액", "연체료"): "연체대금 안내",
+        ("연체 출금", "연체금 즉시"): "연체대금 즉시출금",
+        ("선결제", "즉시출금", "미리 결제"): "선결제/즉시출금",
+        ("이월약정 안내", "리볼빙 안내"): "일부결제대금이월약정 안내",
+        ("이월약정 해지", "리볼빙 해지"): "일부결제대금이월약정 해지",
+        # LOAN (대출)
+        ("단기카드대출", "현금서비스", "단기대출"): "단기카드대출 안내/실행",
+        ("장기카드대출", "카드론", "장기대출"): "장기카드대출 안내",
+        ("오토할부", "오토캐쉬백"): "오토할부/오토캐쉬백 안내/신청/취소",
+        # BENEFIT (포인트/혜택/바우처)
+        ("포인트", "마일리지", "적립금"): "포인트/마일리지 안내",
+        ("포인트 전환", "마일리지 전환"): "포인트/마일리지 전환등록",
+        ("정부지원", "바우처", "등유", "임신"): "정부지원 바우처 (등유, 임신 등)",
+        ("프리미엄 바우처",): "프리미엄 바우처 안내/발급",
+        ("이벤트", "행사", "프로모션"): "이벤트 안내",
+        ("연회비", "연회비 안내"): "연회비 안내",
+        # DOC_TAX (증명/세금)
+        ("증명서", "확인서", "발급"): "증명서/확인서 발급",
+        ("교육비", "학비"): "교육비",
+        ("금리인하", "금리인하요구권"): "금리인하요구권 안내/신청",
+        # UTILITY (공과금)
+        ("도시가스", "가스요금"): "도시가스",
+        ("전화요금", "통신요금"): "전화요금",
+    }
+
+    for keywords, category in keyword_category_map.items():
+        if any(kw in all_user_text_lower for kw in keywords):
+            logger.info(f"키워드 기반 카테고리 결정: {category}")
+            return category
+
+    # 3. collected_info에서 확인
     collected_info = state.get("collected_info", {})
     inquiry_detail = collected_info.get("inquiry_detail")
-    if inquiry_detail:
-        return inquiry_detail
+    if inquiry_detail and inquiry_detail != "기타 문의":
+        domain_code = slot_loader.get_domain_by_category(inquiry_detail)
+        if domain_code:
+            return inquiry_detail
 
-    # 3. 기본값
+    # 4. 기본값
     return "기타 문의"
 
 
@@ -267,6 +375,49 @@ def waiting_agent_node(state: GraphState) -> GraphState:
     collected_info: Dict[str, Any] = state.get("collected_info", {})
 
     logger.info(f"Waiting Agent 실행 - 세션: {session_id}")
+
+    # ========== 정보 수집 완료 후 대기 중 추가 메시지 처리 ==========
+    # info_collection_complete=True 상태에서 추가 메시지가 오면 대기 안내만 출력
+    info_collection_complete = state.get("info_collection_complete", False)
+    if info_collection_complete:
+        logger.info(f"정보 수집 완료 상태에서 추가 메시지 - 세션: {session_id}, 메시지: {user_message}")
+
+        # 거부 패턴 체크 (대기 중에도 취소 가능)
+        if _check_collection_cancel(user_message):
+            logger.info(f"대기 중 거부 감지 - 세션: {session_id}")
+            state["is_human_required_flow"] = False
+            state["customer_consent_received"] = False
+            state["info_collection_complete"] = False
+            state["handover_status"] = "cancelled"
+            state["ai_message"] = "알겠습니다. 상담사 연결을 취소했습니다. 다른 도움이 필요하시면 말씀해 주세요."
+            state["source_documents"] = []
+            state["collected_info"] = {}
+            return state
+
+        # 대기 중 안내 메시지 (완료 메시지 반복 방지)
+        state["ai_message"] = "현재 상담사 연결을 기다리고 있습니다. 잠시만 기다려 주세요. 상담사가 곧 연결될 예정입니다."
+        state["source_documents"] = []
+        return state
+
+    # ========== 슬롯 수집 중/완료 후 거부 감지 ==========
+    # "아니요 그냥 됐어요", "취소할게요" 등의 거부 의사 감지 시 플로우 종료
+    if _check_collection_cancel(user_message):
+        logger.info(f"슬롯 수집 중 거부 감지 - 세션: {session_id}, 메시지: {user_message}")
+
+        # 플로우 상태 초기화
+        state["is_human_required_flow"] = False
+        state["customer_consent_received"] = False
+        state["info_collection_complete"] = False
+        state["handover_status"] = "cancelled"  # 취소 상태로 설정
+
+        # 거부 메시지 설정
+        state["ai_message"] = "알겠습니다. 상담사 연결을 취소했습니다. 다른 도움이 필요하시면 말씀해 주세요."
+        state["source_documents"] = []
+
+        # collected_info 초기화 (내부 플래그 제거)
+        state["collected_info"] = {}
+
+        return state
 
     try:
         # 슬롯 로더 가져오기
@@ -311,23 +462,37 @@ def waiting_agent_node(state: GraphState) -> GraphState:
         missing_slots = slot_loader.get_missing_required_slots(category, collected_info)
 
         # 5. 모든 정보 수집 완료 여부 확인
+        # 첫 번째 waiting_agent 진입인지 확인 (안내 메시지 표시 여부)
+        # _waiting_intro_shown 플래그로 안내 메시지가 이미 표시되었는지 추적
+        waiting_intro_shown = collected_info.get("_waiting_intro_shown", False)
+
         if not missing_slots:
-            # 모든 정보 수집 완료
+            # 모든 정보 수집 완료 - 상담사 대기 중임을 안내
+            # 시나리오: 상담사가 수락하면 고객에게 연결 확인 모달이 뜨므로 여기서는 대기 안내만
             state["info_collection_complete"] = True
-            state["ai_message"] = "감사합니다. 필요한 정보를 모두 수집했습니다. 잠시 후 상담사에게 연결해 드리겠습니다."
-            logger.info(f"정보 수집 완료 - 세션: {session_id}, 수집된 정보: {collected_info}")
+            state["ai_message"] = "감사합니다. 필요한 정보가 모두 확인되었습니다. 상담사 연결을 기다리고 계세요."
+            # handover_status를 pending으로 유지 (voice-chatbot에서 폴링 시작 트리거)
+            state["handover_status"] = "pending"
+            logger.info(f"정보 수집 완료 - 세션: {session_id}, 수집된 정보: {collected_info}, handover_status: pending")
         else:
             # 부족한 정보에 대해 질문 생성
             state["info_collection_complete"] = False
-            question = _generate_collection_question(missing_slots, collected_info, slot_loader)
+            question = _generate_collection_question(
+                missing_slots,
+                collected_info,
+                slot_loader,
+                user_message=user_message,
+                current_category=category
+            )
 
-            # 첫 번째 질문인 경우 (수집된 슬롯이 거의 없는 경우) 안내 메시지 추가
-            # _로 시작하는 내부 필드 제외하고 실제 수집된 슬롯 수 확인
-            actual_collected = {k: v for k, v in collected_info.items() if not k.startswith("_") and v}
-            if len(actual_collected) == 0:
-                # 첫 번째 질문 - 안내 메시지 + 질문
-                intro_message = "고객님, 대기 기간 동안 원하시는 내용을 좀 더 구체적으로 알려 주시면 상담사 연결 후 즉시 도움을 드리겠습니다."
+            if not waiting_intro_shown:
+                # 첫 번째 waiting_agent 진입 - 상담사 확인 안내 메시지 + 질문
+                # 시나리오: "현재 응대 가능한 상담사가 있는지 확인해 보겠습니다. 잠시만 기다려 주시기 바랍니다."
+                intro_message = "현재 응대 가능한 상담사가 있는지 확인해 보겠습니다. 잠시만 기다려 주시기 바랍니다. 대기 중 고객님의 문의 내용을 좀 더 구체적으로 알려 주시면 상담사 연결 후 즉시 도움을 드리겠습니다."
                 state["ai_message"] = f"{intro_message} {question}"
+                # 안내 메시지 표시 완료 플래그 설정
+                collected_info["_waiting_intro_shown"] = True
+                state["collected_info"] = collected_info
                 # 첫 번째 슬롯 수집 시작 = 상담사 대기 시작 (handover_status를 pending으로)
                 state["handover_status"] = "pending"
                 logger.info(f"핸드오버 대기 시작 - 세션: {session_id}, handover_status: pending")
