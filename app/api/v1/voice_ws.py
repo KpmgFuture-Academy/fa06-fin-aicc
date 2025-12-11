@@ -28,7 +28,7 @@ from app.schemas.voice import WSMessageType
 from app.services.workflow_service import process_chat_message
 from app.services.voice.stt_service import AICCSTTService, STTError, pcm_to_wav
 from app.services.voice.tts_service_google import AICCGoogleTTSService, TTSError
-from app.services.voice.silero_vad_service import get_vad_service
+from app.services.vad import HybridVADStream, SileroVADStream
 from app.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
@@ -389,18 +389,28 @@ async def get_active_connections():
 # ========== VAD 기반 실시간 스트리밍 엔드포인트 ==========
 
 class VoiceStreamSession:
-    """VAD 기반 음성 스트리밍 세션 관리"""
+    """VAD 기반 음성 스트리밍 세션 관리 (Hybrid VAD: WebRTC + Silero)"""
 
     def __init__(self, session_id: str, websocket: WebSocket):
         self.session_id = session_id
         self.websocket = websocket
-        self.vad_service = get_vad_service(
-            threshold=0.3,  # 소음 환경에서 낮은 임계값 사용
+
+        # Hybrid VAD 초기화: WebRTC (빠른 선필터) + Silero (정확한 확인)
+        silero_vad = SileroVADStream(
             sample_rate=16000,
-            min_silence_duration_ms=2000,  # 2초 침묵 후 음성 종료
+            frame_ms=40,  # Silero는 40ms 프레임
+            threshold=0.3,  # 소음 환경에서 낮은 임계값 사용
         )
-        # 새 세션 시작 시 VAD 상태 리셋 (싱글톤이므로 이전 상태가 남아있을 수 있음)
-        self.vad_service.reset_state()
+        self.vad = HybridVADStream(
+            silero_vad,
+            sample_rate=16000,
+            frame_ms=20,  # WebRTC는 20ms 프레임
+            aggressiveness=2,  # 중간 수준의 민감도
+            min_speech_ms=150,  # 최소 150ms 음성
+            max_silence_ms=2000,  # 2초 침묵 후 음성 종료
+            mode="and",  # WebRTC와 Silero 모두 음성으로 판단해야 함
+        )
+
         self.is_active = True
         self.is_speaking = False
         self.audio_buffer: list[bytes] = []
@@ -422,46 +432,77 @@ class VoiceStreamSession:
             logger.error(f"메시지 전송 오류: {e}")
 
     async def process_audio(self, audio_data: bytes):
-        """오디오 데이터 처리 및 VAD 수행"""
+        """오디오 데이터 처리 및 Hybrid VAD 수행 (WebRTC + Silero)"""
         try:
-            # Silero VAD로 음성 감지
-            vad_result = self.vad_service.process_chunk(audio_data)
+            # 이전 VAD 상태 저장 (speech_start 감지용)
+            was_in_speech = self.vad._in_speech
 
-            # VAD 결과 클라이언트에 전송
-            await self.send_message('vad_result', {
-                'is_speech': vad_result['is_speech'],
-                'speech_prob': round(vad_result['speech_prob'], 3),
-                'event': vad_result['event'],
-            })
+            # Hybrid VAD로 음성 세그먼트 감지
+            segments = self.vad.feed(audio_data)
 
-            # 음성 시작
-            if vad_result['event'] == 'speech_start':
+            # 현재 VAD 상태
+            is_in_speech = self.vad._in_speech
+
+            # 음성 시작 감지 (이전: 침묵 → 현재: 음성)
+            if not was_in_speech and is_in_speech:
                 self.is_speaking = True
-                self.audio_buffer = []
+                self.audio_buffer = []  # 새 음성 시작 시 버퍼 초기화
                 logger.info(f"[{self.session_id}] 음성 시작")
-
-            # 음성 중 오디오 버퍼에 저장
-            if self.is_speaking:
-                self.audio_buffer.append(audio_data)
-
-            # 음성 종료 (2초 침묵 후) → 자동 STT/AI/TTS 처리
-            if vad_result['event'] == 'speech_end':
-                self.is_speaking = False
-                logger.info(f"[{self.session_id}] 음성 종료 - 버퍼 크기: {len(self.audio_buffer)} 청크")
-
-                # 자동 전송 이벤트
-                await self.send_message('auto_send', {
-                    'reason': 'silence_detected',
-                    'buffer_chunks': len(self.audio_buffer),
+                await self.send_message('vad_result', {
+                    'is_speech': True,
+                    'speech_prob': 0.0,
+                    'event': 'speech_start',
                 })
 
-                # 버퍼에 데이터가 있으면 STT/AI/TTS 처리
-                if self.audio_buffer:
-                    audio_data_combined = b"".join(self.audio_buffer)
-                    self.audio_buffer = []
+            # 음성 중이면 버퍼에 저장
+            if is_in_speech or self.is_speaking:
+                self.audio_buffer.append(audio_data)
+                # 음성 지속 상태 전송 (너무 자주 보내지 않도록 선택적)
+                if not segments:
+                    await self.send_message('vad_result', {
+                        'is_speech': True,
+                        'speech_prob': 0.0,
+                        'event': 'speech_continue',
+                    })
 
-                    # 비동기로 처리 시작
-                    asyncio.create_task(self._process_speech(audio_data_combined))
+            # 음성 세그먼트 완료 시 (2초 침묵 후)
+            for segment in segments:
+                if segment.is_speech:
+                    logger.info(f"[{self.session_id}] 음성 세그먼트 완료 - "
+                              f"start: {segment.start_ms}ms, end: {segment.end_ms}ms, "
+                              f"duration: {segment.end_ms - segment.start_ms}ms")
+
+                    # 음성 종료 이벤트 전송
+                    await self.send_message('vad_result', {
+                        'is_speech': False,
+                        'speech_prob': segment.score or 0.0,
+                        'event': 'speech_end',
+                    })
+
+                    # 자동 전송 이벤트
+                    await self.send_message('auto_send', {
+                        'reason': 'silence_detected',
+                        'buffer_chunks': len(self.audio_buffer),
+                        'duration_ms': segment.end_ms - segment.start_ms,
+                    })
+
+                    # 버퍼에 데이터가 있으면 STT/AI/TTS 처리
+                    if self.audio_buffer:
+                        audio_data_combined = b"".join(self.audio_buffer)
+                        self.audio_buffer = []
+
+                        # 비동기로 처리 시작
+                        asyncio.create_task(self._process_speech(audio_data_combined))
+
+                    self.is_speaking = False
+
+            # 침묵 상태 (음성 중이 아닐 때)
+            if not is_in_speech and not self.is_speaking and not segments:
+                await self.send_message('vad_result', {
+                    'is_speech': False,
+                    'speech_prob': 0.0,
+                    'event': 'silence',
+                })
 
             self.last_activity_time = time.time()
 
@@ -572,7 +613,7 @@ class VoiceStreamSession:
 
     def reset(self):
         """세션 상태 초기화"""
-        self.vad_service.reset_state()
+        self.vad.reset()
         self.is_speaking = False
         self.audio_buffer = []
 
@@ -605,11 +646,15 @@ async def voice_streaming(websocket: WebSocket, session_id: str):
         # 연결 성공 메시지
         await session.send_message('connected', {
             'session_id': session_id,
-            'message': 'Silero VAD 스트리밍 연결 완료',
+            'message': 'Hybrid VAD (WebRTC + Silero) 스트리밍 연결 완료',
             'vad_config': {
-                'threshold': 0.3,
+                'engine': 'hybrid',
+                'mode': 'and',
+                'webrtc_aggressiveness': 2,
+                'silero_threshold': 0.3,
                 'sample_rate': 16000,
-                'min_silence_duration_ms': 2000,
+                'min_speech_ms': 150,
+                'max_silence_ms': 2000,
             }
         })
 
@@ -674,14 +719,28 @@ async def voice_streaming(websocket: WebSocket, session_id: str):
 
 @router.get("/vad/status")
 async def vad_status():
-    """VAD 서비스 상태 확인"""
+    """Hybrid VAD 서비스 상태 확인"""
     try:
-        vad = get_vad_service()
+        # Hybrid VAD 테스트 인스턴스 생성
+        silero_vad = SileroVADStream(
+            sample_rate=16000,
+            frame_ms=40,
+            threshold=0.3,
+        )
+        hybrid_vad = HybridVADStream(
+            silero_vad,
+            sample_rate=16000,
+            frame_ms=20,
+            aggressiveness=2,
+            mode="and",
+        )
         return {
             'status': 'ok',
-            'model_loaded': vad.model is not None,
-            'threshold': vad.threshold,
-            'sample_rate': vad.sample_rate,
+            'engine': 'hybrid',
+            'mode': hybrid_vad.mode,
+            'silero_threshold': silero_vad.threshold,
+            'webrtc_aggressiveness': 2,
+            'sample_rate': hybrid_vad.sample_rate,
         }
     except Exception as e:
         return {

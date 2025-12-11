@@ -41,6 +41,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """애플리케이션 시작 시 DB 테이블 생성 및 연결 확인"""
+    import os
+
+    # LangSmith 트레이싱 확인
+    if os.getenv("LANGCHAIN_TRACING_V2", "").lower() == "true":
+        project = os.getenv("LANGCHAIN_PROJECT", "default")
+        logger.info(f"✅ LangSmith 추적 활성화됨 - 프로젝트: {project}")
+
     try:
         logger.info("데이터베이스 초기화 시작...")
                
