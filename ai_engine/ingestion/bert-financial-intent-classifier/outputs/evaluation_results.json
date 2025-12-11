@@ -1,0 +1,7 @@
+{
+  "accuracy": 0.2,
+  "total_samples": 100,
+  "misclassified": 80,
+  "model_path": "C:\\Users\\Admin\\workplace\\Final_Project\\BERT_Training\\models\\bert_intent_classifier",
+  "data_path": "C:\\Users\\Admin\\workplace\\Final_Project\\BERT_Training\\data\\processed\\val.csv"
+}
