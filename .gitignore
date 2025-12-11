@@ -45,6 +45,10 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+.pylint.d/
 
 # ========================================
 # 맥(Mac) 운영체제 임시 파일
@@ -148,6 +152,10 @@ data/aicc.db
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.db-wal
+*.db-shm
 *-wal
 *-shm
 
@@ -156,6 +164,9 @@ data/aicc.db
 # ========================================
 reports/
 evaluation_reports/
+e2e_evaluation_pipeline/output/
+e2e_evaluation_pipeline/results/
+e2e_evaluation_pipeline/reports/
 
 # ========================================
 # SQL 마이그레이션 파일
@@ -178,6 +189,7 @@ build/
 # 로그 파일
 # ========================================
 *.log
+*.log.*
 logs/
 
 # ========================================
