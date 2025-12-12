@@ -67,6 +67,7 @@ interface UseVoiceRecordingReturn {
   isPlayingTTS: boolean;      // TTS 재생 중 여부
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<VoiceRecordingResult | null>;
+  disconnect: () => void;     // WebSocket 연결 해제 (새 상담 시 호출)
 }
 
 export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn => {
@@ -86,6 +87,10 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // sessionId를 ref로 관리하여 최신 값 보장 (closure 문제 방지)
+  const sessionIdRef = useRef<string>(sessionId);
+  sessionIdRef.current = sessionId;
+
   // 응답 대기용 refs
   const responseResolverRef = useRef<((result: VoiceRecordingResult | null) => void) | null>(null);
   const latestUserTextRef = useRef<string>('');
@@ -96,11 +101,13 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const isPlayingRef = useRef<boolean>(false);
   const ttsAudioContextRef = useRef<AudioContext | null>(null);
 
-  // WebSocket URL 생성 (스트리밍 엔드포인트 사용)
+  // WebSocket URL 생성 (ref 사용으로 항상 최신 sessionId 보장)
   const getWsUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/api/v1/voice/streaming/${sessionId}`;
-  }, [sessionId]);
+    const currentSessionId = sessionIdRef.current;
+    console.log('[VoiceRecording] getWsUrl - 사용할 sessionId:', currentSessionId);
+    return `${protocol}//${window.location.host}/api/v1/voice/streaming/${currentSessionId}`;
+  }, []);
 
   // TTS 오디오 재생 함수
   const playNextAudio = useCallback(async () => {
@@ -478,7 +485,62 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     });
   }, [stopAudioCapture]);
 
-  // WebSocket 연결 해제 (컴포넌트 언마운트 또는 세션 변경 시)
+  // WebSocket 연결 해제 (새 상담 시 호출)
+  const disconnect = useCallback(() => {
+    console.log('[VoiceRecording] disconnect 호출 - 모든 리소스 정리');
+
+    // 타이머 중지
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // 오디오 캡처 중지
+    stopAudioCapture();
+
+    // WebSocket 연결 해제
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // TTS AudioContext 정리
+    if (ttsAudioContextRef.current) {
+      ttsAudioContextRef.current.close();
+      ttsAudioContextRef.current = null;
+    }
+
+    // 오디오 큐 초기화
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+
+    // 상태 초기화
+    setIsRecording(false);
+    setIsProcessing(false);
+    setIsPlayingTTS(false);
+    setIsSpeaking(false);
+    setSpeechProb(0);
+    setVadEvent(null);
+    setRecordingTime(0);
+    setError(null);
+
+    // 응답 대기 초기화
+    latestUserTextRef.current = '';
+    latestAiResponseRef.current = null;
+    responseResolverRef.current = null;
+  }, [stopAudioCapture]);
+
+  // sessionId 변경 시 기존 WebSocket 연결 해제 (세션 ID 동기화 문제 방지)
+  const prevSessionIdRef = useRef<string>(sessionId);
+  useEffect(() => {
+    if (prevSessionIdRef.current !== sessionId) {
+      console.log(`[VoiceRecording] sessionId 변경 감지: ${prevSessionIdRef.current} → ${sessionId}, 기존 연결 해제`);
+      disconnect();
+      prevSessionIdRef.current = sessionId;
+    }
+  }, [sessionId, disconnect]);
+
+  // WebSocket 연결 해제 (컴포넌트 언마운트 시)
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -509,6 +571,7 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     isPlayingTTS,
     startRecording,
     stopRecording,
+    disconnect,
   };
 };
 

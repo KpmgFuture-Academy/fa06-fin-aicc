@@ -109,6 +109,10 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // sessionId를 ref로 관리하여 최신 값 보장 (closure 문제 방지)
+  const sessionIdRef = useRef<string>(sessionId);
+  sessionIdRef.current = sessionId;
+
   // 자동 중지 관련 ref
   const isAutoStoppingRef = useRef<boolean>(false);
 
@@ -138,11 +142,13 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
   // triggerAutoStop ref (클로저 문제 해결)
   const triggerAutoStopRef = useRef<(() => void) | null>(null);
 
-  // WebSocket URL 생성
+  // WebSocket URL 생성 (ref 사용으로 항상 최신 sessionId 보장)
   const getWsUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/api/v1/voice/streaming/${sessionId}`;
-  }, [sessionId]);
+    const currentSessionId = sessionIdRef.current;
+    console.log('[VoiceStream] getWsUrl - 사용할 sessionId:', currentSessionId);
+    return `${protocol}//${window.location.host}/api/v1/voice/streaming/${currentSessionId}`;
+  }, []);
 
   // base64 → Blob 변환
   const base64ToBlob = useCallback((base64: string, mimeType: string): Blob => {
@@ -649,6 +655,16 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
   const setOnBargeIn = useCallback((callback: () => void) => {
     bargeInCallbackRef.current = callback;
   }, []);
+
+  // sessionId 변경 시 기존 WebSocket 연결 해제 (세션 ID 동기화 문제 방지)
+  const prevSessionIdRef = useRef<string>(sessionId);
+  useEffect(() => {
+    if (prevSessionIdRef.current !== sessionId) {
+      console.log(`[VoiceStream] sessionId 변경 감지: ${prevSessionIdRef.current} → ${sessionId}, 기존 연결 해제`);
+      disconnect();
+      prevSessionIdRef.current = sessionId;
+    }
+  }, [sessionId, disconnect]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
