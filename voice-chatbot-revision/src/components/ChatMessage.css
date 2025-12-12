@@ -95,3 +95,21 @@
 .chat-message--assistant .message-time {
   text-align: left;
 }
+
+/* 타이핑 커서 애니메이션 */
+.typing-cursor {
+  display: inline-block;
+  animation: blink 0.8s infinite;
+  color: inherit;
+  font-weight: bold;
+  margin-left: 1px;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}

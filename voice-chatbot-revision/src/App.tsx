@@ -143,6 +143,7 @@ function App() {
         role: 'assistant',
         content: WELCOME_MESSAGE,
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages([greetingMessage]);
       setHasGreeted(true);
@@ -203,6 +204,7 @@ function App() {
         role: 'assistant',
         content: INACTIVITY_REMINDER_MESSAGE,
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages((prev) => [...prev, reminderMessage]);
 
@@ -303,6 +305,7 @@ function App() {
             content: msg.message,
             timestamp: new Date(msg.created_at),
             isAgent: true,
+            isNew: true,
           }));
 
           setMessages((prev) => {
@@ -382,6 +385,7 @@ function App() {
           content: userMessageContent,
           timestamp: new Date(),
           isVoice: true,
+          isNew: true,
         };
 
         // 중복 메시지 방지: 최근 5개 메시지 중 동일 content가 있으면 추가하지 않음
@@ -467,6 +471,7 @@ function App() {
             role: 'assistant',
             content: aiMessageContent,
             timestamp: new Date(),
+            isNew: true,
           };
           setMessages((prev) => [...prev, aiMessage]);
 
@@ -485,6 +490,7 @@ function App() {
             role: 'assistant',
             content: aiMessageContent,
             timestamp: new Date(),
+            isNew: true,
           };
 
           // 중복 메시지 방지: 최근 5개 메시지 중 동일 content가 있으면 추가하지 않음
@@ -549,6 +555,7 @@ function App() {
             content: userMessageContent,
             timestamp: new Date(),
             isVoice: true,
+            isNew: true,
           };
 
           // 중복 메시지 방지: 최근 5개 메시지 중 동일 content가 있으면 추가하지 않음
@@ -629,6 +636,7 @@ function App() {
               role: 'assistant',
               content: result.aiResponse.text,
               timestamp: new Date(),
+              isNew: true,
             };
             setMessages((prev) => [...prev, assistantMessage]);
 
@@ -643,6 +651,7 @@ function App() {
               role: 'assistant',
               content: result.aiResponse.text,
               timestamp: new Date(),
+              isNew: true,
             };
             setMessages((prev) => [...prev, assistantMessage]);
           }
@@ -742,6 +751,7 @@ function App() {
         role: 'assistant',
         content: WELCOME_MESSAGE,
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages([greetingMessage]);
 
@@ -809,6 +819,7 @@ function App() {
             role: 'assistant',
             content: connectedMessage,
             timestamp: new Date(),
+            isNew: true,
           };
           setMessages((prev) => [...prev, aiMessage]);
 
@@ -845,6 +856,7 @@ function App() {
         role: 'assistant',
         content: HANDOVER_WAIT_TIME_MESSAGE + ' 계속 기다리시려면 잠시만 기다려 주세요. 추가 문의가 있으시면 말씀해 주세요.',
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages((prev) => [...prev, timeoutMessage]);
 
@@ -879,6 +891,7 @@ function App() {
         role: 'assistant',
         content: '현재 응대 가능한 상담사가 있는지 확인을 해 보겠습니다. 잠시만 기다려 주시기 바랍니다.',
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages((prev) => [...prev, waitingMessage]);
 
@@ -928,6 +941,7 @@ function App() {
         role: 'assistant',
         content: '상담원에게 연결되었습니다. 상담을 시작합니다.',
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages((prev) => [...prev, connectedMessage]);
 
@@ -963,6 +977,7 @@ function App() {
       role: 'assistant',
       content: '알겠습니다. 추가로 문의하실 내용이 있으시면 말씀해 주세요.',
       timestamp: new Date(),
+      isNew: true,
     };
     setMessages((prev) => [...prev, declineMessage]);
 
@@ -988,6 +1003,7 @@ function App() {
       role: 'assistant',
       content: '네, 계속 대기하겠습니다. 상담사가 응대 가능해지면 안내해 드리겠습니다.',
       timestamp: new Date(),
+      isNew: true,
     };
     setMessages((prev) => [...prev, waitMessage]);
   }, [startHandoverPolling]);
@@ -1026,6 +1042,7 @@ function App() {
       content: trimmedInput,
       timestamp: new Date(),
       isVoice: false,
+      isNew: true,
     };
     setMessages((prev) => [...prev, userMessage]);
 
@@ -1050,6 +1067,7 @@ function App() {
           role: 'assistant',
           content: response.ai_message,
           timestamp: new Date(),
+          isNew: true,
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
@@ -1098,6 +1116,7 @@ function App() {
         role: 'assistant',
         content: '죄송합니다. 메시지 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
         timestamp: new Date(),
+        isNew: true,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
