@@ -404,7 +404,7 @@ class VoiceStreamSession:
         self.vad = HybridVADStream(
             silero_vad,
             sample_rate=16000,
-            frame_ms=20,  # WebRTC는 20ms 프레임
+            frame_ms=30,  # WebRTC는 30ms 프레임 (Silero 최소 요구사항 충족)
             aggressiveness=2,  # 중간 수준의 민감도
             min_speech_ms=150,  # 최소 150ms 음성
             max_silence_ms=2000,  # 2초 침묵 후 음성 종료
@@ -419,6 +419,7 @@ class VoiceStreamSession:
             "language": "ko",
             "tts_voice": "ko-KR-Neural2-B",
         }
+        self._processing_task: asyncio.Task | None = None  # 진행 중인 STT/AI/TTS 작업
 
     async def send_message(self, msg_type: str, data: dict):
         """클라이언트에 메시지 전송"""
@@ -491,8 +492,8 @@ class VoiceStreamSession:
                         audio_data_combined = b"".join(self.audio_buffer)
                         self.audio_buffer = []
 
-                        # 비동기로 처리 시작
-                        asyncio.create_task(self._process_speech(audio_data_combined))
+                        # 비동기로 처리 시작 (Task 추적)
+                        self._processing_task = asyncio.create_task(self._process_speech(audio_data_combined))
 
                     self.is_speaking = False
 
@@ -685,8 +686,12 @@ async def voice_streaming(websocket: WebSocket, session_id: str):
                             audio_data_combined = b"".join(session.audio_buffer)
                             session.audio_buffer = []
                             await session._process_speech(audio_data_combined)
+                        elif session._processing_task and not session._processing_task.done():
+                            # VAD가 이미 처리를 시작한 경우, 완료될 때까지 대기
+                            logger.info(f"[{session_id}] 진행 중인 처리 완료 대기...")
+                            await session._processing_task
                         else:
-                            # 버퍼가 비어있으면 바로 완료 메시지 전송
+                            # 버퍼도 비어있고 진행 중인 작업도 없으면 완료 메시지 전송
                             await session.send_message('completed', {
                                 'message': 'EOS 처리 완료 (버퍼 없음)'
                             })
@@ -730,7 +735,7 @@ async def vad_status():
         hybrid_vad = HybridVADStream(
             silero_vad,
             sample_rate=16000,
-            frame_ms=20,
+            frame_ms=30,
             aggressiveness=2,
             mode="and",
         )

@@ -16,14 +16,21 @@ class HybridVADStream(VADEngine):
     Mode:
       - "and": require both WebRTC speech and Silero prob >= threshold
       - "or": accept speech if either engine says speech
+
+    Note: WebRTC supports 10/20/30ms frames, but Silero requires minimum 512 samples
+    (~32ms at 16kHz). We use 30ms for WebRTC (480 samples) and accumulate frames
+    for Silero scoring to meet the minimum requirement.
     """
+
+    # Silero 정확한 샘플 수 (16kHz 기준, 512 샘플만 허용)
+    SILERO_EXACT_SAMPLES = 512
 
     def __init__(
         self,
         silero: SileroVADStream,
         *,
         sample_rate: int = 16000,
-        frame_ms: int = 20,
+        frame_ms: int = 30,
         aggressiveness: int = 2,
         min_speech_ms: int = 150,
         max_silence_ms: int = 300,
@@ -48,6 +55,7 @@ class HybridVADStream(VADEngine):
         self.silero_threshold = silero.threshold
 
         self._buffer = bytearray()
+        self._silero_buffer = bytearray()  # Silero용 누적 버퍼
         self._in_speech = False
         self._start_ms = 0
         self._last_speech_ms = 0
@@ -56,11 +64,30 @@ class HybridVADStream(VADEngine):
 
     def reset(self) -> None:
         self._buffer.clear()
+        self._silero_buffer.clear()
         self._in_speech = False
         self._start_ms = 0
         self._last_speech_ms = 0
         self._silence_acc_ms = 0
         self._processed_ms = 0
+
+    def _get_silero_score(self, frame: bytes) -> float | None:
+        """
+        Silero 점수를 계산합니다.
+        Silero는 정확히 512 샘플만 허용하므로, 프레임을 누적하여 512 샘플이 되면 점수를 계산합니다.
+        """
+        self._silero_buffer.extend(frame)
+
+        # 정확히 512 샘플 필요 (16-bit = 2 bytes per sample)
+        silero_exact_bytes = self.SILERO_EXACT_SAMPLES * 2  # 1024 bytes
+        if len(self._silero_buffer) >= silero_exact_bytes:
+            # 정확히 512 샘플만 추출하여 Silero에 전달
+            silero_frame = bytes(self._silero_buffer[:silero_exact_bytes])
+            # 사용한 바이트만 제거 (나머지는 다음 계산에 사용)
+            del self._silero_buffer[:silero_exact_bytes]
+            return self.silero.score_frame(silero_frame)
+
+        return None
 
     def feed(self, audio: bytes) -> list[FrameResult]:
         self._buffer.extend(audio)
@@ -73,12 +100,19 @@ class HybridVADStream(VADEngine):
             w_speech = self.vad.is_speech(frame, self.sample_rate)
             s_prob = None
             if w_speech or self.mode == "or":
-                s_prob = self.silero.score_frame(frame)
+                s_prob = self._get_silero_score(frame)
 
             if self.mode == "and":
-                speech = w_speech and (s_prob is not None and s_prob >= self.silero_threshold)
+                # Silero 점수가 아직 없으면 WebRTC만으로 판단 (Silero 버퍼 누적 중)
+                if s_prob is None:
+                    speech = w_speech  # WebRTC 결과만 사용
+                else:
+                    speech = w_speech and s_prob >= self.silero_threshold
             else:  # "or"
-                speech = w_speech or (s_prob is not None and s_prob >= self.silero_threshold)
+                if s_prob is None:
+                    speech = w_speech
+                else:
+                    speech = w_speech or s_prob >= self.silero_threshold
 
             frame_start_ms = self._processed_ms
             frame_end_ms = self._processed_ms + self.frame_ms
