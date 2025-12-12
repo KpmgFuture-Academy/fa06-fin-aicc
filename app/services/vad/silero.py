@@ -21,6 +21,9 @@ class SileroVADStream(VADEngine):
     Supports: (1) torch.hub.load (default), (2) local jit file via SILERO_VAD_MODEL_PATH, (3) model injection.
     """
 
+    # Silero VAD 최소 샘플 수 (16kHz 기준 약 32ms = 512 샘플)
+    MIN_SAMPLES = 512
+
     def __init__(
         self,
         *,
@@ -82,7 +85,17 @@ class SileroVADStream(VADEngine):
         """
         Run a single frame through the Silero model and return speech probability.
         Silero expects float32 waveform in range [-1, 1] with shape [batch, samples].
+
+        Note: Silero VAD requires EXACTLY 512 samples for 16kHz (or 256 for 8kHz).
         """
+        # 정확한 샘플 수 검증 (16kHz = 512 샘플, 8kHz = 256 샘플)
+        num_samples = len(frame) // 2  # 16-bit = 2 bytes per sample
+        expected_samples = self.MIN_SAMPLES  # 512 for 16kHz
+
+        if num_samples != expected_samples:
+            # 샘플 수가 정확하지 않으면 기본값 반환 (음성 아님으로 처리)
+            return 0.0
+
         with torch.no_grad():
             waveform = torch.frombuffer(frame, dtype=torch.int16).to(self.device).float()
             waveform = waveform / 32768.0

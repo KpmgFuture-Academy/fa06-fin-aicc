@@ -89,11 +89,63 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const latestUserTextRef = useRef<string>('');
   const latestAiResponseRef = useRef<VoiceRecordingResult['aiResponse']>(null);
 
+  // TTS 오디오 재생용 refs
+  const audioQueueRef = useRef<string[]>([]);
+  const isPlayingRef = useRef<boolean>(false);
+  const ttsAudioContextRef = useRef<AudioContext | null>(null);
+
   // WebSocket URL 생성 (스트리밍 엔드포인트 사용)
   const getWsUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}/api/v1/voice/streaming/${sessionId}`;
   }, [sessionId]);
+
+  // TTS 오디오 재생 함수
+  const playNextAudio = useCallback(async () => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0) {
+      return;
+    }
+
+    isPlayingRef.current = true;
+    const audioBase64 = audioQueueRef.current.shift();
+
+    if (!audioBase64) {
+      isPlayingRef.current = false;
+      return;
+    }
+
+    try {
+      // AudioContext 초기화 (필요 시)
+      if (!ttsAudioContextRef.current || ttsAudioContextRef.current.state === 'closed') {
+        ttsAudioContextRef.current = new AudioContext();
+      }
+
+      // Base64 디코딩
+      const binaryString = atob(audioBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // MP3 디코딩 및 재생
+      const audioBuffer = await ttsAudioContextRef.current.decodeAudioData(bytes.buffer);
+      const source = ttsAudioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ttsAudioContextRef.current.destination);
+
+      source.onended = () => {
+        isPlayingRef.current = false;
+        playNextAudio(); // 다음 청크 재생
+      };
+
+      source.start(0);
+      console.log('[VoiceRecording] TTS 청크 재생 중...');
+    } catch (err) {
+      console.error('[VoiceRecording] TTS 재생 오류:', err);
+      isPlayingRef.current = false;
+      playNextAudio(); // 오류 발생 시 다음 청크 시도
+    }
+  }, []);
 
   // 리샘플링 함수: 원본 샘플레이트 → 16kHz
   const resample = useCallback((inputData: Float32Array, inputSampleRate: number, outputSampleRate: number): Float32Array => {
@@ -167,9 +219,11 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
           break;
 
         case 'tts_chunk':
-          // TTS 청크는 WebSocket을 통해 실시간으로 재생됨 (별도 저장 불필요)
+          // TTS 청크 수신 시 오디오 큐에 추가하고 재생
           if (data.audio_base64) {
-            console.log('[VoiceRecording] TTS 청크 수신 (실시간 재생)');
+            console.log('[VoiceRecording] TTS 청크 수신, 재생 시작');
+            audioQueueRef.current.push(data.audio_base64);
+            playNextAudio();
           }
           break;
 
@@ -427,6 +481,12 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
         wsRef.current.close();
         wsRef.current = null;
       }
+      // TTS AudioContext 정리
+      if (ttsAudioContextRef.current) {
+        ttsAudioContextRef.current.close();
+        ttsAudioContextRef.current = null;
+      }
+      audioQueueRef.current = [];
     };
   }, [stopAudioCapture]);
 
