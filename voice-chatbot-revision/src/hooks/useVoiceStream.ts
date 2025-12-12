@@ -252,25 +252,8 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
           if (data.is_speech !== undefined) {
             setIsSpeaking(data.is_speech);
           }
-
-          // Barge-in 감지 (TTS 재생 중 음성 시작)
-          if (data.event === 'speech_start' && (isPlayingRef.current || hasTTSStartedRef.current)) {
-            console.log('[VoiceStream] Barge-in 감지 (Silero VAD)! prob:', data.speech_prob);
-            stopTTS();
-
-            // 현재 처리 상태 리셋 (새 발화 준비)
-            isAutoStoppingRef.current = false;
-            setIsProcessing(false);
-            setIsRecording(true);  // 녹음 상태로 전환
-
-            // 이전 텍스트 초기화
-            setTranscript('');
-            setFinalTranscript('');
-
-            if (bargeInCallbackRef.current) {
-              bargeInCallbackRef.current();
-            }
-          }
+          // 참고: TTS 재생 중에는 오디오 전송이 중지되므로 VAD 기반 Barge-in은 비활성화됨
+          // TTS 피드백 방지를 위해 의도적으로 설계됨
           break;
 
         case 'auto_send':
@@ -483,7 +466,8 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
       processorRef.current = processor;
 
       processor.onaudioprocess = (e) => {
-        if (wsRef.current?.readyState === WebSocket.OPEN && !isAutoStoppingRef.current) {
+        // TTS 재생 중에는 오디오 전송 중지 (피드백 방지)
+        if (wsRef.current?.readyState === WebSocket.OPEN && !isAutoStoppingRef.current && !isPlayingRef.current) {
           const inputData = e.inputBuffer.getChannelData(0);
 
           // 16kHz로 리샘플링 (브라우저가 48kHz인 경우)
@@ -539,7 +523,7 @@ export const useVoiceStream = (sessionId: string): UseVoiceStreamReturn => {
 
   // 자동 녹음 중지 (VAD에 의해 호출)
   // 백엔드에서 이미 STT/AI/TTS 처리가 시작되므로, EOS를 보내지 않고 결과만 대기
-  // Barge-in을 위해 오디오 캡처는 유지 (TTS 재생 중에도 VAD 감지 필요)
+  // 오디오 캡처는 유지하지만, TTS 재생 중에는 전송 중지 (피드백 방지)
   const triggerAutoStop = useCallback(() => {
     if (isAutoStoppingRef.current) return;
     isAutoStoppingRef.current = true;
