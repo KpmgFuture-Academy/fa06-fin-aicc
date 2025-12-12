@@ -16,6 +16,7 @@ class HybridVADStream(VADEngine):
     Mode:
       - "and": require both WebRTC speech and Silero prob >= threshold
       - "or": accept speech if either engine says speech
+      - "silero_only": use Silero only (more accurate, slightly slower)
 
     Note: WebRTC supports 10/20/30ms frames, but Silero requires minimum 512 samples
     (~32ms at 16kHz). We use 30ms for WebRTC (480 samples) and accumulate frames
@@ -40,8 +41,8 @@ class HybridVADStream(VADEngine):
             raise ValueError("frame_ms must be one of 10, 20, 30 for WebRTC VAD")
         if sample_rate not in (8000, 16000, 32000, 48000):
             raise ValueError("sample_rate must be one of 8000, 16000, 32000, 48000")
-        if mode not in ("and", "or"):
-            raise ValueError("mode must be 'and' or 'or'")
+        if mode not in ("and", "or", "silero_only"):
+            raise ValueError("mode must be 'and', 'or', or 'silero_only'")
 
         self.sample_rate = sample_rate
         self.frame_ms = frame_ms
@@ -99,14 +100,31 @@ class HybridVADStream(VADEngine):
 
             w_speech = self.vad.is_speech(frame, self.sample_rate)
             s_prob = None
-            if w_speech or self.mode == "or":
+
+            # Silero 점수 계산 조건:
+            # - silero_only 모드: 항상
+            # - or 모드: 항상
+            # - and 모드: WebRTC가 음성이거나, 이미 음성 중일 때 (침묵 감지용)
+            if self.mode == "silero_only" or self.mode == "or" or w_speech or self._in_speech:
                 s_prob = self._get_silero_score(frame)
 
-            if self.mode == "and":
-                # Silero 점수가 아직 없으면 WebRTC만으로 판단 (Silero 버퍼 누적 중)
+            if self.mode == "silero_only":
+                # Silero만 사용 (더 정확한 음성 감지)
+                if s_prob is None:
+                    # Silero 버퍼 누적 중 - WebRTC를 백업으로 사용 (음성 시작 감지용)
+                    speech = w_speech if not self._in_speech else self._in_speech
+                else:
+                    speech = s_prob >= self.silero_threshold
+            elif self.mode == "and":
+                # 음성 시작: WebRTC와 Silero 모두 음성이어야 함
+                # 음성 종료: Silero가 침묵이면 종료 (WebRTC 노이즈 무시)
                 if s_prob is None:
                     speech = w_speech  # WebRTC 결과만 사용
+                elif self._in_speech:
+                    # 이미 음성 중: Silero 기반으로 침묵 감지 (더 정확)
+                    speech = s_prob >= self.silero_threshold
                 else:
+                    # 음성 시작 감지: 둘 다 음성이어야 함
                     speech = w_speech and s_prob >= self.silero_threshold
             else:  # "or"
                 if s_prob is None:

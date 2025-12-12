@@ -144,6 +144,23 @@
   background: rgba(255, 80, 80, 1);
 }
 
+/* 강제 종료(중지) 버튼 */
+.stop-button-header {
+  padding: 4px 10px;
+  background: rgba(255, 165, 0, 0.9);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-right: 6px;
+}
+
+.stop-button-header:hover {
+  background: rgba(255, 140, 0, 1);
+}
+
 /* 상담원 연결 버튼 */
 .handover-button {
   padding: 10px 20px;
@@ -279,8 +296,8 @@
   border-radius: 3px;
 }
 
-/* 로딩 화면 (인사 메시지 대기) */
-.loading-welcome {
+/* 초기 화면 안내 */
+.welcome-prompt {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -288,13 +305,18 @@
   height: 100%;
   text-align: center;
   color: #666;
-  gap: 16px;
+  gap: 8px;
 }
 
-.loading-welcome p {
+.welcome-prompt p {
   font-size: 1rem;
   color: #888;
   margin: 0;
+}
+
+.welcome-prompt .hint {
+  font-size: 0.85rem;
+  color: #aaa;
 }
 
 .error-message {
@@ -588,6 +610,23 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* 중지 상태 표시 */
+.stopped-indicator {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(108, 117, 125, 0.4);
+  z-index: 100;
 }
 
 /* 모달 버튼 그룹 */

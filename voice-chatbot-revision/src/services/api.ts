@@ -195,15 +195,16 @@ export const voiceApi = {
  * 세션 ID 생성/조회
  * 형식: YYYYMMDD_HHmm_XXX (날짜_시간_순번)
  * 예: 20251210_1430_001
+ *
+ * 변경: 앱 시작 시 항상 새 세션 생성 (localStorage 재사용 제거)
+ * 이유: WebSocket 세션 ID 동기화 문제 방지
  */
 export const getOrCreateSessionId = (): string => {
   const key = 'voice_session_id';
-  let sessionId = localStorage.getItem(key);
 
-  if (!sessionId) {
-    sessionId = generateSessionId();
-    localStorage.setItem(key, sessionId);
-  }
+  // 항상 새 세션 ID 생성 (localStorage에서 기존 세션 재사용 안 함)
+  const sessionId = generateSessionId();
+  localStorage.setItem(key, sessionId);
 
   return sessionId;
 };

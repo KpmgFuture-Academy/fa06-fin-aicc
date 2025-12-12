@@ -6,9 +6,8 @@ import { useVoiceRecording } from './hooks/useVoiceRecording';
 import { voiceApi, getOrCreateSessionId, resetSessionId, formatSessionIdForDisplay, HandoverResponse } from './services/api';
 import './App.css';
 
-// 자동 인사 메시지 설정
+// 인사 메시지 설정 (새 상담 버튼 클릭 시에만 표시)
 const WELCOME_MESSAGE = "안녕하세요 고객님, 카드 상담 보이스봇에 연결되었습니다. 무엇을 도와 드릴까요? 음성 상담 및 텍스트 상담 모두 가능합니다.";
-const WELCOME_DELAY_MS = 2000; // 2초 후 인사
 
 // 핸드오버 관련 설정
 const HANDOVER_POLL_INTERVAL_MS = 2000; // 2초마다 상담사 수락 여부 폴링
@@ -22,6 +21,7 @@ const INACTIVITY_REMINDER_MESSAGE = "고객님, 아직 계시나요? 상담사 �
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState(() => getOrCreateSessionId());
+  const [isSessionStarted, setIsSessionStarted] = useState(false);  // 새 상담 시작 여부 (세션 번호 표시용)
   const [_handoverData, setHandoverData] = useState<HandoverResponse | null>(null);
   void _handoverData;  // 미사용 (향후 확장용)
   const [isHandoverMode, setIsHandoverMode] = useState(false);  // 상담원 연결 모드 (실제 상담 중)
@@ -37,8 +37,8 @@ function App() {
   const handoverAcceptedProcessingRef = useRef<boolean>(false);  // accepted 상태 처리 중복 방지
   const [textInput, setTextInput] = useState('');  // 텍스트 입력 상태
   const [isTextSending, setIsTextSending] = useState(false);  // 텍스트 전송 중 상태
-  const [hasGreeted, setHasGreeted] = useState(false);  // 인사 메시지 표시 여부
-  const [isRecordingMode, setIsRecordingMode] = useState(true);  // true: 녹음 모드, false: 실시간 스트리밍 모드
+  const [isRecordingMode, setIsRecordingMode] = useState(false);  // true: 녹음 모드, false: 실시간 스트리밍 모드 (기본: 실시간)
+  const [isStopped, setIsStopped] = useState(false);  // 중지 상태 표시용
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   const isHandoverModeRef = useRef(false);  // 클로저 문제 해결용 ref
@@ -61,6 +61,7 @@ function App() {
     error: _sttError,
     startRecording: startStreamRecording,
     stopRecording: stopStreamRecording,
+    disconnect: disconnectStream,  // 실시간 모드 WebSocket 연결 해제
     stopTTS: _stopTTS,
     setOnAutoStop,
     setOnTTSComplete,
@@ -83,6 +84,7 @@ function App() {
     isPlayingTTS: isRecordPlayingTTS,  // 녹음 모드 TTS 재생 중 여부
     startRecording: startRecordRecording,
     stopRecording: stopRecordRecording,
+    disconnect: disconnectRecord,  // 녹음 모드 WebSocket 연결 해제
   } = useVoiceRecording(sessionId);
   void _recordError;
   void recordVadEvent;  // 향후 UI 표시용
@@ -120,8 +122,11 @@ function App() {
   }, [isHumanRequiredFlow]);
 
   // 실시간 모드 전환 시 자동 녹음 시작 (문제 1, 3 해결)
+  // 새 상담 시 disconnect 후 약간의 딜레이 필요
+  const isResettingRef = useRef(false);  // 새 상담 진행 중 플래그
+
   useEffect(() => {
-    if (!isRecordingMode && !isRecording && !isProcessing && !isHandoverMode) {
+    if (!isRecordingMode && !isRecording && !isProcessing && !isHandoverMode && !isResettingRef.current) {
       console.log('[App] 실시간 모드 전환 - 자동 녹음 시작');
       startStreamRecording().catch((err) => {
         console.error('[App] 실시간 모드 자동 녹음 시작 실패:', err);
@@ -145,40 +150,8 @@ function App() {
     return new Blob([byteArray], { type: mimeType });
   };
 
-  // 자동 인사 메시지 (화면 로드 2초 후)
-  useEffect(() => {
-    if (hasGreeted) return;
-
-    const timer = setTimeout(async () => {
-      // 인사 메시지 추가
-      const greetingMessage: Message = {
-        id: `msg_${Date.now()}_greeting`,
-        role: 'assistant',
-        content: WELCOME_MESSAGE,
-        timestamp: new Date(),
-        isNew: true,
-      };
-      setMessages([greetingMessage]);
-      setHasGreeted(true);
-
-      // TTS 재생
-      try {
-        const ttsResponse = await voiceApi.requestTTS(WELCOME_MESSAGE);
-        if (ttsResponse.audio_base64) {
-          const audioBlob = base64ToBlob(ttsResponse.audio_base64, 'audio/mp3');
-          const audioUrl = URL.createObjectURL(audioBlob);
-          if (audioRef.current) {
-            audioRef.current.src = audioUrl;
-            audioRef.current.play();
-          }
-        }
-      } catch (err) {
-        console.warn('인사 TTS 재생 실패:', err);
-      }
-    }, WELCOME_DELAY_MS);
-
-    return () => clearTimeout(timer);
-  }, [hasGreeted]);
+  // 자동 인사 메시지 제거 - 이제 '새 상담' 버튼을 눌러야만 인사 메시지가 표시됨
+  // 앱 로드 시에는 빈 화면에서 마이크 버튼 클릭 대기
 
   // TTS 오디오 재생
   const playAudio = useCallback((base64Audio: string) => {
@@ -272,7 +245,8 @@ function App() {
   const processedAgentMessageIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (!isHandoverMode) return;
+    // 중지 상태이거나 핸드오버 모드가 아니면 폴링 안함
+    if (!isHandoverMode || isStopped) return;
 
     // 폴링 중복 실행 방지 플래그
     let isPolling = false;
@@ -370,7 +344,7 @@ function App() {
         pollingIntervalRef.current = null;
       }
     };
-  }, [isHandoverMode, sessionId, playAudio]);
+  }, [isHandoverMode, sessionId, playAudio, isStopped]);
 
   // 녹음 중지 및 메시지 처리 (공통 로직)
   const processStopRecording = useCallback(async () => {
@@ -749,14 +723,38 @@ function App() {
     }
   }, [isRecording, processStopRecording, startRecording, isContinuousMode]);
 
+  // 핸드오버 폴링 정리 (먼저 선언 - handleForceStop에서 사용)
+  const cleanupHandoverPolling = useCallback(() => {
+    if (handoverPollIntervalRef.current) {
+      clearInterval(handoverPollIntervalRef.current);
+      handoverPollIntervalRef.current = null;
+    }
+    if (handoverTimeoutRef.current) {
+      clearTimeout(handoverTimeoutRef.current);
+      handoverTimeoutRef.current = null;
+    }
+  }, []);
+
   // 새 상담 시작 (대화 초기화 + 인사 메시지 + TTS)
   const handleResetSession = useCallback(async () => {
     if (window.confirm('새로운 상담을 시작하시겠습니까?')) {
+      // 자동 녹음 시작 방지 플래그 설정
+      isResettingRef.current = true;
+
+      // 기존 WebSocket 연결 해제 (세션 ID 동기화 문제 방지)
+      console.log('[App] 새 상담 시작 - 기존 WebSocket 연결 해제');
+      disconnectStream();
+      disconnectRecord();
+
+      // 핸드오버 폴링 정리
+      cleanupHandoverPolling();
+
       // 상태 초기화
       setIsContinuousMode(false);
       setIsHandoverMode(false);
       setIsWaitingForAgent(false);
       setIsHumanRequiredFlow(false);  // HUMAN_REQUIRED 플로우 초기화
+      setIsStopped(false);  // 중지 상태 해제
       setHandoverData(null);
       emptyInputCountRef.current = 0;
       lastMessageIdRef.current = 0;
@@ -767,6 +765,7 @@ function App() {
       resetSessionId();
       const newSessionId = getOrCreateSessionId();
       setSessionId(newSessionId);
+      setIsSessionStarted(true);  // 세션 시작됨 표시
 
       // 인사 메시지 표시
       const greetingMessage: Message = {
@@ -787,20 +786,70 @@ function App() {
       } catch (err) {
         console.warn('인사 TTS 재생 실패:', err);
       }
-    }
-  }, [playAudio]);
 
-  // 핸드오버 폴링 정리
-  const cleanupHandoverPolling = useCallback(() => {
-    if (handoverPollIntervalRef.current) {
-      clearInterval(handoverPollIntervalRef.current);
-      handoverPollIntervalRef.current = null;
+      // 딜레이 후 자동 녹음 허용 및 실시간 모드 자동 녹음 시작
+      setTimeout(() => {
+        isResettingRef.current = false;
+        console.log('[App] 새 상담 준비 완료 - 실시간 모드 자동 녹음 시작');
+        if (!isRecordingMode) {
+          startStreamRecording().catch((err) => {
+            console.error('[App] 새 상담 후 자동 녹음 시작 실패:', err);
+          });
+        }
+      }, 500);  // 500ms 딜레이
     }
-    if (handoverTimeoutRef.current) {
-      clearTimeout(handoverTimeoutRef.current);
-      handoverTimeoutRef.current = null;
+  }, [playAudio, disconnectStream, disconnectRecord, cleanupHandoverPolling, isRecordingMode, startStreamRecording]);
+
+  // 강제 종료 (현재 상담 중지 - 대기 상태로 전환)
+  const handleForceStop = useCallback(() => {
+    console.log('[App] 강제 종료 - 모든 처리 중단');
+
+    // 자동 녹음 시작 방지 플래그 설정
+    isResettingRef.current = true;
+
+    // TTS 재생 중지
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
-  }, []);
+
+    // WebSocket 연결 해제 (녹음/STT/TTS 모두 중단)
+    disconnectStream();
+    disconnectRecord();
+
+    // 핸드오버 폴링 중지
+    cleanupHandoverPolling();
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
+    // 핸드오버 관련 상태 초기화 (대기 중 상태만 해제, 연결된 상태는 유지)
+    setIsWaitingForAgent(false);
+    setIsHumanRequiredFlow(false);
+    // isHandoverMode는 유지 - 상담사 연결된 상태에서 중지 후 재시작 시 계속 대화 가능하도록
+
+    // 연속 대화 모드 해제
+    setIsContinuousMode(false);
+
+    // 중지 상태 표시
+    setIsStopped(true);
+
+    // 강제 종료 후에는 자동 녹음 시작하지 않음 (대기 상태 유지)
+    // isResettingRef.current는 true로 유지하여 자동 녹음 방지
+    console.log('[App] 강제 종료 완료 - 마이크 버튼을 눌러 다시 시작하세요');
+  }, [disconnectStream, disconnectRecord, cleanupHandoverPolling]);
+
+  // 마이크 버튼 클릭 시 isResettingRef 해제 (강제 종료 후 재시작 허용)
+  const handleVoiceButtonClickWithReset = useCallback(async () => {
+    // 강제 종료 상태였다면 해제
+    if (isResettingRef.current) {
+      isResettingRef.current = false;
+    }
+    // 중지 상태 해제 -> useEffect 의존성으로 폴링 자동 재시작
+    setIsStopped(false);
+    await handleVoiceButtonClick();
+  }, [handleVoiceButtonClick]);
 
   // 상담사 수락 상태 폴링 시작
   const startHandoverPolling = useCallback(() => {
@@ -1052,6 +1101,11 @@ function App() {
     const trimmedInput = textInput.trim();
     if (!trimmedInput || isTextSending) return;
 
+    // 중지 상태 해제 -> useEffect 의존성으로 폴링 자동 재시작
+    if (isStopped) {
+      setIsStopped(false);
+    }
+
     // 고객 활동 감지 - 리마인더 타이머 리셋
     resetInactivityTimer();
 
@@ -1146,7 +1200,7 @@ function App() {
       setIsTextSending(false);
       textInputRef.current?.focus();
     }
-  }, [textInput, isTextSending, isHandoverMode, sessionId, isWaitingForAgent, isHumanRequiredFlow, startHandoverPolling, playAudio, resetInactivityTimer]);
+  }, [textInput, isTextSending, isHandoverMode, sessionId, isWaitingForAgent, isHumanRequiredFlow, startHandoverPolling, playAudio, resetInactivityTimer, isStopped]);
 
   // Enter 키 핸들러
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1182,9 +1236,18 @@ function App() {
                 <span className={isRecordingMode ? 'active' : ''}>녹음</span>
               </label>
             </div>
-            {/* 세션 정보 및 새 상담 버튼 */}
+            {/* 세션 정보 및 버튼들 */}
             <div className="session-info-header">
-              <span className="session-id">세션: {formatSessionIdForDisplay(sessionId)}</span>
+              {/* 세션 시작 후에만 세션 번호 표시 */}
+              {isSessionStarted && (
+                <span className="session-id">세션: {formatSessionIdForDisplay(sessionId)}</span>
+              )}
+              {/* 강제 종료 버튼 (세션 시작 후 항상 표시) */}
+              {isSessionStarted && (
+                <button onClick={handleForceStop} className="stop-button-header">
+                  중지
+                </button>
+              )}
               <button onClick={handleResetSession} className="reset-button-header">
                 새 상담
               </button>
@@ -1194,15 +1257,10 @@ function App() {
 
         {/* 메시지 영역 */}
         <div className="chat-messages">
-          {/* 로딩 중 표시 (인사 메시지 대기) */}
-          {!hasMessages && !hasGreeted && (
-            <div className="loading-welcome">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <p>연결 중...</p>
+          {/* 초기 화면 - 메시지 없을 때 안내 */}
+          {!hasMessages && (
+            <div className="welcome-prompt">
+              <p>'새 상담' 버튼을 눌러 상담을 시작하세요.</p>
             </div>
           )}
 
@@ -1301,7 +1359,7 @@ function App() {
           <VoiceButton
             isRecording={isRecording}
             isProcessing={isProcessing}
-            onClick={handleVoiceButtonClick}
+            onClick={handleVoiceButtonClickWithReset}
             size="small"
           />
         </div>
@@ -1317,6 +1375,13 @@ function App() {
         <div className="waiting-indicator">
           <div className="waiting-spinner"></div>
           <span>상담사 연결 대기 중...</span>
+        </div>
+      )}
+
+      {/* 중지 상태 표시 */}
+      {isStopped && (
+        <div className="stopped-indicator">
+          <span>상담이 일시 중지 상태입니다. 계속하시려면 마이크 버튼을 눌러주세요.</span>
         </div>
       )}
     </div>

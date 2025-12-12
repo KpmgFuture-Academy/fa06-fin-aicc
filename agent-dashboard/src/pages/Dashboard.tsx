@@ -21,12 +21,34 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 const Container = styled.div`
   height: 100vh;
-  background-color: #E8E8E8;
-  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   overflow: hidden;
+`;
+
+const DashboardHeader = styled.div`
+  color: white;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const DashboardTitle = styled.h1`
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const DashboardSubtitle = styled.p`
+  font-size: 1.5rem;
+  font-weight: 700;
+  opacity: 0.9;
+  margin: 0;
+  margin-right: 16px;
 `;
 
 const TopSection = styled.div`
@@ -39,14 +61,14 @@ const TopSection = styled.div`
 const ConnectionStatusArea = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
+  gap: 10px;
+  padding: 10px 16px;
   border-right: 1px solid #ddd;
-  min-width: 200px;
+  min-width: 180px;
 `;
 
 const ConnectionTitle = styled.div`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #333;
 `;
@@ -68,10 +90,10 @@ const StatusIndicator = styled.div<{ $isConnected: boolean; $isClosed?: boolean 
 // 중앙: Slot Filling 정보
 const SlotFillingArea = styled.div`
   flex: 1;
-  padding: 12px 24px;
+  padding: 8px 16px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 24px;
+  gap: 4px 16px;
   border-right: 1px solid #ddd;
 `;
 
@@ -94,11 +116,11 @@ const SlotValue = styled.span`
 
 // 오른쪽: 시간 정보
 const TimeInfoArea = styled.div`
-  padding: 12px 24px;
+  padding: 8px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 180px;
+  gap: 4px;
+  min-width: 160px;
 `;
 
 const TimeItem = styled.div`
@@ -150,6 +172,34 @@ const SessionSelect = styled.select`
 const NoSessionText = styled.span`
   color: #999;
   font-size: 12px;
+`;
+
+// 세션 수량 표시
+const SessionCountArea = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 24px;
+  padding-left: 24px;
+  border-left: 1px solid #ddd;
+`;
+
+const SessionCountItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const SessionCountLabel = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+`;
+
+const SessionCountValue = styled.span<{ $isAlert?: boolean }>`
+  font-size: 15px;
+  font-weight: 600;
+  color: ${props => props.$isAlert ? '#f44336' : '#333'};
 `;
 
 // 사이드바: 종료된 상담 기록
@@ -237,7 +287,8 @@ const SidebarToggleButton = styled.button`
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  margin-left: 12px;
+  margin-left: auto;
+  margin-right: 8px;
 
   &:hover {
     background-color: #4a3fbf;
@@ -821,9 +872,13 @@ const Dashboard: React.FC = () => {
   // 초기 로드 + 5분마다 세션 목록 갱신 (폴링 간격 대폭 증가)
   useEffect(() => {
     fetchHandoverSessions();
-    const interval = setInterval(fetchHandoverSessions, 300000); // 30초 -> 5분(300초)으로 대폭 증가
+    fetchClosedSessions();  // 종료된 세션 수량도 초기 로드
+    const interval = setInterval(() => {
+      fetchHandoverSessions();
+      fetchClosedSessions();
+    }, 300000); // 30초 -> 5분(300초)으로 대폭 증가
     return () => clearInterval(interval);
-  }, [fetchHandoverSessions]);
+  }, [fetchHandoverSessions, fetchClosedSessions]);
 
   // 세션 선택 시 처리
   const handleSelectSession = async (session: HandoverSession) => {
@@ -1128,6 +1183,12 @@ const Dashboard: React.FC = () => {
 
   return (
     <Container>
+      {/* 대시보드 헤더 */}
+      <DashboardHeader>
+        <DashboardTitle>미래카드 AICC 상담 대시보드</DashboardTitle>
+        <DashboardSubtitle>음성 AI 기반 고객 상담 서비스</DashboardSubtitle>
+      </DashboardHeader>
+
       {/* 세션 선택 영역 */}
       <SessionSelectArea>
         <SessionSelectLabel>대기 세션:</SessionSelectLabel>
@@ -1163,19 +1224,28 @@ const Dashboard: React.FC = () => {
         {isSessionAccepted && (
           <span style={{ color: '#4CAF50', fontWeight: 500, marginLeft: 12 }}>✓ 수락됨</span>
         )}
+        {/* 세션 수량 표시 */}
+        <SessionCountArea>
+          <SessionCountItem>
+            <SessionCountLabel>대기:</SessionCountLabel>
+            <SessionCountValue $isAlert={handoverSessions.length - (isSessionAccepted && !isSessionClosed ? 1 : 0) > 0}>
+              {handoverSessions.length - (isSessionAccepted && !isSessionClosed ? 1 : 0)}
+            </SessionCountValue>
+          </SessionCountItem>
+          <SessionCountItem>
+            <SessionCountLabel>상담 중:</SessionCountLabel>
+            <SessionCountValue style={{ color: isSessionAccepted && !isSessionClosed ? '#4CAF50' : '#333' }}>
+              {isSessionAccepted && !isSessionClosed ? 1 : 0}
+            </SessionCountValue>
+          </SessionCountItem>
+          <SessionCountItem>
+            <SessionCountLabel>완료:</SessionCountLabel>
+            <SessionCountValue>{closedSessions.length}</SessionCountValue>
+          </SessionCountItem>
+        </SessionCountArea>
         {handoverSessions.length === 0 && (
           <NoSessionText>현재 연결 대기 중인 고객이 없습니다</NoSessionText>
         )}
-        <MicButton
-          $isRecording={isRecording}
-          $isProcessing={isTranscribing}
-          onClick={handleMicClick}
-          disabled={isTranscribing}
-          title={isRecording ? '녹음 중지 (STT 변환)' : '음성 입력 시작'}
-        >
-          <MicIcon>{isRecording ? '⏹️' : '🎤'}</MicIcon>
-          {isTranscribing ? '변환 중...' : isRecording ? '녹음 중...' : '음성 입력'}
-        </MicButton>
         <SidebarToggleButton onClick={handleOpenSidebar}>
           상담 기록
         </SidebarToggleButton>

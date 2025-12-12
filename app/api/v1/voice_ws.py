@@ -395,19 +395,19 @@ class VoiceStreamSession:
         self.session_id = session_id
         self.websocket = websocket
 
-        # Hybrid VAD 초기화: WebRTC (빠른 선필터) + Silero (정확한 확인)
+        # Hybrid VAD 초기화: WebRTC + Silero (이어폰/전화 환경 기준)
         silero_vad = SileroVADStream(
             sample_rate=16000,
             frame_ms=40,  # Silero는 40ms 프레임
-            threshold=0.3,  # 소음 환경에서 낮은 임계값 사용
+            threshold=0.35,  # 음성 확률 임계값 (이어폰 환경 - 음성 신호 명확)
         )
         self.vad = HybridVADStream(
             silero_vad,
             sample_rate=16000,
-            frame_ms=30,  # WebRTC는 30ms 프레임 (Silero 최소 요구사항 충족)
-            aggressiveness=2,  # 중간 수준의 민감도
-            min_speech_ms=150,  # 최소 150ms 음성
-            max_silence_ms=2000,  # 2초 침묵 후 음성 종료
+            frame_ms=30,  # WebRTC는 30ms 프레임
+            aggressiveness=2,  # 중간 민감도 (이어폰이면 충분)
+            min_speech_ms=250,  # 최소 250ms 음성 (짧은 노이즈 필터링)
+            max_silence_ms=700,  # 0.7초 침묵 후 음성 종료 (빠른 응답)
             mode="and",  # WebRTC와 Silero 모두 음성으로 판단해야 함
         )
 
@@ -655,12 +655,12 @@ async def voice_streaming(websocket: WebSocket, session_id: str):
             'message': 'Hybrid VAD (WebRTC + Silero) 스트리밍 연결 완료',
             'vad_config': {
                 'engine': 'hybrid',
-                'mode': 'and',
-                'webrtc_aggressiveness': 3,
-                'silero_threshold': 0.3,
-                'sample_rate': 16000,
-                'min_speech_ms': 150,
-                'max_silence_ms': 2000,
+                'mode': session.vad.mode,
+                'webrtc_aggressiveness': 2,
+                'silero_threshold': session.vad.silero_threshold,
+                'sample_rate': session.vad.sample_rate,
+                'min_speech_ms': session.vad.min_speech_ms,
+                'max_silence_ms': session.vad.max_silence_ms,
             }
         })
 
