@@ -80,6 +80,7 @@ function App() {
     isSpeaking: isRecordSpeaking,      // Hybrid VAD: 음성 감지 여부
     speechProb: recordSpeechProb,      // Silero VAD: 음성 확률
     vadEvent: recordVadEvent,          // VAD 이벤트
+    isPlayingTTS: isRecordPlayingTTS,  // 녹음 모드 TTS 재생 중 여부
     startRecording: startRecordRecording,
     stopRecording: stopRecordRecording,
   } = useVoiceRecording(sessionId);
@@ -89,6 +90,8 @@ function App() {
   // 현재 모드에 따른 상태 통합
   const isRecording = isRecordingMode ? isRecordRecording : isStreamRecording;
   const isProcessing = isRecordingMode ? isRecordProcessing : isStreamProcessing;
+  // TTS 재생 상태 통합 (녹음 모드 또는 실시간 모드)
+  const isAnyTTSPlaying = isRecordingMode ? isRecordPlayingTTS : isPlayingTTS;
 
   // 통합 녹음 시작/중지 함수
   const startRecording = isRecordingMode ? startRecordRecording : startStreamRecording;
@@ -115,6 +118,16 @@ function App() {
     isHumanRequiredFlowRef.current = isHumanRequiredFlow;
     console.log('[App] isHumanRequiredFlow 변경:', isHumanRequiredFlow);
   }, [isHumanRequiredFlow]);
+
+  // 실시간 모드 전환 시 자동 녹음 시작 (문제 1, 3 해결)
+  useEffect(() => {
+    if (!isRecordingMode && !isRecording && !isProcessing && !isHandoverMode) {
+      console.log('[App] 실시간 모드 전환 - 자동 녹음 시작');
+      startStreamRecording().catch((err) => {
+        console.error('[App] 실시간 모드 자동 녹음 시작 실패:', err);
+      });
+    }
+  }, [isRecordingMode, isRecording, isProcessing, isHandoverMode, startStreamRecording]);
 
   // 메시지 추가 시 스크롤
   useEffect(() => {
@@ -236,20 +249,23 @@ function App() {
   }, [isHumanRequiredFlow, isHandoverMode, startInactivityTimer]);
 
   // HUMAN_REQUIRED 플로우 상태 변경 시 리마인더 타이머 관리
+  // 중요: TTS 재생 중에는 타이머를 시작하지 않음
   useEffect(() => {
-    if (isHumanRequiredFlow && !isHandoverMode) {
-      // HUMAN_REQUIRED 플로우 진입 (consent_check 또는 waiting_agent) → 리마인더 타이머 시작
-      console.log('[App] HUMAN_REQUIRED 플로우 - 비활성 리마인더 타이머 시작');
+    if (isHumanRequiredFlow && !isHandoverMode && !isAnyTTSPlaying) {
+      // HUMAN_REQUIRED 플로우 진입 + TTS 재생 완료 → 리마인더 타이머 시작
+      console.log('[App] HUMAN_REQUIRED 플로우 + TTS 완료 - 비활성 리마인더 타이머 시작');
       startInactivityTimer();
-    } else {
+    } else if (!isHumanRequiredFlow || isHandoverMode) {
       // HUMAN_REQUIRED 플로우가 아님 → 타이머 정리
       clearInactivityTimer();
     }
+    // isAnyTTSPlaying이 true일 때는 타이머를 시작하지 않고 대기
+    // TTS가 끝나면 isAnyTTSPlaying이 false가 되어 다시 이 effect가 실행됨
 
     return () => {
       clearInactivityTimer();
     };
-  }, [isHumanRequiredFlow, isHandoverMode, startInactivityTimer, clearInactivityTimer]);
+  }, [isHumanRequiredFlow, isHandoverMode, isAnyTTSPlaying, startInactivityTimer, clearInactivityTimer]);
 
   // 상담원 메시지 폴링 (이관 모드일 때만)
   // 이미 처리한 메시지 ID를 추적하는 Set (중복 방지)
@@ -678,19 +694,26 @@ function App() {
     });
   }, [setOnAutoStop, isContinuousMode, startRecording, sessionId]);
 
-  // TTS 재생 완료 콜백 설정 (연속 대화 모드일 때 자동 녹음 시작)
+  // TTS 재생 완료 콜백 설정 (실시간 모드에서 자동 녹음 시작)
+  // 실시간 모드: TTS 완료 후 항상 자동으로 마이크 활성화 (문제 1, 3 해결)
   // 중요: isHandoverModeRef.current를 사용하여 클로저 문제 해결
   useEffect(() => {
     setOnTTSComplete(() => {
       const currentHandoverMode = isHandoverModeRef.current;
-      if (isContinuousMode && !currentHandoverMode) {
-        console.log('[App] TTS 완료 - 자동 녹음 시작');
+      // 실시간 모드에서는 항상 자동 녹음, 녹음 모드에서는 isContinuousMode 필요
+      if (!currentHandoverMode && !isRecordingMode) {
+        console.log('[App] TTS 완료 - 실시간 모드 자동 녹음 시작');
+        startRecording().catch((err) => {
+          console.error('[App] 자동 녹음 시작 실패:', err);
+        });
+      } else if (!currentHandoverMode && isRecordingMode && isContinuousMode) {
+        console.log('[App] TTS 완료 - 녹음 모드 연속 대화 자동 녹음 시작');
         startRecording().catch((err) => {
           console.error('[App] 자동 녹음 시작 실패:', err);
         });
       }
     });
-  }, [setOnTTSComplete, isContinuousMode, startRecording]);
+  }, [setOnTTSComplete, isContinuousMode, isRecordingMode, startRecording]);
 
   // Barge-in 콜백 설정 (TTS 재생 중 사용자가 말하면 TTS 중단 + 녹음 시작)
   useEffect(() => {

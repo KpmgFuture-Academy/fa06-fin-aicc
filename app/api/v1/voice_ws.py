@@ -423,6 +423,8 @@ class VoiceStreamSession:
 
     async def send_message(self, msg_type: str, data: dict):
         """클라이언트에 메시지 전송"""
+        if not self.is_active:
+            return  # 세션이 비활성화되면 전송 안함
         try:
             await self.websocket.send_json({
                 'type': msg_type,
@@ -431,9 +433,12 @@ class VoiceStreamSession:
             })
         except Exception as e:
             logger.error(f"메시지 전송 오류: {e}")
+            self.is_active = False  # 전송 실패 시 세션 비활성화
 
     async def process_audio(self, audio_data: bytes):
         """오디오 데이터 처리 및 Hybrid VAD 수행 (WebRTC + Silero)"""
+        if not self.is_active:
+            return  # 세션이 비활성화되면 처리 안함
         try:
             # 이전 VAD 상태 저장 (speech_start 감지용)
             was_in_speech = self.vad._in_speech
@@ -458,12 +463,12 @@ class VoiceStreamSession:
             # 음성 중이면 버퍼에 저장
             if is_in_speech or self.is_speaking:
                 self.audio_buffer.append(audio_data)
-                # 음성 지속 상태 전송 (너무 자주 보내지 않도록 선택적)
+                # 음성 지속 상태 전송 (실제 VAD 상태 반영)
                 if not segments:
                     await self.send_message('vad_result', {
-                        'is_speech': True,
-                        'speech_prob': 0.0,
-                        'event': 'speech_continue',
+                        'is_speech': is_in_speech,  # 실제 VAD 상태
+                        'speech_prob': 0.0,  # HybridVAD는 프레임별 확률 제공 안함
+                        'event': 'speech_continue' if is_in_speech else 'silence_in_buffer',
                     })
 
             # 음성 세그먼트 완료 시 (2초 침묵 후)
@@ -651,7 +656,7 @@ async def voice_streaming(websocket: WebSocket, session_id: str):
             'vad_config': {
                 'engine': 'hybrid',
                 'mode': 'and',
-                'webrtc_aggressiveness': 2,
+                'webrtc_aggressiveness': 3,
                 'silero_threshold': 0.3,
                 'sample_rate': 16000,
                 'min_speech_ms': 150,
@@ -736,7 +741,7 @@ async def vad_status():
             silero_vad,
             sample_rate=16000,
             frame_ms=30,
-            aggressiveness=2,
+            aggressiveness=3,
             mode="and",
         )
         return {
@@ -744,7 +749,7 @@ async def vad_status():
             'engine': 'hybrid',
             'mode': hybrid_vad.mode,
             'silero_threshold': silero_vad.threshold,
-            'webrtc_aggressiveness': 2,
+            'webrtc_aggressiveness': 3,
             'sample_rate': hybrid_vad.sample_rate,
         }
     except Exception as e:

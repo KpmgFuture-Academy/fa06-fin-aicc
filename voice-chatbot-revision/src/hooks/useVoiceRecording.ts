@@ -64,6 +64,7 @@ interface UseVoiceRecordingReturn {
   isSpeaking: boolean;        // Hybrid VAD: 현재 음성 감지 여부
   speechProb: number;         // Silero VAD: 음성 확률 (0.0 ~ 1.0)
   vadEvent: string | null;    // VAD 이벤트 (speech_start, speech_end 등)
+  isPlayingTTS: boolean;      // TTS 재생 중 여부
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<VoiceRecordingResult | null>;
 }
@@ -76,6 +77,7 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechProb, setSpeechProb] = useState(0);
   const [vadEvent, setVadEvent] = useState<string | null>(null);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -103,14 +105,20 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   // TTS 오디오 재생 함수
   const playNextAudio = useCallback(async () => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) {
+      // 큐가 비어있고 재생 중이 아니면 TTS 완료
+      if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
+        setIsPlayingTTS(false);
+      }
       return;
     }
 
     isPlayingRef.current = true;
+    setIsPlayingTTS(true);
     const audioBase64 = audioQueueRef.current.shift();
 
     if (!audioBase64) {
       isPlayingRef.current = false;
+      setIsPlayingTTS(false);
       return;
     }
 
@@ -135,7 +143,7 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
 
       source.onended = () => {
         isPlayingRef.current = false;
-        playNextAudio(); // 다음 청크 재생
+        playNextAudio(); // 다음 청크 재생 (또는 완료 처리)
       };
 
       source.start(0);
@@ -498,6 +506,7 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     isSpeaking,
     speechProb,
     vadEvent,
+    isPlayingTTS,
     startRecording,
     stopRecording,
   };
