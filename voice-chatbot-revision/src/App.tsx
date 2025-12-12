@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import VoiceButton from './components/VoiceButton';
 import ChatMessage, { Message } from './components/ChatMessage';
 import { useVoiceStream } from './hooks/useVoiceStream';
-import { useVoiceRecording, VoiceRecordingResult } from './hooks/useVoiceRecording';
+import { useVoiceRecording } from './hooks/useVoiceRecording';
 import { voiceApi, getOrCreateSessionId, resetSessionId, formatSessionIdForDisplay, HandoverResponse } from './services/api';
 import './App.css';
 
@@ -71,16 +71,20 @@ function App() {
   void _sttError;
   void _stopTTS;
 
-  // 녹음 모드 훅 (디버깅용)
+  // 녹음 모드 훅 (Hybrid VAD 적용)
   const {
     isRecording: isRecordRecording,
     isProcessing: isRecordProcessing,
     error: _recordError,
     recordingTime,
+    isSpeaking: isRecordSpeaking,      // Hybrid VAD: 음성 감지 여부
+    speechProb: recordSpeechProb,      // Silero VAD: 음성 확률
+    vadEvent: recordVadEvent,          // VAD 이벤트
     startRecording: startRecordRecording,
     stopRecording: stopRecordRecording,
   } = useVoiceRecording(sessionId);
   void _recordError;
+  void recordVadEvent;  // 향후 UI 표시용
 
   // 현재 모드에 따른 상태 통합
   const isRecording = isRecordingMode ? isRecordRecording : isStreamRecording;
@@ -362,7 +366,6 @@ function App() {
     if (result) {
       console.log('[App] stopRecording 결과 - userText:', result.userText);
       console.log('[App] stopRecording 결과 - aiResponse:', JSON.stringify(result.aiResponse, null, 2));
-      console.log('[App] stopRecording 결과 - audioBase64 존재:', !!result.audioBase64, ', 길이:', result.audioBase64?.length || 0);
     }
 
     if (result) {
@@ -413,7 +416,6 @@ function App() {
       if (!isHandoverMode && result.aiResponse?.text) {
         // 디버그: AI 응답 전체 내용 출력
         console.log('[App] 녹음 모드 - AI 응답 전체:', JSON.stringify(result.aiResponse, null, 2));
-        console.log('[App] 녹음 모드 - audioBase64 존재 여부:', !!result.audioBase64, ', 길이:', result.audioBase64?.length || 0);
 
         // HUMAN_REQUIRED 플로우 감지 (백엔드에서 받은 is_human_required_flow 사용)
         const backendHumanRequiredFlow = result.aiResponse.isHumanRequiredFlow || false;
@@ -468,15 +470,8 @@ function App() {
           };
           setMessages((prev) => [...prev, aiMessage]);
 
-          // AI 응답 TTS 재생 (녹음 모드에서는 수동 재생)
-          const recordResult = result as VoiceRecordingResult;
-          console.log('[App] 녹음 모드 - TTS 재생 시도, audioBase64 존재:', !!recordResult.audioBase64);
-          if (recordResult.audioBase64) {
-            console.log('[App] 녹음 모드 - TTS 재생 시작, 오디오 길이:', recordResult.audioBase64.length);
-            playAudio(recordResult.audioBase64);
-          } else {
-            console.warn('[App] 녹음 모드 - audioBase64가 없어 TTS 재생 불가');
-          }
+          // TTS는 WebSocket을 통해 실시간으로 재생됨 (별도 처리 불필요)
+          console.log('[App] 녹음 모드 - TTS는 WebSocket을 통해 실시간 재생됨');
 
           // 고객이 "네"라고 응답할 때까지 대기
           // 다음 메시지에서 백엔드가 consent_check_node → waiting_agent 플로우를 처리함
@@ -505,13 +500,8 @@ function App() {
             return [...prev, assistantMessage];
           });
 
-          // 녹음 모드에서는 TTS 재생 (스트리밍 모드는 훅에서 자동 재생)
-          if (isRecordingMode) {
-            const recordResult = result as VoiceRecordingResult;
-            if (recordResult.audioBase64) {
-              playAudio(recordResult.audioBase64);
-            }
-          }
+          // TTS는 WebSocket을 통해 실시간으로 재생됨 (녹음 모드도 동일)
+          console.log('[App] TTS는 WebSocket을 통해 실시간 재생됨');
         }
       } else if (!isHandoverMode) {
         console.log('[App] aiResponse가 없거나 text가 비어있음');
@@ -1204,9 +1194,19 @@ function App() {
                   </div>
                   <p>
                     {isRecordingMode
-                      ? `녹음 중... ${recordingTime}초 (버튼을 눌러 전송)`
+                      ? `녹음 중... ${recordingTime}초 ${isRecordSpeaking ? '🎤 음성 감지' : ''} (버튼을 눌러 전송)`
                       : '듣고 있습니다...'}
                   </p>
+                  {/* 녹음 모드에서 VAD 음성 확률 표시 */}
+                  {isRecordingMode && recordSpeechProb > 0 && (
+                    <div className="vad-indicator" style={{
+                      marginTop: '8px',
+                      fontSize: '12px',
+                      color: isRecordSpeaking ? '#4CAF50' : '#999',
+                    }}>
+                      음성 확률: {(recordSpeechProb * 100).toFixed(0)}%
+                    </div>
+                  )}
                 </div>
               )}
 
