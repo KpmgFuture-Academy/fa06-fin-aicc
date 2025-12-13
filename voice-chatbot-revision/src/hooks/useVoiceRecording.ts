@@ -95,6 +95,7 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const responseResolverRef = useRef<((result: VoiceRecordingResult | null) => void) | null>(null);
   const latestUserTextRef = useRef<string>('');
   const latestAiResponseRef = useRef<VoiceRecordingResult['aiResponse']>(null);
+  const responseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // TTS 오디오 재생용 refs
   const audioQueueRef = useRef<string[]>([]);
@@ -231,6 +232,21 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
             isHumanRequiredFlow: data.is_human_required_flow || false,
             isSessionEnd: data.is_session_end || false,
           };
+          // ai_response가 도착하면 즉시 resolve (completed보다 늦게 도착할 수 있음)
+          if (responseResolverRef.current && latestAiResponseRef.current.text) {
+            console.log('[VoiceRecording] AI 응답 수신 - Promise resolve');
+            // 타임아웃 취소
+            if (responseTimeoutRef.current) {
+              clearTimeout(responseTimeoutRef.current);
+              responseTimeoutRef.current = null;
+            }
+            responseResolverRef.current({
+              userText: latestUserTextRef.current,
+              aiResponse: latestAiResponseRef.current,
+            });
+            responseResolverRef.current = null;
+            setIsProcessing(false);
+          }
           break;
 
         case 'tts_chunk':
@@ -244,6 +260,8 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
 
         case 'completed':
           console.log('[VoiceRecording] 처리 완료:', data.message);
+          console.log('[VoiceRecording] completed - latestAiResponseRef:', latestAiResponseRef.current);
+          console.log('[VoiceRecording] completed - responseResolverRef 존재:', !!responseResolverRef.current);
           setIsProcessing(false);
 
           if (data.final_text) {
@@ -252,6 +270,12 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
 
           // Promise resolver 호출
           if (responseResolverRef.current) {
+            console.log('[VoiceRecording] completed - Promise resolve 호출');
+            // 타임아웃 취소
+            if (responseTimeoutRef.current) {
+              clearTimeout(responseTimeoutRef.current);
+              responseTimeoutRef.current = null;
+            }
             responseResolverRef.current({
               userText: latestUserTextRef.current,
               aiResponse: latestAiResponseRef.current,
@@ -466,18 +490,19 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
         console.log('[VoiceRecording] EOS 전송');
         wsRef.current.send('EOS');
 
-        // 타임아웃 (30초)
-        setTimeout(() => {
+        // 타임아웃 (60초) - RAG Reranking 처리 시간 고려
+        responseTimeoutRef.current = setTimeout(() => {
           if (responseResolverRef.current) {
-            console.log('[VoiceRecording] 타임아웃');
+            console.log('[VoiceRecording] 타임아웃 (60초)');
             responseResolverRef.current({
               userText: latestUserTextRef.current,
               aiResponse: latestAiResponseRef.current,
             });
             responseResolverRef.current = null;
+            responseTimeoutRef.current = null;
             setIsProcessing(false);
           }
-        }, 30000);
+        }, 60000);
       } else {
         console.log('[VoiceRecording] WebSocket이 열려있지 않음');
         resolve(null);
@@ -493,6 +518,12 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+
+    // 응답 타임아웃 취소
+    if (responseTimeoutRef.current) {
+      clearTimeout(responseTimeoutRef.current);
+      responseTimeoutRef.current = null;
     }
 
     // 오디오 캡처 중지
@@ -545,6 +576,10 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      // 응답 타임아웃 정리
+      if (responseTimeoutRef.current) {
+        clearTimeout(responseTimeoutRef.current);
       }
       stopAudioCapture();
       if (wsRef.current) {

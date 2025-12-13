@@ -126,13 +126,14 @@ function App() {
   const isResettingRef = useRef(false);  // 새 상담 진행 중 플래그
 
   useEffect(() => {
-    if (!isRecordingMode && !isRecording && !isProcessing && !isHandoverMode && !isResettingRef.current) {
+    // 세션이 시작된 후에만 자동 녹음 시작 (새 상담 전에는 토글 전환 가능)
+    if (isSessionStarted && !isRecordingMode && !isRecording && !isProcessing && !isHandoverMode && !isResettingRef.current) {
       console.log('[App] 실시간 모드 전환 - 자동 녹음 시작');
       startStreamRecording().catch((err) => {
         console.error('[App] 실시간 모드 자동 녹음 시작 실패:', err);
       });
     }
-  }, [isRecordingMode, isRecording, isProcessing, isHandoverMode, startStreamRecording]);
+  }, [isSessionStarted, isRecordingMode, isRecording, isProcessing, isHandoverMode, startStreamRecording]);
 
   // 메시지 추가 시 스크롤
   useEffect(() => {
