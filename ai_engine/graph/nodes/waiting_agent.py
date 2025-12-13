@@ -30,6 +30,16 @@ logger = logging.getLogger(__name__)
 # 슬롯 수집 중/완료 후 거부 패턴 (상담사 연결 취소 의사)
 CANCEL_PATTERNS = ["됐어", "괜찮아", "취소", "그만", "안 할래", "필요 없", "연결 안", "상담사 안", "그냥 됐", "아니요", "아니", "싫어", "안해", "안 해"]
 
+# "모르겠어요" 패턴 (해당 정보를 모를 때 - 다음 슬롯으로 진행)
+UNKNOWN_PATTERNS = [
+    "모르겠", "모름", "몰라", "모르는", "잘 모르", "잘모르",
+    "기억 안", "기억이 안", "기억안", "기억나지 않", "기억이 나지",
+    "확인 못", "확인이 안", "확인못", "확인을 못", "확인 안",
+    "없어요", "없는데", "없습니다", "없어", "없음",
+    "아직", "나중에", "다음에",
+    "pass", "패스", "스킵", "skip", "넘어가", "넘겨"
+]
+
 # 불명확 응답 최대 허용 횟수 (consent_check_node와 동일)
 MAX_UNCLEAR_COUNT = 3
 
@@ -45,6 +55,19 @@ def _check_collection_cancel(user_message: str) -> bool:
     """
     user_message_lower = user_message.strip().lower()
     return any(pattern in user_message_lower for pattern in CANCEL_PATTERNS)
+
+
+def _check_unknown_response(user_message: str) -> bool:
+    """고객이 해당 정보를 모른다고 응답했는지 확인합니다.
+
+    Args:
+        user_message: 사용자 메시지
+
+    Returns:
+        "모르겠어요" 패턴이 감지되면 True
+    """
+    user_message_lower = user_message.strip().lower()
+    return any(pattern in user_message_lower for pattern in UNKNOWN_PATTERNS)
 
 
 def _is_unclear_response(message: str) -> bool:
@@ -540,6 +563,13 @@ def waiting_agent_node(state: GraphState) -> GraphState:
         required_slots, optional_slots = slot_loader.get_slots_for_category(category)
         logger.info(f"필수 슬롯: {required_slots}, 선택 슬롯: {optional_slots}")
 
+        # 2-1. "모르겠어요" 패턴 감지 시 현재 질문 중인 슬롯에 "미확인" 저장
+        current_asking_slot = collected_info.get("_current_asking_slot")
+        if current_asking_slot and _check_unknown_response(user_message):
+            # 해당 슬롯에 "미확인" 값 저장 → 다음 슬롯으로 진행
+            collected_info[current_asking_slot] = "미확인"
+            logger.info(f"'모르겠어요' 패턴 감지 - 슬롯 '{current_asking_slot}'에 '미확인' 저장")
+
         # 3. 대화 히스토리에서 정보 추출
         collected_info = _extract_info_from_conversation(
             conversation_history,
@@ -572,6 +602,12 @@ def waiting_agent_node(state: GraphState) -> GraphState:
             # 부족한 정보에 대해 질문 생성
             state["info_collection_complete"] = False
 
+            # 현재 질문할 슬롯 저장 (다음 턴에서 "모르겠어요" 패턴 감지 시 사용)
+            next_asking_slot = missing_slots[0] if missing_slots else None
+            if next_asking_slot:
+                collected_info["_current_asking_slot"] = next_asking_slot
+                state["collected_info"] = collected_info
+
             if not waiting_intro_shown:
                 # 첫 번째 waiting_agent 진입 - 단순 질문만 반환 (intro_message와 함께)
                 question = _generate_collection_question(
@@ -590,7 +626,7 @@ def waiting_agent_node(state: GraphState) -> GraphState:
                 state["collected_info"] = collected_info
                 # 첫 번째 슬롯 수집 시작 = 상담사 대기 시작 (handover_status를 pending으로)
                 state["handover_status"] = "pending"
-                logger.info(f"핸드오버 대기 시작 - 세션: {session_id}, handover_status: pending")
+                logger.info(f"핸드오버 대기 시작 - 세션: {session_id}, handover_status: pending, 질문 슬롯: {next_asking_slot}")
             else:
                 # 두 번째 이후 - 문맥 기반 응답 생성 (도메인 외 질문 처리 포함)
                 question = _generate_collection_question(
@@ -603,7 +639,7 @@ def waiting_agent_node(state: GraphState) -> GraphState:
                 )
                 state["ai_message"] = question
 
-            logger.info(f"정보 수집 질문 생성 - 세션: {session_id}, 부족한 슬롯: {missing_slots}")
+            logger.info(f"정보 수집 질문 생성 - 세션: {session_id}, 부족한 슬롯: {missing_slots}, 현재 질문 슬롯: {next_asking_slot}")
 
         # 6. source_documents는 빈 리스트로 설정 (정보 수집에는 RAG 사용 안 함)
         state["source_documents"] = []
