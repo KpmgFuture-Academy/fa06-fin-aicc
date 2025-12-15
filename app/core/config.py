@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     
     # Reranking 설정
     enable_reranking: bool = True  # Reranking 활성화 여부
-    rerank_top_k: int = 20  # Reranking할 상위 문서 수 (검색 후 이 중에서 재정렬)
+    rerank_top_k: int = 10  # Reranking할 상위 문서 수 (20 → 10으로 줄여서 레이턴시 개선)
     rerank_final_k: int = 3  # 최종 반환할 문서 수
     # 한국어 최적화: 기본값을 한국어 reranker로 설정
     reranker_model: str = "Dongjin-kr/ko-reranker"  # 한국어 특화 Cross-Encoder 모델
