@@ -22,12 +22,21 @@ from ai_engine.vector_store import (
 
 # 경로 설정
 DATA_FILE = BASE_DIR / "data" / "kb_hana_card_38categories.json"
+FAQ_FILE = BASE_DIR / "data" / "faq_additional_coverage.json"
 
 
 def load_kb_documents():
     """KB 문서 로드"""
     with open(DATA_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+
+def load_faq_documents():
+    """FAQ 추가 문서 로드"""
+    if FAQ_FILE.exists():
+        with open(FAQ_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
 
 
 def ingest_documents():
@@ -38,21 +47,30 @@ def ingest_documents():
     print("=" * 60)
 
     # 기존 벡터 스토어 초기화
-    print("\n[1/4] 기존 ChromaDB 초기화...")
+    print("\n[1/5] 기존 ChromaDB 초기화...")
     reset_vector_store()
     print("  → 초기화 완료")
 
     # KB 문서 로드
-    print("\n[2/4] KB 문서 로드...")
+    print("\n[2/5] KB 문서 로드...")
     kb_docs = load_kb_documents()
     print(f"  → {len(kb_docs)}개 문서 로드 완료")
 
+    # FAQ 추가 문서 로드
+    print("\n[3/5] FAQ 추가 문서 로드...")
+    faq_docs = load_faq_documents()
+    print(f"  → {len(faq_docs)}개 FAQ 문서 로드 완료")
+
+    # 모든 문서 합치기
+    all_docs = kb_docs + faq_docs
+    print(f"  → 총 {len(all_docs)}개 문서 준비 완료")
+
     # 텍스트와 메타데이터 준비
-    print("\n[3/4] 문서 임베딩 및 적재...")
+    print("\n[4/5] 문서 임베딩 및 적재...")
     texts = []
     metadatas = []
 
-    for doc in kb_docs:
+    for doc in all_docs:
         # content + summary를 텍스트로 사용
         full_text = f"제목: {doc['title']}\n\n요약: {doc['summary']}\n\n내용:\n{doc['content']}"
         texts.append(full_text)
@@ -80,7 +98,7 @@ def ingest_documents():
     print(f"  → {len(ids)}개 청크 적재 완료")
 
     # 적재 확인
-    print("\n[4/4] 적재 결과 확인...")
+    print("\n[5/5] 적재 결과 확인...")
     vector_store = get_vector_store()
     total_docs = vector_store._collection.count()
     print(f"  → ChromaDB 총 문서 수: {total_docs}개")

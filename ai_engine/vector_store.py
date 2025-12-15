@@ -177,14 +177,27 @@ def add_documents(
     if not documents:
         return []
 
+    # 중복 ID 제거 (동일 ID가 있으면 첫 번째만 유지)
+    seen_ids = set()
+    unique_documents = []
+    unique_chunk_ids = []
+    for doc, chunk_id in zip(documents, chunk_ids):
+        if chunk_id not in seen_ids:
+            seen_ids.add(chunk_id)
+            unique_documents.append(doc)
+            unique_chunk_ids.append(chunk_id)
+
     # 기존 동일 ID 청크 제거 (재삽입 대비)
-    if chunk_ids:
-        vector_store.delete(ids=chunk_ids)
+    if unique_chunk_ids:
+        try:
+            vector_store.delete(ids=unique_chunk_ids)
+        except Exception:
+            pass  # 새 DB에서는 삭제할 문서가 없을 수 있음
 
     # 벡터 스토어에 추가
     # LangChain Chroma는 PersistentClient를 사용하면 자동으로 persist되므로
     # 별도의 persist() 호출이 필요 없습니다.
-    ids = vector_store.add_documents(documents, ids=chunk_ids if chunk_ids else None)
+    ids = vector_store.add_documents(unique_documents, ids=unique_chunk_ids if unique_chunk_ids else None)
     
     # BM25 Retriever 재인덱싱 필요 (문서 추가 후)
     if settings.enable_hybrid_search:
@@ -897,7 +910,8 @@ def _rerank_documents(
         logger.debug(f"[Reranking 내부] {len(pairs)}개 쿼리-문서 쌍 생성")
         
         # 점수 계산 (원본 점수)
-        raw_scores = model.predict(pairs)
+        # show_progress_bar=False로 설정하여 tqdm hang 방지
+        raw_scores = model.predict(pairs, show_progress_bar=False)
         scores_array = [float(score) for score in raw_scores]
         
         if scores_array:
