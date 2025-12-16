@@ -206,6 +206,14 @@ tmp/
 녹음/
 
 # ========================================
+# 학습 데이터셋 (대용량, Git 추적 불필요)
+# ========================================
+ai_engine/ingestion/final_hana_card_classifier/preprocessed_final/
+ai_engine/ingestion/*/preprocessed*/
+ai_engine/ingestion/*/Training/
+ai_engine/ingestion/*/Validation/
+
+# ========================================
 # 중첩 디렉토리 (클론 실수 방지)
 # ========================================
 fa06-fin-aicc/
