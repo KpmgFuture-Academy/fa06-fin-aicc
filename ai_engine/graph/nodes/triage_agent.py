@@ -88,12 +88,41 @@ SYSTEM_PROMPT = """
 - 이미 해결된 뒤의 가벼운 리액션
   → SIMPLE_ANSWER
 
-4) 상담사 이관이 필요한 경우
-   상담사 연결(HUMAN_REQUIRED)은 아래 조건에 정확히 해당할 때만 선택하세요.
-   - 이미 여러 차례 안내했으나 여전히 해결되지 않아 고객이 인내심을 잃고 있는 상황 (강한 불만/민원)
-  → HUMAN_REQUIRED
-이 경우에는 intent_classification_tool, rag_search_tool을 호출하지 말고,
-바로 HUMAN_REQUIRED 티켓 JSON을 출력한다.
+4) 상담사 이관이 필요한 경우 (HUMAN_REQUIRED)
+   아래 조건 중 하나라도 해당하면 반드시 HUMAN_REQUIRED를 선택하세요:
+
+   A) **실제 처리/조치가 필요한 업무** (가장 중요!)
+      - 보이스피싱/금융사기 의심 → 반드시 HUMAN_REQUIRED
+      - 해외 부정결제 신고 → 반드시 HUMAN_REQUIRED
+      - 카드 해지/탈퇴 요청 → 반드시 HUMAN_REQUIRED
+      - 결제 취소/환불 요청 → 반드시 HUMAN_REQUIRED
+      - 이의제기/분쟁 해결 요청 → 반드시 HUMAN_REQUIRED
+      ⚠️ 이런 업무는 AI가 "처리하겠습니다"라고 말할 수 없습니다!
+      ⚠️ 정보만 안내하는 것과 실제 처리는 다릅니다!
+
+   ✅ **AUTO_ANSWER로 처리 가능한 업무** (FAQ 기반 안내):
+      - 카드 분실/도난 신고 방법 안내 → AUTO_ANSWER (앱/ARS에서 고객이 직접 신고 가능)
+      - 카드 임시 정지/해제 방법 안내 → AUTO_ANSWER (앱에서 직접 처리 가능)
+      - 카드 재발급 방법 안내 → AUTO_ANSWER (앱/고객센터에서 신청 가능)
+      - 분실 카드 찾은 후 해제 방법 → AUTO_ANSWER (앱/고객센터에서 해제 가능)
+      ※ 고객이 "정지해주세요", "신고해주세요"라고 해도 방법을 안내하면 되는 경우 AUTO_ANSWER!
+
+   ⚠️ **HUMAN_REQUIRED가 아닌 경우 (정보 안내로 처리 가능)**:
+      - 결제일 변경 방법 안내 → AUTO_ANSWER (앱/웹에서 고객이 직접 변경 가능)
+      - 한도 변경 방법 안내 → AUTO_ANSWER (앱/웹에서 고객이 직접 변경 가능)
+      - 개인정보 변경 방법 안내 → AUTO_ANSWER (앱/웹에서 고객이 직접 변경 가능)
+      - 이용내역 조회 방법 안내 → AUTO_ANSWER
+      - 포인트 조회/사용 방법 안내 → AUTO_ANSWER
+      고객이 "~하고 싶어요", "~변경하고 싶습니다"라고 해도 방법을 안내하면 되는 경우 AUTO_ANSWER!
+
+   B) **고객이 상담사 연결을 명시적으로 요청한 경우**
+      - "상담사 연결해주세요", "사람과 통화하고 싶어요" 등
+
+   C) **강한 불만/민원으로 자동 응답이 부적절한 경우**
+      - 이미 여러 차례 안내했으나 해결되지 않아 고객이 인내심을 잃은 상황
+
+   위 조건에 해당하면 intent_classification_tool, rag_search_tool을 호출하지 말고,
+   바로 HUMAN_REQUIRED 티켓 JSON을 출력한다.
 
 5) 도구가 필요한 대표 상황 (AUTO_ANSWER 또는 NEED_MORE_INFO 후보)
 - 새로운 정보/설명을 요구하는 명확한 질문
@@ -117,10 +146,11 @@ SYSTEM_PROMPT = """
 - (있다면) rag_search_tool 결과 (문서 리스트 등)
 도구 호출 결과(ToolMessage)에 포함된 결과를 꼼꼼히 읽고 종합 판단한다.
 
-단, HUMAN_REQUIRED를 선택할 때는 아래 두 질문을 참고해서 판단한다.
-- “고객이 상담사 연결을 명시적으로 요청했는가?”
-- “자동 응답으로 해결할 수 없음이 반복적으로 확인되었는가?”
-두 질문 중 하나라도 “아니오”라면 HUMAN_REQUIRED를 선택하지 말고 다른 티켓을 고려한다.
+단, HUMAN_REQUIRED를 선택할 때는 아래 세 질문을 참고해서 판단한다.
+- "이 업무는 실제 처리/조치가 필요한가?" (분실 신고, 재발급, 해지, 결제 취소, 한도 변경 등)
+- "고객이 상담사 연결을 명시적으로 요청했는가?"
+- "자동 응답으로 해결할 수 없음이 반복적으로 확인되었는가?"
+세 질문 중 하나라도 "예"라면 HUMAN_REQUIRED를 선택한다.
 
 7) 최종 출력 형식
 도구 호출이 더 이상 필요 없다고 판단되면,
@@ -158,16 +188,28 @@ triage_agent_app = create_agent(
 def triage_agent_node(state: GraphState) -> GraphState:
     """
     LangGraph에서 호출되는 triage 노드.
-    
+
     고객 발화와 대화 맥락을 분석하여 TriageDecisionType을 산출합니다.
-    
+
     1) GraphState 안의 대화/현재 발화를 LangChain 메시지로 변환해서 triage_agent_app에 넘기고
     2) triage_agent_app 결과의 마지막 assistant 메시지에서 ticket/reason JSON을 파싱한 뒤
     3) GraphState에 triage_decision과 handover_reason을 채워서 반환한다.
     """
     user_message = state["user_message"]
-    
+
     try:
+        # 0. 의도 분류 먼저 수행 (HUMAN_REQUIRED 케이스에서도 context_intent 기록을 위해)
+        # LLM이 HUMAN_REQUIRED로 빠르게 판단하면 tool 호출을 스킵하므로, 여기서 강제 호출
+        intent_top3_prefetch = None
+        try:
+            logger.info(f"의도 분류 사전 호출 - 메시지: {user_message[:50]}...")
+            intent_result = intent_classification_tool.invoke(user_message)
+            if isinstance(intent_result, str):
+                intent_top3_prefetch = intent_result
+                logger.info(f"의도 분류 사전 호출 완료: {intent_top3_prefetch[:100] if intent_top3_prefetch else 'None'}")
+        except Exception as e:
+            logger.warning(f"의도 분류 사전 호출 실패 (계속 진행): {e}")
+
         # 1. GraphState -> LangChain messages 변환
         lc_messages: List[Any] = []
 
@@ -178,7 +220,7 @@ def triage_agent_node(state: GraphState) -> GraphState:
         conversation_history = state.get("conversation_history", [])
         # 최근 10개 메시지만 선택 (최신 메시지부터)
         recent_messages = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
-        
+
         for msg in recent_messages:
             role = msg.get("role")
             message_text = msg.get("message", "")
@@ -198,23 +240,29 @@ def triage_agent_node(state: GraphState) -> GraphState:
         # 3. Tool 호출 결과 추출 및 저장
         intent_top3 = None
         retrieved_docs = []
-        
+
         # ToolMessage에서 결과 추출
         for msg in result["messages"]:
             if isinstance(msg, ToolMessage):
                 tool_name = getattr(msg, 'name', None) or ''
-                
+
                 # intent_classification_tool 결과 추출
                 if 'intent_classification' in tool_name or 'classify_intent' in tool_name:
                     if isinstance(msg.content, str):
                         intent_top3 = msg.content
                         logger.debug(f"Intent 분류 결과 추출: {intent_top3[:100] if intent_top3 else 'None'}")
-                
+
                 # rag_search_tool 결과 추출
                 elif 'rag_search' in tool_name or 'search_rag' in tool_name:
                     if isinstance(msg.content, str):
                         retrieved_docs = parse_rag_result(msg.content)
                         logger.debug(f"RAG 검색 결과 추출: {len(retrieved_docs)} documents")
+
+        # LLM이 intent_classification_tool을 호출하지 않은 경우 (HUMAN_REQUIRED 등)
+        # 사전 호출한 결과를 사용하여 context_intent 기록
+        if intent_top3 is None and intent_top3_prefetch is not None:
+            intent_top3 = intent_top3_prefetch
+            logger.info(f"LLM이 intent tool 미호출 → 사전 호출 결과 사용: {intent_top3[:100] if intent_top3 else 'None'}")
         
         # 의도 분류 결과 파싱 및 저장
         if intent_top3:

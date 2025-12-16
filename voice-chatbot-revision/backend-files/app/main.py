@@ -1,0 +1,222 @@
+import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from fastapi import FastAPI, status
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1 import chat, handover, session, voice, voice_ws
+from app.core.database import init_db, engine
+from app.core.config import settings
+from sqlalchemy import text
+
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="Bank AICC Dev Server",
+    description="AI 상담 챗봇 서버 - LangGraph 기반 워크플로우",
+    version="1.0.0"
+)
+
+# CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 프로덕션에서는 특정 도메인으로 제한
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# 데이터베이스 초기화 (테이블 생성)
+@app.on_event("startup")
+async def startup_event():
+    """애플리케이션 시작 시 DB 테이블 생성 및 연결 확인"""
+    try:
+        logger.info("데이터베이스 초기화 시작...")
+
+        # 비동기로 실행하여 블로킹 방지
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)
+
+        # DB 초기화를 별도 스레드에서 실행 (타임아웃 10초)
+        try:
+            await asyncio.wait_for(
+                loop.run_in_executor(executor, init_db),
+                timeout=10.0
+            )
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ 데이터베이스 초기화 타임아웃 (10초) - 서버는 계속 시작됩니다")
+        except Exception as e:
+            logger.warning(f"⚠️ 데이터베이스 초기화 실패: {str(e)} - 서버는 계속 시작됩니다")
+
+        # DB 연결 확인 (타임아웃 5초)
+        def _check_db_connection():
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1"))
+                return result.fetchone()
+
+        try:
+            await asyncio.wait_for(
+                loop.run_in_executor(executor, _check_db_connection),
+                timeout=5.0
+            )
+            logger.info("✅ 데이터베이스 연결 성공")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ 데이터베이스 연결 확인 타임아웃 (5초) - MySQL이 실행 중인지 확인하세요")
+            logger.warning("   서버는 계속 시작되지만 데이터베이스 기능은 사용할 수 없습니다")
+        except Exception as e:
+            logger.warning(f"⚠️ 데이터베이스 연결 확인 실패: {str(e)}")
+            logger.warning("   서버는 계속 시작되지만 데이터베이스 기능은 사용할 수 없습니다")
+
+        executor.shutdown(wait=False)
+    except Exception as e:
+        logger.error(f"데이터베이스 초기화 중 오류 발생: {str(e)}", exc_info=True)
+        # DB 연결 실패해도 서버는 시작 (나중에 재시도 가능)
+
+    # LLM 설정 확인
+    if settings.use_lm_studio:
+        logger.info(f"LM Studio 사용 - 모델: {settings.lm_studio_model}, URL: {settings.lm_studio_base_url}")
+        logger.info("LM Studio가 실행 중인지 확인하세요: http://localhost:1234")
+    else:
+        # .env 파일에서만 API 키를 가져옴
+        if settings.openai_api_key:
+            logger.info(f"✅ OpenAI API 키 로드 완료 (길이: {len(settings.openai_api_key)} 문자)")
+            logger.info(f"   API 키 시작: {settings.openai_api_key[:20]}...")
+            logger.info(f"   .env 파일에서 로드됨")
+        else:
+            logger.error("❌ OpenAI API 키가 설정되지 않았습니다!")
+            logger.error("   .env 파일에 OPENAI_API_KEY=sk-... 를 추가해주세요.")
+            logger.error("   프로젝트 루트 디렉토리에 .env 파일이 있는지 확인하세요.")
+            logger.error("   환경 변수는 사용하지 않습니다. 반드시 .env 파일에 설정해야 합니다.")
+
+    # 벡터 DB 초기화 확인 (비동기, 타임아웃 30초)
+    try:
+        def _init_vector_store():
+            from ai_engine.vector_store import get_vector_store
+            return get_vector_store()
+
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)
+
+        try:
+            vector_store = await asyncio.wait_for(
+                loop.run_in_executor(executor, _init_vector_store),
+                timeout=30.0
+            )
+            logger.info(f"✅ 벡터 DB 초기화 완료 - 경로: {settings.vector_db_path}, 컬렉션: {settings.collection_name}")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ 벡터 DB 초기화 타임아웃 (30초) - RAG 검색은 빈 결과 반환될 수 있습니다")
+        except Exception as e:
+            logger.warning(f"⚠️ 벡터 DB 초기화 실패 (RAG 검색은 빈 결과 반환): {str(e)}")
+            logger.warning("   벡터 DB는 선택사항입니다. 문서가 없으면 RAG 검색 결과가 비어있을 수 있습니다.")
+        finally:
+            executor.shutdown(wait=False)
+    except Exception as e:
+        logger.warning(f"⚠️ 벡터 DB 초기화 중 오류: {str(e)}")
+        logger.warning("   벡터 DB는 선택사항입니다. 문서가 없으면 RAG 검색 결과가 비어있을 수 있습니다.")
+
+    # Final Classifier 모델 확인 (LoRA 기반 KcELECTRA) - 비동기, 타임아웃 60초
+    try:
+        def _init_classifier():
+            from ai_engine.ingestion.bert_financial_intent_classifier.scripts.inference import IntentClassifier
+            return IntentClassifier()
+
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)
+
+        try:
+            classifier = await asyncio.wait_for(
+                loop.run_in_executor(executor, _init_classifier),
+                timeout=60.0
+            )
+            if classifier is not None:
+                logger.info("✅ Final Classifier 의도 분류 모델 로드 완료 (38개 카테고리)")
+            else:
+                logger.warning("⚠️ Final Classifier 모델을 찾을 수 없습니다.")
+                logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ Final Classifier 모델 로드 타임아웃 (60초) - 의도 분류 기능이 제한될 수 있습니다")
+            logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+        except Exception as e:
+            logger.warning(f"⚠️ Final Classifier 모델 로드 실패: {str(e)}")
+            logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+        finally:
+            executor.shutdown(wait=False)
+    except Exception as e:
+        logger.warning(f"⚠️ Final Classifier 모델 로드 중 오류: {str(e)}")
+        logger.warning("   모델 위치: fa06-fin-aicc/models/final_classifier_model/model_final/ 폴더를 확인하세요.")
+
+    # STT/TTS 음성 서비스 설정 확인
+    logger.info("음성 서비스 설정 확인 중...")
+
+    # VITO STT 설정 확인
+    if settings.vito_client_id and settings.vito_client_secret:
+        logger.info(f"✅ VITO STT 설정 확인 완료 (Client ID: {settings.vito_client_id[:8]}...)")
+    else:
+        logger.warning("⚠️ VITO STT 설정이 없습니다. 음성 입력 기능을 사용하려면 설정이 필요합니다.")
+        logger.warning("   .env 파일에 VITO_CLIENT_ID와 VITO_CLIENT_SECRET을 추가하세요.")
+        logger.warning("   발급: https://developers.vito.ai/")
+
+    # OpenAI TTS 설정 확인
+    if settings.openai_api_key:
+        logger.info(f"✅ OpenAI TTS 설정 확인 완료 (voice: {settings.tts_voice}, model: {settings.tts_model})")
+    else:
+        logger.warning("⚠️ OpenAI API 키가 없어 TTS 기능을 사용할 수 없습니다.")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """애플리케이션 종료 시 정리 작업"""
+    logger.info("애플리케이션 종료 중...")
+
+
+# 라우터 등록 (부품 조립)
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
+app.include_router(handover.router, prefix="/api/v1/handover", tags=["Handover"])
+app.include_router(session.router, prefix="/api/v1/sessions", tags=["Sessions"])
+app.include_router(voice.router, prefix="/api/v1/voice", tags=["Voice"])
+app.include_router(voice_ws.router, prefix="/api/v1/voice", tags=["Voice WebSocket"])
+
+
+@app.get("/")
+def root():
+    """루트 엔드포인트 - 서버 상태 확인"""
+    return {
+        "status": "Server is running properly!",
+        "service": "Bank AICC Dev Server",
+        "version": "1.0.0"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """헬스체크 엔드포인트 - 서버 및 DB 상태 확인"""
+    try:
+        # DB 연결 확인
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            result.fetchone()
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status": "healthy",
+                "database": "connected",
+                "service": "Bank AICC Dev Server"
+            }
+        )
+    except Exception as e:
+        logger.error(f"헬스체크 실패: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "database": "disconnected",
+                "error": str(e)
+            }
+        )

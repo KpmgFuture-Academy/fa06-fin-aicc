@@ -1,0 +1,1041 @@
+{
+  "description": "카드사 E2E 테스트용 100개 대화쌍 시나리오",
+  "version": "1.0",
+  "created_at": "2024-12-14",
+  "total_scenarios": 100,
+  "categories": {
+    "card_loss": "카드분실/도난신고",
+    "payment_inquiry": "결제내역조회",
+    "limit_change": "한도조정",
+    "point_inquiry": "포인트/혜택문의",
+    "auto_payment": "자동이체관리",
+    "card_reissue": "카드재발급",
+    "annual_fee": "연회비문의",
+    "overseas_payment": "해외결제",
+    "installment": "분할납부",
+    "human_transfer": "상담사연결"
+  },
+  "test_scenarios": [
+    {
+      "scenario_id": "card_001",
+      "title": "카드 분실 신고 - 긴급",
+      "category": "card_loss",
+      "user_text": "카드를 잃어버렸어요 지금 바로 정지해주세요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_002",
+      "title": "카드 도난 신고",
+      "category": "card_loss",
+      "user_text": "카드 훔쳐갔어요 빨리 정지시켜주세요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_003",
+      "title": "카드 분실 후 재발급 문의",
+      "category": "card_loss",
+      "user_text": "어제 카드 잃어버렸는데 새로 발급받으려면 어떻게 해야 해요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_004",
+      "title": "보이스피싱 의심 신고",
+      "category": "card_loss",
+      "user_text": "보이스피싱 당한 것 같아요 카드 정지해주세요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_005",
+      "title": "카드 부정사용 의심",
+      "category": "card_loss",
+      "user_text": "제가 쓰지 않은 결제가 있어요 카드 정지하고 싶어요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_006",
+      "title": "지갑 분실로 카드 정지",
+      "category": "card_loss",
+      "user_text": "지갑을 잃어버렸어요 안에 카드가 있었는데 정지해주세요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_007",
+      "title": "분실 카드 찾음 - 정지 해제",
+      "category": "card_loss",
+      "user_text": "분실 신고했던 카드 찾았어요 다시 사용하고 싶어요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_008",
+      "title": "카드 임시 정지 요청",
+      "category": "card_loss",
+      "user_text": "카드가 어디 있는지 모르겠어요 일단 임시로 정지해주세요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_009",
+      "title": "해외에서 카드 분실",
+      "category": "card_loss",
+      "user_text": "해외여행 중인데 카드를 잃어버렸어요 어떻게 해야 하나요",
+      "expected_intent": "도난/분실 신청/해제",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_010",
+      "title": "카드 파손으로 정지",
+      "category": "card_loss",
+      "user_text": "카드가 부러졌어요 새로 발급받고 싶어요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_011",
+      "title": "이번 달 결제 내역 조회",
+      "category": "payment_inquiry",
+      "user_text": "이번 달 카드 결제 내역 알려주세요",
+      "expected_intent": "이용내역 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_012",
+      "title": "지난달 결제 내역 확인",
+      "category": "payment_inquiry",
+      "user_text": "저번 달에 결제한 내역 좀 확인하고 싶은데요",
+      "expected_intent": "이용내역 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_013",
+      "title": "특정 가맹점 결제 확인",
+      "category": "payment_inquiry",
+      "user_text": "스타벅스에서 결제한 내역 확인해주세요",
+      "expected_intent": "이용내역 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_014",
+      "title": "결제 금액 확인",
+      "category": "payment_inquiry",
+      "user_text": "다음 달 카드값 얼마나 나오나요",
+      "expected_intent": "결제대금 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_015",
+      "title": "결제 명세서 요청",
+      "category": "payment_inquiry",
+      "user_text": "3월 결제 명세서 보내주세요",
+      "expected_intent": "증명서/확인서 발급",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_016",
+      "title": "결제일 확인",
+      "category": "payment_inquiry",
+      "user_text": "카드 결제일이 언제예요",
+      "expected_intent": "결제일 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_017",
+      "title": "미결제 금액 조회",
+      "category": "payment_inquiry",
+      "user_text": "아직 결제 안 된 금액이 얼마예요",
+      "expected_intent": "결제대금 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_018",
+      "title": "할부 결제 내역 확인",
+      "category": "payment_inquiry",
+      "user_text": "할부로 결제한 내역 확인하고 싶어요",
+      "expected_intent": "이용내역 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_019",
+      "title": "온라인 결제 내역",
+      "category": "payment_inquiry",
+      "user_text": "인터넷으로 결제한 내역만 보고 싶어요",
+      "expected_intent": "이용내역 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_020",
+      "title": "이상 결제 내역 문의",
+      "category": "payment_inquiry",
+      "user_text": "모르는 결제 내역이 있어요 확인해주세요",
+      "expected_intent": "이용내역 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_021",
+      "title": "카드 한도 상향 요청",
+      "category": "limit_change",
+      "user_text": "카드 한도를 늘리고 싶어요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_022",
+      "title": "한도 부족으로 결제 실패",
+      "category": "limit_change",
+      "user_text": "한도가 부족해서 결제가 안 돼요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_023",
+      "title": "한도 조회",
+      "category": "limit_change",
+      "user_text": "제 카드 한도가 얼마예요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_024",
+      "title": "일시불 한도 상향",
+      "category": "limit_change",
+      "user_text": "일시불 한도 좀 올려주세요 큰 결제가 있어요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_025",
+      "title": "할부 한도 확인",
+      "category": "limit_change",
+      "user_text": "할부 한도가 얼마인지 알고 싶어요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_026",
+      "title": "한도 하향 요청",
+      "category": "limit_change",
+      "user_text": "카드 한도를 줄이고 싶어요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_027",
+      "title": "임시 한도 상향",
+      "category": "limit_change",
+      "user_text": "이번 달만 한도 좀 올려주세요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_028",
+      "title": "현금서비스 한도 문의",
+      "category": "limit_change",
+      "user_text": "현금서비스 한도가 얼마예요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_029",
+      "title": "한도 복원 요청",
+      "category": "limit_change",
+      "user_text": "결제했는데 한도가 언제 복원되나요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_030",
+      "title": "한도 상향 조건 문의",
+      "category": "limit_change",
+      "user_text": "한도 올리려면 어떤 조건이 필요해요",
+      "expected_intent": "한도 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_031",
+      "title": "포인트 잔액 조회",
+      "category": "point_inquiry",
+      "user_text": "포인트가 얼마나 쌓였는지 알려주세요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_032",
+      "title": "포인트 사용처 문의",
+      "category": "point_inquiry",
+      "user_text": "포인트로 뭘 할 수 있어요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_033",
+      "title": "마일리지 조회",
+      "category": "point_inquiry",
+      "user_text": "마일리지 얼마나 있어요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_034",
+      "title": "카드 혜택 안내",
+      "category": "point_inquiry",
+      "user_text": "제 카드 혜택이 뭐가 있어요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_035",
+      "title": "캐시백 조회",
+      "category": "point_inquiry",
+      "user_text": "캐시백 얼마나 받았는지 확인하고 싶어요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_036",
+      "title": "포인트 유효기간 문의",
+      "category": "point_inquiry",
+      "user_text": "포인트 유효기간이 언제까지예요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_037",
+      "title": "무이자 할부 가맹점",
+      "category": "point_inquiry",
+      "user_text": "무이자할부 되는 곳이 어디예요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_038",
+      "title": "할인 혜택 문의",
+      "category": "point_inquiry",
+      "user_text": "어디서 할인받을 수 있어요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_039",
+      "title": "포인트로 결제 문의",
+      "category": "point_inquiry",
+      "user_text": "포인트로 결제할 수 있나요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_040",
+      "title": "포인트 현금 전환",
+      "category": "point_inquiry",
+      "user_text": "포인트를 현금으로 바꿀 수 있어요",
+      "expected_intent": "포인트/마일리지 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_041",
+      "title": "자동이체 계좌 변경",
+      "category": "auto_payment",
+      "user_text": "자동이체 계좌를 변경하려고요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_042",
+      "title": "결제일 변경",
+      "category": "auto_payment",
+      "user_text": "카드 결제일을 바꾸고 싶어요",
+      "expected_intent": "결제일 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_043",
+      "title": "자동이체 등록",
+      "category": "auto_payment",
+      "user_text": "카드대금 자동이체 등록하고 싶어요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_044",
+      "title": "자동이체 해지",
+      "category": "auto_payment",
+      "user_text": "자동이체 해지하려고요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_045",
+      "title": "납부일 조회",
+      "category": "auto_payment",
+      "user_text": "납부일이 언제예요",
+      "expected_intent": "결제일 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_046",
+      "title": "자동이체 실패 문의",
+      "category": "auto_payment",
+      "user_text": "자동이체가 안 됐어요 왜 그런 거예요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_047",
+      "title": "출금 계좌 확인",
+      "category": "auto_payment",
+      "user_text": "카드대금 빠지는 계좌가 어디예요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_048",
+      "title": "이체 한도 변경",
+      "category": "auto_payment",
+      "user_text": "자동이체 한도를 변경하고 싶어요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_049",
+      "title": "결제 계좌 잔액 부족",
+      "category": "auto_payment",
+      "user_text": "통장에 돈이 없어서 카드대금이 안 빠졌어요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_050",
+      "title": "재출금 일정 문의",
+      "category": "auto_payment",
+      "user_text": "재출금은 언제 되나요",
+      "expected_intent": "결제계좌 안내/변경",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_051",
+      "title": "카드 재발급 신청",
+      "category": "card_reissue",
+      "user_text": "카드 재발급 받고 싶어요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_052",
+      "title": "카드 마모로 재발급",
+      "category": "card_reissue",
+      "user_text": "카드가 긁히질 않아서 새로 받고 싶어요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_053",
+      "title": "유효기간 만료 재발급",
+      "category": "card_reissue",
+      "user_text": "카드 유효기간 만료됐는데 새로 발급해주세요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_054",
+      "title": "카드 디자인 변경",
+      "category": "card_reissue",
+      "user_text": "카드 디자인 바꾸고 싶어요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_055",
+      "title": "재발급 수수료 문의",
+      "category": "card_reissue",
+      "user_text": "카드 재발급 비용이 얼마예요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_056",
+      "title": "재발급 소요 기간",
+      "category": "card_reissue",
+      "user_text": "카드 재발급 얼마나 걸려요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_057",
+      "title": "가족카드 재발급",
+      "category": "card_reissue",
+      "user_text": "가족카드 재발급 해주세요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_058",
+      "title": "재발급 배송 조회",
+      "category": "card_reissue",
+      "user_text": "재발급 신청한 카드 언제 오나요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_059",
+      "title": "카드 번호 변경 재발급",
+      "category": "card_reissue",
+      "user_text": "카드 번호 바꿔서 재발급 받을 수 있어요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_060",
+      "title": "IC칩 불량 재발급",
+      "category": "card_reissue",
+      "user_text": "카드 칩이 안 읽혀요 새로 발급해주세요",
+      "expected_intent": "긴급 배송 신청",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_061",
+      "title": "연회비 조회",
+      "category": "annual_fee",
+      "user_text": "연회비가 얼마예요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_062",
+      "title": "연회비 청구일 문의",
+      "category": "annual_fee",
+      "user_text": "연회비가 언제 빠지나요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_063",
+      "title": "연회비 환불 요청",
+      "category": "annual_fee",
+      "user_text": "연회비 환불 받고 싶어요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_064",
+      "title": "연회비 면제 조건",
+      "category": "annual_fee",
+      "user_text": "연회비 면제받으려면 어떻게 해야 해요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_065",
+      "title": "연회비 이중 청구 문의",
+      "category": "annual_fee",
+      "user_text": "연회비가 두 번 빠진 것 같아요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_066",
+      "title": "연회비 할인 문의",
+      "category": "annual_fee",
+      "user_text": "연회비 할인받을 수 있나요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_067",
+      "title": "연회비 없는 카드 문의",
+      "category": "annual_fee",
+      "user_text": "연회비 없는 카드로 바꾸고 싶어요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_068",
+      "title": "첫해 연회비 면제 확인",
+      "category": "annual_fee",
+      "user_text": "첫해 연회비 면제인가요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_069",
+      "title": "연회비 납부 내역",
+      "category": "annual_fee",
+      "user_text": "연회비 납부 내역 확인해주세요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_070",
+      "title": "연회비 포인트 결제",
+      "category": "annual_fee",
+      "user_text": "연회비를 포인트로 낼 수 있어요",
+      "expected_intent": "연회비 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_071",
+      "title": "해외 결제 안됨",
+      "category": "overseas_payment",
+      "user_text": "해외에서 카드 결제가 안 돼요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_072",
+      "title": "해외 결제 활성화",
+      "category": "overseas_payment",
+      "user_text": "해외 결제 가능하게 해주세요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_073",
+      "title": "해외 ATM 출금",
+      "category": "overseas_payment",
+      "user_text": "해외 ATM에서 현금 뽑을 수 있어요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_074",
+      "title": "해외 결제 수수료",
+      "category": "overseas_payment",
+      "user_text": "해외 결제 수수료가 얼마예요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_075",
+      "title": "환율 적용 문의",
+      "category": "overseas_payment",
+      "user_text": "해외 결제 환율은 어떻게 적용되나요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_076",
+      "title": "해외 결제 차단",
+      "category": "overseas_payment",
+      "user_text": "해외 결제 차단해주세요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_077",
+      "title": "해외 온라인 결제",
+      "category": "overseas_payment",
+      "user_text": "해외 사이트에서 결제하려면 어떻게 해요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_078",
+      "title": "해외 결제 내역 확인",
+      "category": "overseas_payment",
+      "user_text": "해외에서 결제한 내역 확인해주세요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_079",
+      "title": "해외 부정 결제 신고",
+      "category": "overseas_payment",
+      "user_text": "해외에서 모르는 결제가 됐어요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_080",
+      "title": "해외 결제 한도",
+      "category": "overseas_payment",
+      "user_text": "해외 결제 한도가 얼마예요",
+      "expected_intent": "이용방법 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_081",
+      "title": "분할납부 신청",
+      "category": "installment",
+      "user_text": "이번 달 결제금액 나눠서 내고 싶어요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_082",
+      "title": "할부 개월수 변경",
+      "category": "installment",
+      "user_text": "할부 개월수 바꿀 수 있어요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_083",
+      "title": "할부 수수료 문의",
+      "category": "installment",
+      "user_text": "할부 수수료가 얼마예요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_084",
+      "title": "무이자 할부 가능 여부",
+      "category": "installment",
+      "user_text": "무이자 할부 되나요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_085",
+      "title": "일시불 할부 전환",
+      "category": "installment",
+      "user_text": "일시불로 결제한 거 할부로 바꿀 수 있어요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_086",
+      "title": "할부 잔액 조회",
+      "category": "installment",
+      "user_text": "할부 남은 금액이 얼마예요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_087",
+      "title": "할부 조기 상환",
+      "category": "installment",
+      "user_text": "할부 한꺼번에 갚고 싶어요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_088",
+      "title": "리볼빙 서비스 문의",
+      "category": "installment",
+      "user_text": "리볼빙 서비스가 뭐예요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "low"
+    },
+    {
+      "scenario_id": "card_089",
+      "title": "카드론 신청",
+      "category": "installment",
+      "user_text": "카드론 신청하고 싶어요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_090",
+      "title": "현금서비스 이용",
+      "category": "installment",
+      "user_text": "현금서비스 받으려면 어떻게 해요",
+      "expected_intent": "일부결제대금이월약정 안내",
+      "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
+      "auto_resolved": true,
+      "priority": "medium"
+    },
+    {
+      "scenario_id": "card_091",
+      "title": "상담사 연결 요청 - 일반",
+      "category": "human_transfer",
+      "user_text": "상담원 연결해주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_092",
+      "title": "복잡한 문제로 상담사 연결",
+      "category": "human_transfer",
+      "user_text": "복잡한 문제라서 상담원 연결해주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_093",
+      "title": "불만 접수 상담사 연결",
+      "category": "human_transfer",
+      "user_text": "담당자 바꿔주세요 불만이 있어요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_094",
+      "title": "사람과 직접 통화",
+      "category": "human_transfer",
+      "user_text": "사람이랑 직접 통화하고 싶어요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_095",
+      "title": "긴급 상담 요청",
+      "category": "human_transfer",
+      "user_text": "급한 문제예요 빨리 상담원 연결해주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_096",
+      "title": "반복 문의로 상담사 연결",
+      "category": "human_transfer",
+      "user_text": "세 번째 전화인데 해결이 안 돼요 상담원 연결해주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_097",
+      "title": "AI 응답 불만족",
+      "category": "human_transfer",
+      "user_text": "AI로는 해결이 안 돼요 사람 연결해주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_098",
+      "title": "민원 상담 요청",
+      "category": "human_transfer",
+      "user_text": "민원 접수하고 싶어요 상담원 연결해주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_099",
+      "title": "책임자 연결 요청",
+      "category": "human_transfer",
+      "user_text": "책임자랑 얘기하고 싶어요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    },
+    {
+      "scenario_id": "card_100",
+      "title": "상담 품질 불만",
+      "category": "human_transfer",
+      "user_text": "제대로 된 답변이 안 나와요 상담원 바꿔주세요",
+      "expected_intent": "기타",
+      "expected_flow": ["triage_agent", "waiting_agent", "summary_agent", "human_transfer"],
+      "auto_resolved": false,
+      "priority": "high"
+    }
+  ],
+  "category_distribution": {
+    "card_loss": 10,
+    "payment_inquiry": 10,
+    "limit_change": 10,
+    "point_inquiry": 10,
+    "auto_payment": 10,
+    "card_reissue": 10,
+    "annual_fee": 10,
+    "overseas_payment": 10,
+    "installment": 10,
+    "human_transfer": 10
+  },
+  "evaluation_criteria": {
+    "intent_accuracy_target": 90,
+    "rag_similarity_target": 0.7,
+    "rag_hit_rate_target": 80,
+    "auto_resolution_target": 70,
+    "workflow_success_rate_target": 95,
+    "e2e_latency_target_ms": 5000,
+    "human_required_recall_target": 95
+  }
+}

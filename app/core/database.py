@@ -34,6 +34,53 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db():
-    """데이터베이스 테이블 생성"""
+    """데이터베이스 테이블 생성 및 마이그레이션"""
     Base.metadata.create_all(bind=engine)
+
+    # 마이그레이션: 기존 테이블에 새 컬럼 추가
+    _migrate_add_column_if_not_exists(
+        "chat_sessions",
+        "context_intent",
+        "VARCHAR(100)"
+    )
+    # 불명확 응답/도메인 외 질문 카운터 컬럼 추가 (2025-12-11)
+    _migrate_add_column_if_not_exists(
+        "chat_sessions",
+        "unclear_count",
+        "INTEGER DEFAULT 0"
+    )
+    _migrate_add_column_if_not_exists(
+        "chat_sessions",
+        "out_of_domain_count",
+        "INTEGER DEFAULT 0"
+    )
+
+
+def _migrate_add_column_if_not_exists(table_name: str, column_name: str, column_type: str):
+    """기존 테이블에 컬럼이 없으면 추가하는 마이그레이션 헬퍼"""
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        # SQLite: PRAGMA table_info로 컬럼 존재 여부 확인
+        if "sqlite" in settings.database_url.lower():
+            result = conn.execute(text(f"PRAGMA table_info({table_name})"))
+            columns = [row[1] for row in result.fetchall()]
+
+            if column_name not in columns:
+                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+                conn.commit()
+                print(f"[DB Migration] Added column '{column_name}' to table '{table_name}'")
+        else:
+            # MySQL/PostgreSQL: information_schema로 확인
+            try:
+                result = conn.execute(text(f"""
+                    SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = '{table_name}' AND COLUMN_NAME = '{column_name}'
+                """))
+                if not result.fetchone():
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+                    conn.commit()
+                    print(f"[DB Migration] Added column '{column_name}' to table '{table_name}'")
+            except Exception as e:
+                print(f"[DB Migration] Warning: Could not check/add column: {e}")
 

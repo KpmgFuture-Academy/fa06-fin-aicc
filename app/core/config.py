@@ -68,7 +68,14 @@ class Settings(BaseSettings):
     lm_studio_model: str = "openai/gpt-oss-20b"
     use_lm_studio: bool = False  # True면 LM Studio 사용, False면 OpenAI 사용
     llm_timeout: int = 60  # LLM 호출 타임아웃 (초) - OpenAI는 빠르므로 60초로 설정
-    
+
+    # ========== LangSmith 설정 (프롬프트 디버깅용) ==========
+    # LangSmith는 LangChain과 자동으로 통합됩니다.
+    # 환경 변수만 설정하면 자동으로 추적이 시작됩니다.
+    langsmith_api_key: Optional[str] = None  # LangSmith API 키
+    langsmith_project: Optional[str] = None  # LangSmith 프로젝트 이름 (선택사항)
+    langsmith_tracing: bool = False  # True면 LangSmith 추적 활성화
+
     # 벡터 DB 설정 (ChromaDB)
     vector_db_path: str = "./chroma_db"  # ChromaDB 저장 경로
     # 한국어 특화 임베딩 모델 (한국어 금융 문서에 최적화)
@@ -94,9 +101,9 @@ class Settings(BaseSettings):
     bm25_korean_tokenizer: Optional[str] = "kiwi"  # 기본값을 Kiwi로 설정
     
     # Reranking 설정
-    enable_reranking: bool = True  # Reranking 활성화 여부
-    rerank_top_k: int = 20  # Reranking할 상위 문서 수 (검색 후 이 중에서 재정렬)
-    rerank_final_k: int = 3  # 최종 반환할 문서 수
+    enable_reranking: bool = False  # Reranking 비활성화 (레이턴시 개선 목적)
+    rerank_top_k: int = 3  # Reranking할 상위 문서 수 (5 → 3으로 줄여서 레이턴시 개선)
+    rerank_final_k: int = 2  # 최종 반환할 문서 수 (3 → 2로 줄여서 레이턴시 개선)
     # 한국어 최적화: 기본값을 한국어 reranker로 설정
     reranker_model: str = "Dongjin-kr/ko-reranker"  # 한국어 특화 Cross-Encoder 모델
     # 다른 옵션: "sigridjineth/ko-reranker-v1.1" (더 큰 모델, 더 정확하지만 느림)
@@ -122,3 +129,12 @@ elif original_env_key:
     # .env 파일에 없으면 원래 환경 변수 복원 (하지만 사용하지 않음)
     os.environ["OPENAI_API_KEY"] = original_env_key
 
+# LangSmith 초기화 (프롬프트 디버깅용)
+if settings.langsmith_tracing and settings.langsmith_api_key:
+    os.environ["LANGCHAIN_API_KEY"] = settings.langsmith_api_key
+    if settings.langsmith_project:
+        os.environ["LANGCHAIN_PROJECT"] = settings.langsmith_project
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    print(f"✅ LangSmith 추적 활성화됨 - 프로젝트: {settings.langsmith_project or 'default'}")
+elif settings.langsmith_tracing:
+    print("⚠️ LangSmith 추적이 활성화되어 있지만 API 키가 설정되지 않았습니다.")

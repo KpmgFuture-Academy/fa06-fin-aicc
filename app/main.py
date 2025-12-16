@@ -41,6 +41,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """애플리케이션 시작 시 DB 테이블 생성 및 연결 확인"""
+    import os
+
+    # LangSmith 트레이싱 확인
+    if os.getenv("LANGCHAIN_TRACING_V2", "").lower() == "true":
+        project = os.getenv("LANGCHAIN_PROJECT", "default")
+        logger.info(f"✅ LangSmith 추적 활성화됨 - 프로젝트: {project}")
+
     try:
         logger.info("데이터베이스 초기화 시작...")
                
@@ -186,6 +193,35 @@ async def startup_event():
     #     logger.info(f"ℹ️  OpenAI TTS 설정 확인 완료 (voice: {settings.tts_voice}, model: {settings.tts_model}) - 현재 미사용")
     # else:
     #     logger.debug("OpenAI TTS 설정 없음 (현재 미사용)")
+
+    # Reranker 모델 사전 로딩 (첫 요청 지연 방지) - 비동기, 타임아웃 60초
+    if settings.enable_reranking:
+        try:
+            def _init_reranker():
+                from sentence_transformers import CrossEncoder
+                logger.info(f"Reranker 모델 로딩 중... ({settings.reranker_model})")
+                return CrossEncoder(settings.reranker_model)
+
+            loop = asyncio.get_event_loop()
+            executor = ThreadPoolExecutor(max_workers=1)
+
+            try:
+                reranker_model = await asyncio.wait_for(
+                    loop.run_in_executor(executor, _init_reranker),
+                    timeout=60.0
+                )
+                # 모델을 _rerank_documents 함수에 캐시
+                from ai_engine.vector_store import _rerank_documents
+                _rerank_documents._model = reranker_model
+                logger.info(f"✅ Reranker 모델 사전 로딩 완료 ({settings.reranker_model})")
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ Reranker 모델 로드 타임아웃 (60초) - 첫 요청 시 로드됩니다")
+            except Exception as e:
+                logger.warning(f"⚠️ Reranker 모델 사전 로딩 실패: {str(e)} - 첫 요청 시 로드됩니다")
+            finally:
+                executor.shutdown(wait=False)
+        except Exception as e:
+            logger.warning(f"⚠️ Reranker 모델 사전 로딩 중 오류: {str(e)}")
 
     # 무활동 세션 정리 태스크 시작 (10분 무활동, 60초 주기)
     global inactivity_cleanup_task

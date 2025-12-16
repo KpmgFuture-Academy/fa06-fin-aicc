@@ -1,0 +1,150 @@
+{
+  "description": "LangGraph Flow 평가용 Expected Flow 데이터",
+  "version": "1.0",
+  "nodes": [
+    "triage_agent",
+    "answer_agent",
+    "waiting_agent",
+    "summary_agent",
+    "consent_check_node",
+    "chat_db_storage_node",
+    "human_transfer",
+    "end"
+  ],
+  "test_cases": [
+    {
+      "flow_id": "flow_001",
+      "scenario": "단순 FAQ 문의 - 자동 응대 완료",
+      "expected_flow": [
+        "triage_agent",
+        "answer_agent",
+        "consent_check_node",
+        "chat_db_storage_node",
+        "end"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "answer_agent": 800,
+        "consent_check_node": 200,
+        "chat_db_storage_node": 300
+      }
+    },
+    {
+      "flow_id": "flow_002",
+      "scenario": "카드 분실 신고 - 정보 수집 후 처리",
+      "expected_flow": [
+        "triage_agent",
+        "waiting_agent",
+        "answer_agent",
+        "consent_check_node",
+        "chat_db_storage_node",
+        "end"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "waiting_agent": 1500,
+        "answer_agent": 800,
+        "consent_check_node": 200,
+        "chat_db_storage_node": 300
+      }
+    },
+    {
+      "flow_id": "flow_003",
+      "scenario": "복잡한 민원 - 상담사 이관",
+      "expected_flow": [
+        "triage_agent",
+        "waiting_agent",
+        "human_transfer"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "waiting_agent": 2000,
+        "human_transfer": 300
+      }
+    },
+    {
+      "flow_id": "flow_004",
+      "scenario": "즉시 상담사 연결 요청",
+      "expected_flow": [
+        "triage_agent",
+        "human_transfer"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "human_transfer": 300
+      }
+    },
+    {
+      "flow_id": "flow_005",
+      "scenario": "정보 수집 완료 후 요약 생성",
+      "expected_flow": [
+        "triage_agent",
+        "waiting_agent",
+        "answer_agent",
+        "summary_agent",
+        "human_transfer"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "waiting_agent": 1500,
+        "answer_agent": 800,
+        "summary_agent": 1000,
+        "human_transfer": 300
+      }
+    },
+    {
+      "flow_id": "flow_006",
+      "scenario": "다중 턴 FAQ 응대",
+      "expected_flow": [
+        "triage_agent",
+        "answer_agent",
+        "triage_agent",
+        "answer_agent",
+        "consent_check_node",
+        "chat_db_storage_node",
+        "end"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "answer_agent": 800,
+        "consent_check_node": 200,
+        "chat_db_storage_node": 300
+      }
+    },
+    {
+      "flow_id": "flow_007",
+      "scenario": "긴급 보이스피싱 신고",
+      "expected_flow": [
+        "triage_agent",
+        "answer_agent",
+        "summary_agent",
+        "human_transfer"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 400,
+        "answer_agent": 600,
+        "summary_agent": 800,
+        "human_transfer": 200
+      }
+    },
+    {
+      "flow_id": "flow_008",
+      "scenario": "한도 조정 문의 - 정보 수집 후 자동 처리",
+      "expected_flow": [
+        "triage_agent",
+        "waiting_agent",
+        "answer_agent",
+        "consent_check_node",
+        "chat_db_storage_node",
+        "end"
+      ],
+      "expected_latency_ms": {
+        "triage_agent": 500,
+        "waiting_agent": 1200,
+        "answer_agent": 900,
+        "consent_check_node": 200,
+        "chat_db_storage_node": 300
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "description": "TTS 평가용 샘플 테스트 데이터",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "text_id": "tts_001",
+      "text": "안녕하세요, 카드 상담 서비스입니다.",
+      "expected_min_audio_size": 5000,
+      "category": "greeting"
+    },
+    {
+      "text_id": "tts_002",
+      "text": "카드 분실 신고 접수 도와드리겠습니다.",
+      "expected_min_audio_size": 5000,
+      "category": "service"
+    },
+    {
+      "text_id": "tts_003",
+      "text": "본인 확인을 위해 생년월일을 말씀해 주시겠어요?",
+      "expected_min_audio_size": 6000,
+      "category": "verification"
+    },
+    {
+      "text_id": "tts_004",
+      "text": "네, 확인되었습니다. 카드 재발급 신청 도와드릴까요?",
+      "expected_min_audio_size": 6000,
+      "category": "confirmation"
+    },
+    {
+      "text_id": "tts_005",
+      "text": "재발급 신청이 완료되었습니다. 약 5~7일 내에 등록된 주소로 배송됩니다.",
+      "expected_min_audio_size": 8000,
+      "category": "completion"
+    },
+    {
+      "text_id": "tts_006",
+      "text": "추가로 도움이 필요하신 사항이 있으신가요?",
+      "expected_min_audio_size": 5000,
+      "category": "follow_up"
+    },
+    {
+      "text_id": "tts_007",
+      "text": "이용해 주셔서 감사합니다. 좋은 하루 되세요.",
+      "expected_min_audio_size": 5000,
+      "category": "closing"
+    },
+    {
+      "text_id": "tts_008",
+      "text": "결제 내역 조회를 원하시면 카드번호 뒤 4자리를 말씀해 주세요.",
+      "expected_min_audio_size": 7000,
+      "category": "inquiry"
+    },
+    {
+      "text_id": "tts_009",
+      "text": "고객님의 이번 달 결제 예정 금액은 125,000원입니다.",
+      "expected_min_audio_size": 6000,
+      "category": "information"
+    },
+    {
+      "text_id": "tts_010",
+      "text": "상담원 연결을 원하시면 잠시만 기다려 주세요.",
+      "expected_min_audio_size": 5000,
+      "category": "transfer"
+    }
+  ]
+}

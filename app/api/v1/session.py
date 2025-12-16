@@ -29,6 +29,8 @@ class HandoverSessionResponse(BaseModel):
     created_at: str
     updated_at: str
     collected_info: dict
+    handover_status: Optional[str] = None  # pending, accepted, declined, timeout
+    handover_accepted_at: Optional[str] = None  # 상담사 수락 시간
 
     class Config:
         from_attributes = True
@@ -55,6 +57,20 @@ class SendMessageResponse(BaseModel):
     success: bool
     message_id: int
     created_at: str
+
+
+class AcceptSessionRequest(BaseModel):
+    """세션 수락 요청"""
+    agent_id: Optional[str] = None  # 상담사 ID (선택사항)
+
+
+class HandoverStatusResponse(BaseModel):
+    """핸드오버 상태 응답"""
+    session_id: str
+    handover_status: Optional[str] = None  # pending, accepted, declined, timeout
+    handover_requested_at: Optional[str] = None
+    handover_accepted_at: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
 
 
 # ========== API 엔드포인트 ==========
@@ -94,7 +110,9 @@ async def get_handover_sessions():
                 session_id=session.session_id,
                 created_at=session.created_at.isoformat(),
                 updated_at=session.updated_at.isoformat(),
-                collected_info=collected_info
+                collected_info=collected_info,
+                handover_status=session.handover_status,
+                handover_accepted_at=session.handover_accepted_at.isoformat() if session.handover_accepted_at else None
             ))
 
         # 로그 레벨을 DEBUG로 변경하여 불필요한 로그 줄이기 (변경 사항이 있을 때만 INFO)
@@ -140,7 +158,9 @@ async def get_closed_sessions():
                 session_id=session.session_id,
                 created_at=session.created_at.isoformat(),
                 updated_at=session.updated_at.isoformat(),
-                collected_info=collected_info
+                collected_info=collected_info,
+                handover_status=session.handover_status,
+                handover_accepted_at=session.handover_accepted_at.isoformat() if session.handover_accepted_at else None
             ))
 
         logger.info(f"종료된 세션 조회: {len(result)}개")
@@ -441,6 +461,209 @@ async def close_session(session_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"세션 종료 중 오류 발생: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
+# ========== 핸드오버 상태 관리 API ==========
+
+@router.get("/{session_id}/handover-status", response_model=HandoverStatusResponse)
+async def get_handover_status(session_id: str):
+    """
+    핸드오버 상태 조회 (voice-chatbot 폴링용)
+
+    - **session_id**: 세션 ID
+
+    voice-chatbot에서 상담사 수락 여부를 폴링할 때 사용
+    """
+    db = SessionLocal()
+    try:
+        session = db.query(ChatSession).filter(
+            ChatSession.session_id == session_id
+        ).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"세션을 찾을 수 없습니다: {session_id}"
+            )
+
+        return HandoverStatusResponse(
+            session_id=session.session_id,
+            handover_status=session.handover_status,
+            handover_requested_at=session.handover_requested_at.isoformat() if session.handover_requested_at else None,
+            handover_accepted_at=session.handover_accepted_at.isoformat() if session.handover_accepted_at else None,
+            assigned_agent_id=session.assigned_agent_id
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"핸드오버 상태 조회 실패 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"핸드오버 상태 조회 중 오류 발생: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
+@router.post("/{session_id}/request-handover")
+async def request_handover(session_id: str):
+    """
+    핸드오버 요청 (voice-chatbot → 백엔드)
+
+    - **session_id**: 세션 ID
+
+    고객이 상담원 연결을 요청하면 호출
+    handover_status를 'pending'으로 설정
+    """
+    db = SessionLocal()
+    try:
+        session = db.query(ChatSession).filter(
+            ChatSession.session_id == session_id,
+            ChatSession.is_active == 1
+        ).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"세션을 찾을 수 없습니다: {session_id}"
+            )
+
+        # 핸드오버 상태를 pending으로 설정
+        session.handover_status = "pending"
+        session.handover_requested_at = get_kst_now()
+        session.updated_at = get_kst_now()
+        db.commit()
+
+        logger.info(f"핸드오버 요청 - 세션: {session_id}, 상태: pending")
+
+        return {
+            "success": True,
+            "message": "현재 응대 가능한 상담사가 있는지 확인 중입니다. 잠시만 기다려 주시기 바랍니다.",
+            "handover_status": "pending"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"핸드오버 요청 실패 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"핸드오버 요청 중 오류 발생: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
+@router.post("/{session_id}/accept")
+async def accept_session(session_id: str, request: AcceptSessionRequest = None):
+    """
+    세션 수락 (상담사 → 백엔드)
+
+    - **session_id**: 세션 ID
+    - **agent_id**: 상담사 ID (선택사항)
+
+    상담사가 세션을 수락하면 호출
+    handover_status를 'accepted'로 변경
+    """
+    db = SessionLocal()
+    try:
+        session = db.query(ChatSession).filter(
+            ChatSession.session_id == session_id,
+            ChatSession.is_active == 1
+        ).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"세션을 찾을 수 없습니다: {session_id}"
+            )
+
+        # 이미 다른 상담사가 수락한 경우
+        if session.handover_status == "accepted":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="이미 다른 상담사가 수락한 세션입니다."
+            )
+
+        # 핸드오버 상태를 accepted로 변경
+        session.handover_status = "accepted"
+        session.handover_accepted_at = get_kst_now()
+        if request and request.agent_id:
+            session.assigned_agent_id = request.agent_id
+        session.updated_at = get_kst_now()
+        db.commit()
+
+        logger.info(f"세션 수락 - 세션: {session_id}, 상담사: {request.agent_id if request else 'unknown'}")
+
+        return {
+            "success": True,
+            "message": "세션을 수락했습니다.",
+            "handover_status": "accepted"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"세션 수락 실패 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"세션 수락 중 오류 발생: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
+@router.post("/{session_id}/decline")
+async def decline_session(session_id: str):
+    """
+    세션 거절 (상담사 → 백엔드)
+
+    - **session_id**: 세션 ID
+
+    상담사가 세션을 거절하면 호출
+    handover_status를 다시 'pending'으로 변경 (다른 상담사가 수락 가능)
+    """
+    db = SessionLocal()
+    try:
+        session = db.query(ChatSession).filter(
+            ChatSession.session_id == session_id,
+            ChatSession.is_active == 1
+        ).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"세션을 찾을 수 없습니다: {session_id}"
+            )
+
+        # 핸드오버 상태를 다시 pending으로 변경
+        session.handover_status = "pending"
+        session.assigned_agent_id = None
+        session.updated_at = get_kst_now()
+        db.commit()
+
+        logger.info(f"세션 거절 - 세션: {session_id}, 상태: pending (재할당 대기)")
+
+        return {
+            "success": True,
+            "message": "세션을 거절했습니다. 다른 상담사가 수락할 수 있습니다.",
+            "handover_status": "pending"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"세션 거절 실패 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"세션 거절 중 오류 발생: {str(e)}"
         )
     finally:
         db.close()

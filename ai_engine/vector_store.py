@@ -86,7 +86,7 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     if _embeddings is None:
         _embeddings = HuggingFaceEmbeddings(
             model_name=settings.embedding_model,
-            model_kwargs={"device": "cpu"},  # GPU 사용 시 "cuda"로 변경
+            model_kwargs={"device": "cpu"},
             encode_kwargs={
                 "normalize_embeddings": True,  # 코사인 유사도 최적화
                 "batch_size": 32  # 배치 크기 설정 (성능 향상)
@@ -177,14 +177,27 @@ def add_documents(
     if not documents:
         return []
 
+    # 중복 ID 제거 (동일 ID가 있으면 첫 번째만 유지)
+    seen_ids = set()
+    unique_documents = []
+    unique_chunk_ids = []
+    for doc, chunk_id in zip(documents, chunk_ids):
+        if chunk_id not in seen_ids:
+            seen_ids.add(chunk_id)
+            unique_documents.append(doc)
+            unique_chunk_ids.append(chunk_id)
+
     # 기존 동일 ID 청크 제거 (재삽입 대비)
-    if chunk_ids:
-        vector_store.delete(ids=chunk_ids)
+    if unique_chunk_ids:
+        try:
+            vector_store.delete(ids=unique_chunk_ids)
+        except Exception:
+            pass  # 새 DB에서는 삭제할 문서가 없을 수 있음
 
     # 벡터 스토어에 추가
     # LangChain Chroma는 PersistentClient를 사용하면 자동으로 persist되므로
     # 별도의 persist() 호출이 필요 없습니다.
-    ids = vector_store.add_documents(documents, ids=chunk_ids if chunk_ids else None)
+    ids = vector_store.add_documents(unique_documents, ids=unique_chunk_ids if unique_chunk_ids else None)
     
     # BM25 Retriever 재인덱싱 필요 (문서 추가 후)
     if settings.enable_hybrid_search:
@@ -268,7 +281,7 @@ def search_documents(
             if bm25_retriever is not None:
                 # 개선된 방식: 벡터 검색으로 상위 20개 추리고, 그에만 BM25 점수 보정
                 # 이렇게 하면 벡터 유사도 점수가 희석되지 않고, BM25가 보정 역할만 수행
-                vector_candidate_k = 20  # 벡터 검색으로 상위 20개 추림
+                vector_candidate_k = 12  # 벡터 검색으로 상위 12개 추림 (레이턴시 개선)
                 
                 # 벡터 검색: 원본 쿼리 사용 (임베딩 모델이 의미적 유사도 처리)
                 vector_results_with_score = vector_store.similarity_search_with_score(
@@ -280,7 +293,9 @@ def search_documents(
                 vector_results = []
                 for doc, score in vector_results_with_score:
                     distance = float(score)
-                    similarity_score = max(0.0, 1.0 - distance)
+                    # L2 거리를 유사도 점수로 변환 (0~1 범위)
+                    # L2 거리는 0~∞ 범위이므로 1/(1+distance) 공식 사용
+                    similarity_score = 1.0 / (1.0 + distance)
                     vector_results.append({
                         "content": doc.page_content,
                         "source": doc.metadata.get("source", "unknown"),
@@ -415,14 +430,12 @@ def search_documents(
     # 결과 포맷팅
     formatted_results = []
     for doc, score in results:
-        # ChromaDB는 거리(distance)를 반환합니다
-        # normalize_embeddings=True로 설정했으므로 코사인 거리를 사용
-        # 코사인 거리 = 1 - 코사인 유사도
-        # 따라서 코사인 유사도 = 1 - 코사인 거리
+        # ChromaDB는 L2 거리(distance)를 반환합니다
         distance = float(score)
-        
-        # 코사인 거리를 코사인 유사도로 변환 (0~1 범위)
-        similarity_score = max(0.0, 1.0 - distance)
+
+        # L2 거리를 유사도 점수로 변환 (0~1 범위)
+        # L2 거리는 0~∞ 범위이므로 1/(1+distance) 공식 사용
+        similarity_score = 1.0 / (1.0 + distance)
         
         formatted_results.append({
             "content": doc.page_content,
@@ -897,7 +910,8 @@ def _rerank_documents(
         logger.debug(f"[Reranking 내부] {len(pairs)}개 쿼리-문서 쌍 생성")
         
         # 점수 계산 (원본 점수)
-        raw_scores = model.predict(pairs)
+        # show_progress_bar=False로 설정하여 tqdm hang 방지
+        raw_scores = model.predict(pairs, show_progress_bar=False)
         scores_array = [float(score) for score in raw_scores]
         
         if scores_array:

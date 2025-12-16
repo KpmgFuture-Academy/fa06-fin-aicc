@@ -12,10 +12,13 @@ VITO(Return Zero) API를 사용한 한국어 음성 인식 서비스.
 
 from __future__ import annotations
 
+import io
 import json
 import logging
+import struct
 import threading
 import time
+import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, BinaryIO, Optional
@@ -40,6 +43,35 @@ AUTH_RETRY_DELAY_SECONDS = 2  # 재시도 간 대기 시간
 class STTError(RuntimeError):
     """STT 처리 중 발생하는 예외"""
     pass
+
+
+def pcm_to_wav(
+    pcm_data: bytes,
+    sample_rate: int = 16000,
+    channels: int = 1,
+    sample_width: int = 2
+) -> bytes:
+    """Raw PCM 데이터를 WAV 형식으로 변환
+
+    Args:
+        pcm_data: Raw PCM 오디오 데이터 (INT16)
+        sample_rate: 샘플링 레이트 (기본: 16000Hz)
+        channels: 채널 수 (기본: 1, 모노)
+        sample_width: 샘플 너비 (기본: 2, 16bit)
+
+    Returns:
+        WAV 형식의 바이트 데이터
+    """
+    wav_buffer = io.BytesIO()
+
+    with wave.open(wav_buffer, 'wb') as wav_file:
+        wav_file.setnchannels(channels)
+        wav_file.setsampwidth(sample_width)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(pcm_data)
+
+    wav_buffer.seek(0)
+    return wav_buffer.read()
 
 
 @dataclass

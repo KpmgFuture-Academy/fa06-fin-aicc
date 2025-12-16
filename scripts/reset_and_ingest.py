@@ -35,8 +35,8 @@ def main():
         
         summary = ingest_documents(
             target_path=target_path,
-            chunk_size=300,  # 더 작은 청크로 분할하여 검색 정확도 향상
-            chunk_overlap=50,
+            chunk_size=500,  # 더 큰 청크로 문맥 보존 향상
+            chunk_overlap=100,  # 청크 간 연결성 강화
         )
         
         print("\n" + "=" * 60)

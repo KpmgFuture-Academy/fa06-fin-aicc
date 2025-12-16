@@ -159,6 +159,9 @@ async def voice_chat_message(
             intent=chat_response.intent,
             suggested_action=chat_response.suggested_action,
             transcribed_text=transcribed_text,
+            handover_status=chat_response.handover_status,  # 핸드오버 상태 추가
+            is_human_required_flow=chat_response.is_human_required_flow,  # HUMAN_REQUIRED 플로우 여부
+            is_session_end=chat_response.is_session_end,  # 세션 종료 여부
             stt_duration_ms=stt_duration,
             tts_duration_ms=tts_duration,
             total_duration_ms=total_duration,
@@ -234,20 +237,29 @@ async def stt_only(
 async def tts_only(request: TTSRequest):
     """
     🔊 TTS 전용 엔드포인트 (테스트/디버깅용)
-    
+
     텍스트를 음성으로 변환합니다.
     """
     try:
+        logger.info(f"[TTS] 요청 수신 - 텍스트 길이: {len(request.text)}, format: {request.format}")
         tts_service = AICCGoogleTTSService.get_instance()
         audio_bytes = tts_service.synthesize(
             request.text,
             voice=request.voice,
             format=request.format,
         )
+        logger.info(f"[TTS] 성공 - 오디오 크기: {len(audio_bytes)} bytes")
     except TTSError as e:
+        logger.error(f"[TTS] TTSError 발생: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"음성 합성 실패: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"[TTS] 예기치 않은 오류: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"음성 합성 중 오류 발생: {str(e)}"
         )
     
     return TTSResponse(

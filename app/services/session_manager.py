@@ -91,6 +91,7 @@ class SessionManager:
             - collected_info: dict
             - info_collection_complete: bool
             - triage_decision: Optional[TriageDecisionType]
+            - context_intent: Optional[str]
         """
         db = SessionLocal()
         try:
@@ -98,14 +99,17 @@ class SessionManager:
             chat_session = db.query(ChatSession).filter(
                 ChatSession.session_id == session_id
             ).first()
-            
+
             if not chat_session:
                 return {
                     "is_human_required_flow": False,
                     "customer_consent_received": False,
                     "collected_info": {},
                     "info_collection_complete": False,
-                    "triage_decision": None
+                    "triage_decision": None,
+                    "context_intent": None,
+                    "unclear_count": 0,
+                    "out_of_domain_count": 0
                 }
             
             # collected_info JSON 파싱
@@ -129,9 +133,12 @@ class SessionManager:
                 "customer_consent_received": bool(chat_session.customer_consent_received),
                 "collected_info": collected_info,
                 "info_collection_complete": bool(chat_session.info_collection_complete),
-                "triage_decision": triage_decision
+                "triage_decision": triage_decision,
+                "context_intent": chat_session.context_intent,  # 38개 카테고리 복원
+                "unclear_count": chat_session.unclear_count or 0,  # 불명확 응답 카운터
+                "out_of_domain_count": chat_session.out_of_domain_count or 0  # 도메인 외 질문 카운터
             }
-            
+
         except Exception as e:
             logger.error(f"세션 상태 조회 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
             return {
@@ -139,7 +146,10 @@ class SessionManager:
                 "customer_consent_received": False,
                 "collected_info": {},
                 "info_collection_complete": False,
-                "triage_decision": None
+                "triage_decision": None,
+                "context_intent": None,
+                "unclear_count": 0,
+                "out_of_domain_count": 0
             }
         finally:
             db.close()
@@ -230,6 +240,42 @@ class SessionManager:
         db = SessionLocal()
         try:
             return db.query(ChatSession).filter(ChatSession.is_active == 1).count()
+        finally:
+            db.close()
+
+    def is_handover_mode(self, session_id: str) -> bool:
+        """세션이 상담원 이관 모드인지 확인
+
+        이관 모드 조건:
+        - triage_decision이 HUMAN_REQUIRED이고
+        - info_collection_complete가 True인 경우
+
+        Returns:
+            bool: 이관 모드이면 True, 아니면 False
+        """
+        db = SessionLocal()
+        try:
+            chat_session = db.query(ChatSession).filter(
+                ChatSession.session_id == session_id
+            ).first()
+
+            if not chat_session:
+                return False
+
+            # 이관 상태 확인: HUMAN_REQUIRED + 정보 수집 완료
+            is_handover = (
+                chat_session.triage_decision == TriageDecisionType.HUMAN_REQUIRED.value
+                and chat_session.info_collection_complete == 1
+            )
+
+            if is_handover:
+                logger.info(f"[SessionManager] 이관 모드 감지 - 세션: {session_id}")
+
+            return is_handover
+
+        except Exception as e:
+            logger.error(f"이관 상태 확인 중 오류 - 세션: {session_id}, 오류: {str(e)}", exc_info=True)
+            return False
         finally:
             db.close()
 

@@ -32,7 +32,7 @@ class STTResponse(BaseModel):
 class TTSRequest(BaseModel):
     """TTS 전용 요청"""
     text: str = Field(..., max_length=4096, description="변환할 텍스트 (최대 4096자)")
-    voice: str = Field("alloy", description="음성 종류 (alloy, echo, fable, onyx, nova, shimmer)")
+    voice: Optional[str] = Field(None, description="음성 종류 (None이면 서비스 기본값 사용)")
     format: str = Field("mp3", description="출력 포맷 (mp3, opus, aac, flac, wav)")
 
 
@@ -40,7 +40,7 @@ class TTSResponse(BaseModel):
     """TTS 전용 응답"""
     audio_base64: str = Field(..., description="Base64 인코딩된 음성 데이터")
     format: str = Field(..., description="음성 포맷")
-    voice: str = Field(..., description="사용된 음성")
+    voice: Optional[str] = Field(None, description="사용된 음성")
     text_length: int = Field(..., description="입력 텍스트 길이")
     audio_size_bytes: int = Field(..., description="음성 데이터 크기 (바이트)")
 
@@ -49,19 +49,24 @@ class TTSResponse(BaseModel):
 
 class VoiceChatResponse(BaseModel):
     """음성 채팅 응답 (STT → 워크플로우 → TTS)"""
-    
+
     # AI 응답
     ai_message: str = Field(..., description="AI 응답 텍스트")
     audio_base64: Optional[str] = Field(None, description="Base64 인코딩된 음성 응답")
     audio_format: str = Field("mp3", description="음성 포맷")
-    
+
     # 워크플로우 결과
     intent: IntentType = Field(..., description="분류된 의도")
     suggested_action: ActionType = Field(..., description="권장 액션")
-    
+
     # STT 결과
     transcribed_text: str = Field(..., description="STT로 인식된 고객 발화")
-    
+
+    # 핸드오버 관련
+    handover_status: Optional[str] = Field(None, description="핸드오버 상태 (pending, accepted, declined, timeout)")
+    is_human_required_flow: bool = Field(False, description="HUMAN_REQUIRED 플로우 진입 여부")
+    is_session_end: bool = Field(False, description="세션 종료 여부 (불명확 응답/도메인 외 질문 3회 이상 시 True)")
+
     # 메타데이터
     stt_duration_ms: Optional[int] = Field(None, description="STT 처리 시간")
     tts_duration_ms: Optional[int] = Field(None, description="TTS 처리 시간")
@@ -108,7 +113,7 @@ class WSMessage(BaseModel):
 class WSAudioStartData(BaseModel):
     """음성 전송 시작 데이터"""
     language: str = Field("ko", description="언어 코드")
-    tts_voice: str = Field("alloy", description="TTS 음성")
+    tts_voice: Optional[str] = Field(None, description="TTS 음성 (None이면 서비스 기본값)")
     diarize: bool = Field(False, description="화자 분리 여부")
 
 

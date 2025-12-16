@@ -1,10 +1,28 @@
 """LangGraph 워크플로우 서비스
 API에서 워크플로우를 호출하고 상태 변환을 처리하는 서비스
+
+## 입력 검증 레이어 (External Validation Layer)
+====================================================
+LangGraph 워크플로우 진입 전에 입력을 검증하여 시스템 안정성을 보장합니다.
+
+### 검증 항목:
+1. 빈 입력 검증: 2자 미만의 입력은 조기 반환
+2. 매우 긴 입력 검증: 2000자 초과 입력은 조기 반환
+3. (LangGraph 내부에서 처리): RAG/Intent 실패, LLM API 오류 등
+
+### 동작 방식:
+- validate_input() 함수가 입력을 검증
+- 유효하지 않은 입력은 LangGraph 워크플로우를 실행하지 않고 즉시 응답 반환
+- 유효한 입력만 LangGraph 워크플로우로 전달
+
+### 변경 이력:
+- 2025-12-09: 입력 검증 레이어 추가 (빈 입력, 매우 긴 입력 처리)
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
+from dataclasses import dataclass
 from ai_engine.graph.workflow import build_workflow
 from ai_engine.graph.state import GraphState, ConversationMessage
 from app.schemas.chat import ChatRequest, ChatResponse, SourceDocument
@@ -14,6 +32,104 @@ from app.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
 
+
+# ============================================================
+# 입력 검증 레이어 (External Validation Layer)
+# ============================================================
+
+# 검증 설정 상수
+MIN_INPUT_LENGTH = 2       # 최소 입력 길이 (2자 미만은 빈 입력으로 처리)
+MAX_INPUT_LENGTH = 2000    # 최대 입력 길이 (2000자 초과는 너무 긴 입력으로 처리)
+
+# 짧은 입력 예외 패턴 (동의/거절 등 1글자 응답 허용)
+ALLOWED_SHORT_INPUTS = {
+    "네", "예", "넵", "응", "어",  # 긍정 응답
+    "아니", "아뇨", "노",          # 부정 응답
+}
+
+
+@dataclass
+class ValidationResult:
+    """입력 검증 결과"""
+    is_valid: bool
+    error_type: Optional[str] = None  # "empty", "too_long", None
+    error_message: Optional[str] = None
+
+
+def validate_input(user_message: str) -> ValidationResult:
+    """
+    사용자 입력 검증 (LangGraph 워크플로우 진입 전 외부 검증)
+
+    Args:
+        user_message: 사용자 입력 메시지
+
+    Returns:
+        ValidationResult: 검증 결과
+
+    검증 항목:
+        1. 빈 입력 검증: None, 빈 문자열, 공백만 있는 문자열, 2자 미만
+        2. 매우 긴 입력 검증: 2000자 초과
+
+    Note:
+        - 이 검증은 LangGraph 워크플로우 외부에서 수행됩니다.
+        - LangGraph 내부의 RAG/Intent 실패, LLM API 오류 등은
+          각 노드에서 별도로 처리됩니다.
+    """
+    # 1. 빈 입력 검증
+    if not user_message or not user_message.strip():
+        return ValidationResult(
+            is_valid=False,
+            error_type="empty",
+            error_message="메시지를 입력해 주세요."
+        )
+
+    # 공백 제거 후 길이 확인
+    stripped_message = user_message.strip()
+
+    # 2. 너무 짧은 입력 검증 (2자 미만)
+    # 단, 동의/거절 등 허용된 짧은 입력은 예외로 처리
+    if len(stripped_message) < MIN_INPUT_LENGTH:
+        # 허용된 짧은 입력인지 확인
+        if stripped_message not in ALLOWED_SHORT_INPUTS:
+            return ValidationResult(
+                is_valid=False,
+                error_type="empty",
+                error_message="메시지를 입력해 주세요."
+            )
+
+    # 3. 매우 긴 입력 검증 (2000자 초과)
+    if len(stripped_message) > MAX_INPUT_LENGTH:
+        return ValidationResult(
+            is_valid=False,
+            error_type="too_long",
+            error_message=f"입력이 너무 깁니다. {MAX_INPUT_LENGTH}자 이하로 입력해 주세요. (현재: {len(stripped_message)}자)"
+        )
+
+    # 모든 검증 통과
+    return ValidationResult(is_valid=True)
+
+
+def create_validation_error_response(validation_result: ValidationResult) -> ChatResponse:
+    """
+    검증 실패 시 즉시 반환할 ChatResponse 생성
+
+    Args:
+        validation_result: 검증 실패 결과
+
+    Returns:
+        ChatResponse: 에러 응답
+    """
+    return ChatResponse(
+        ai_message=validation_result.error_message,
+        intent=IntentType.INFO_REQ,
+        suggested_action=ActionType.CONTINUE,
+        source_documents=[]
+    )
+
+
+# ============================================================
+# 워크플로우 관리
+# ============================================================
 
 # 워크플로우 인스턴스 (싱글톤)
 _workflow = None
@@ -52,8 +168,13 @@ def chat_request_to_state(request: ChatRequest) -> GraphState:
         "info_collection_complete": session_state["info_collection_complete"],
         # triage_decision도 이전 턴 값 복원 (참고용)
         "triage_decision": session_state["triage_decision"],
+        # context_intent: 38개 카테고리 (도난/분실 신청/해제 등) - waiting_agent에서 슬롯 결정에 사용
+        "context_intent": session_state["context_intent"],
+        # 불명확 응답/도메인 외 질문 카운터 (DB에서 로드)
+        "unclear_count": session_state["unclear_count"],
+        "out_of_domain_count": session_state["out_of_domain_count"],
     }
-    
+
     return state
 
 
@@ -102,13 +223,22 @@ def state_to_chat_response(state: GraphState) -> ChatResponse:
     intent = state.get("intent", IntentType.INFO_REQ)
     source_documents = state.get("source_documents", [])
     info_collection_complete = state.get("info_collection_complete", False)
+    handover_status = state.get("handover_status")  # 핸드오버 상태
+    is_human_required_flow = state.get("is_human_required_flow", False)  # HUMAN_REQUIRED 플로우 여부
+    is_session_end = state.get("is_session_end", False)  # 세션 종료 여부
+
+    # 디버그 로그 추가
+    logger.info(f"state_to_chat_response - handover_status: {handover_status}, info_collection_complete: {info_collection_complete}, suggested_action: {suggested_action}, is_human_required_flow: {is_human_required_flow}, is_session_end: {is_session_end}")
 
     return ChatResponse(
         ai_message=ai_message,
         intent=intent,
         suggested_action=suggested_action,
         source_documents=source_documents,
-        info_collection_complete=info_collection_complete
+        info_collection_complete=info_collection_complete,
+        handover_status=handover_status,
+        is_human_required_flow=is_human_required_flow,
+        is_session_end=is_session_end
     )
 
 
@@ -162,10 +292,40 @@ def state_to_handover_response(state: GraphState) -> HandoverResponse:
 
 
 async def process_chat_message(request: ChatRequest) -> ChatResponse:
-    """채팅 메시지 처리 (LangGraph 워크플로우 실행)"""
+    """채팅 메시지 처리 (LangGraph 워크플로우 실행)
+
+    처리 흐름:
+        1. 입력 검증 (External Validation Layer)
+           - 빈 입력 검증 (2자 미만)
+           - 매우 긴 입력 검증 (2000자 초과)
+           - 검증 실패 시 LangGraph 워크플로우를 실행하지 않고 즉시 응답 반환
+
+        2. LangGraph 워크플로우 실행
+           - triage_agent → answer_agent → chat_db_storage
+           - 내부적으로 RAG/Intent 실패, LLM API 오류 등 처리
+    """
     try:
         logger.info(f"워크플로우 시작 - 세션: {request.session_id}")
-        
+
+        # ============================================================
+        # Step 1: 입력 검증 (External Validation Layer)
+        # ============================================================
+        validation_result = validate_input(request.user_message)
+
+        if not validation_result.is_valid:
+            logger.warning(
+                f"입력 검증 실패 - 세션: {request.session_id}, "
+                f"유형: {validation_result.error_type}, "
+                f"메시지 길이: {len(request.user_message) if request.user_message else 0}"
+            )
+            # 검증 실패 시 LangGraph 워크플로우를 실행하지 않고 즉시 응답 반환
+            return create_validation_error_response(validation_result)
+
+        logger.debug(f"입력 검증 통과 - 세션: {request.session_id}")
+
+        # ============================================================
+        # Step 2: LangGraph 워크플로우 실행
+        # ============================================================
         # ChatRequest를 GraphState로 변환
         initial_state = chat_request_to_state(request)
         logger.debug(f"초기 상태 생성 완료 - 대화 이력 수: {len(initial_state.get('conversation_history', []))}")
@@ -237,14 +397,212 @@ async def process_chat_message(request: ChatRequest) -> ChatResponse:
         )
 
 
+async def _extract_slot_info_from_conversation(
+    session_id: str,
+    conversation_history: list,
+    context_intent: str = None
+) -> Dict[str, Any]:
+    """대화 내용에서 슬롯 정보를 자동 추출합니다.
+
+    waiting_agent.py의 로직을 재사용하여 문의유형, 상세요청 등을 추출합니다.
+
+    Args:
+        session_id: 세션 ID
+        conversation_history: 대화 이력
+        context_intent: triage에서 분류된 카테고리 (없으면 대화에서 추론)
+
+    Returns:
+        추출된 슬롯 정보 딕셔너리
+    """
+    from ai_engine.graph.utils.slot_loader import get_slot_loader
+    from langchain_openai import ChatOpenAI
+    from langchain_core.messages import HumanMessage, SystemMessage
+    from app.core.config import settings
+
+    logger.info(f"[슬롯 추출] 시작 - 세션: {session_id}, 대화 수: {len(conversation_history)}, context_intent: {context_intent}")
+
+    try:
+        slot_loader = get_slot_loader()
+
+        # LLM 설정
+        if settings.use_lm_studio:
+            llm = ChatOpenAI(
+                model=settings.lm_studio_model,
+                temperature=0.2,
+                base_url=settings.lm_studio_base_url,
+                api_key="lm-studio",
+                timeout=settings.llm_timeout
+            )
+        else:
+            llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.2,
+                api_key=settings.openai_api_key,
+                timeout=60
+            )
+
+        # 대화 히스토리 포맷팅 (고객 메시지만)
+        user_messages = [
+            msg for msg in conversation_history
+            if msg.get("role") == "user"
+        ]
+
+        if not user_messages:
+            logger.warning(f"[슬롯 추출] 사용자 메시지 없음 - 세션: {session_id}")
+            return {}
+
+        formatted_history = "\n".join([
+            f"고객: {msg.get('message', '')}" for msg in user_messages
+        ])
+
+        # 카테고리 결정 (context_intent가 없으면 대화에서 추론)
+        category = context_intent
+        if not category or category == "기타":
+            # LLM으로 카테고리 추론
+            category_prompt = SystemMessage(content="""당신은 금융 고객 상담 분류 전문가입니다.
+대화 내용을 보고 고객의 문의 유형을 분류하세요.
+
+분류 카테고리:
+- 도난/분실 신청/해제
+- 긴급 배송 신청
+- 결제대금 안내
+- 결제일 안내/변경
+- 한도 안내
+- 한도상향 접수/처리
+- 기타 문의
+
+한 단어로만 응답하세요. 위 카테고리 중 하나만 응답하세요.""")
+
+            category_human = HumanMessage(content=f"""다음 고객 대화를 분류하세요:
+
+{formatted_history}
+
+문의 유형:""")
+
+            try:
+                response = llm.invoke([category_prompt, category_human])
+                category = response.content.strip()
+                logger.info(f"[슬롯 추출] 카테고리 추론 완료 - 세션: {session_id}, 카테고리: {category}")
+            except Exception as e:
+                logger.warning(f"[슬롯 추출] 카테고리 추론 실패: {e}")
+                category = "기타 문의"
+
+        # 도메인 정보 가져오기
+        domain_code = slot_loader.get_domain_by_category(category) or "_DEFAULT"
+        domain_name = slot_loader.get_domain_name(domain_code)
+
+        # 기본 슬롯 정보 설정
+        collected_info: Dict[str, Any] = {
+            "_domain_code": domain_code,
+            "_domain_name": domain_name,
+            "_category": category,
+            "inquiry_type": domain_name,
+            "inquiry_detail": category,
+        }
+
+        # 필수 슬롯 가져오기
+        required_slots, _ = slot_loader.get_slots_for_category(category)
+        logger.info(f"[슬롯 추출] 필수 슬롯: {required_slots} - 세션: {session_id}")
+
+        # 각 슬롯 추출
+        for slot_name in required_slots:
+            slot_label = slot_loader.get_slot_label(slot_name)
+
+            # LLM으로 슬롯 값 추출
+            extract_prompt = SystemMessage(content=f"""당신은 대화 내용에서 특정 정보를 추출하는 어시스턴트입니다.
+
+추출할 정보: {slot_label}
+
+규칙:
+1. 고객이 직접 말한 내용에서만 정보를 추출하세요.
+2. 확실하지 않으면 "없음"이라고 응답하세요.
+3. 추출된 값만 간단히 응답하세요.""")
+
+            extract_human = HumanMessage(content=f"""[고객 대화]
+{formatted_history}
+
+'{slot_label}' 정보를 추출하세요. 값만 응답하세요.""")
+
+            try:
+                response = llm.invoke([extract_prompt, extract_human])
+                extracted_value = response.content.strip()
+
+                if extracted_value and extracted_value.lower() not in ["없음", "null", "none", "n/a", "-"]:
+                    collected_info[slot_name] = extracted_value
+                    logger.debug(f"[슬롯 추출] {slot_name} = {extracted_value}")
+            except Exception as e:
+                logger.warning(f"[슬롯 추출] {slot_name} 추출 실패: {e}")
+
+        return collected_info
+
+    except Exception as e:
+        logger.error(f"[슬롯 추출] 오류 발생 - 세션: {session_id}, 오류: {e}", exc_info=True)
+        return {}
+
+
+def _save_collected_info_to_db(session_id: str, collected_info: Dict[str, Any]) -> bool:
+    """추출된 슬롯 정보를 chat_sessions 테이블에 저장합니다.
+
+    Args:
+        session_id: 세션 ID
+        collected_info: 저장할 슬롯 정보
+
+    Returns:
+        저장 성공 여부
+    """
+    import json
+    from app.core.database import SessionLocal
+    from app.models.chat_message import ChatSession
+
+    db = SessionLocal()
+    try:
+        chat_session = db.query(ChatSession).filter(
+            ChatSession.session_id == session_id
+        ).first()
+
+        if chat_session:
+            # 기존 collected_info가 있으면 병합
+            existing_info = {}
+            if chat_session.collected_info:
+                try:
+                    existing_info = json.loads(chat_session.collected_info)
+                except json.JSONDecodeError:
+                    existing_info = {}
+
+            # 새 정보로 업데이트 (기존 정보 유지하면서 덮어쓰기)
+            existing_info.update(collected_info)
+
+            chat_session.collected_info = json.dumps(existing_info, ensure_ascii=False)
+            chat_session.info_collection_complete = 1
+            db.commit()
+
+            logger.info(f"[슬롯 저장] DB 저장 완료 - 세션: {session_id}, collected_info: {existing_info}")
+            return True
+        else:
+            logger.warning(f"[슬롯 저장] 세션을 찾을 수 없음 - 세션: {session_id}")
+            return False
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[슬롯 저장] DB 저장 실패 - 세션: {session_id}, 오류: {e}", exc_info=True)
+        return False
+    finally:
+        db.close()
+
+
 async def process_handover(request: HandoverRequest) -> HandoverResponse:
-    """상담원 이관 처리 (summary_agent 직접 호출)
-    
+    """상담원 이관 처리 (summary_agent 직접 호출 + 슬롯 자동 추출)
+
     "상담원 연결" 버튼 클릭 시 호출되며, 대화 내용을 요약하고 분석 결과를 반환합니다.
     워크플로우를 거치지 않고 직접 summary_agent를 호출하여 요약/감정/키워드를 생성합니다.
+
+    추가 기능:
+    - 대화 내용에서 슬롯 정보(문의유형, 상세요청 등)를 자동 추출
+    - 추출된 정보를 chat_sessions.collected_info에 저장
     """
     from ai_engine.graph.nodes.summary_agent import summary_agent_node
-    
+    from ai_engine.graph.utils.slot_loader import get_slot_loader
+
     try:
         logger.info(f"상담원 이관 분석 시작 - 세션: {request.session_id}, 사유: {request.trigger_reason}")
         
@@ -301,14 +659,30 @@ async def process_handover(request: HandoverRequest) -> HandoverResponse:
         
         # summary_agent 직접 호출 - 요약/감정/키워드 생성
         state = summary_agent_node(initial_state)
-        
+
         logger.info(f"요약 생성 완료 - 세션: {request.session_id}, 요약: {state.get('summary', 'None')[:50] if state.get('summary') else 'None'}...")
-        
+
+        # ============================================================
+        # 슬롯 정보 자동 추출 및 DB 저장
+        # ============================================================
+        collected_info = await _extract_slot_info_from_conversation(
+            request.session_id,
+            conversation_history,
+            state.get("context_intent")  # triage에서 분류된 카테고리 (있으면)
+        )
+
+        if collected_info:
+            logger.info(f"슬롯 정보 추출 완료 - 세션: {request.session_id}, collected_info: {collected_info}")
+            # DB에 collected_info 저장
+            _save_collected_info_to_db(request.session_id, collected_info)
+        else:
+            logger.warning(f"슬롯 정보 추출 실패 - 세션: {request.session_id}")
+
         # GraphState를 HandoverResponse로 변환
         response = state_to_handover_response(state)
-        
+
         logger.info(f"상담원 이관 분석 완료 - 세션: {request.session_id}, 상태: {response.status}")
-        
+
         return response
         
     except Exception as e:
