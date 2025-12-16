@@ -151,7 +151,7 @@
       "title": "결제 금액 확인",
       "category": "payment_inquiry",
       "user_text": "다음 달 카드값 얼마나 나오나요",
-      "expected_intent": "이용내역 안내",
+      "expected_intent": "결제대금 안내",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "low"
@@ -171,7 +171,7 @@
       "title": "결제일 확인",
       "category": "payment_inquiry",
       "user_text": "카드 결제일이 언제예요",
-      "expected_intent": "이용내역 안내",
+      "expected_intent": "결제일 안내/변경",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "low"
@@ -181,7 +181,7 @@
       "title": "미결제 금액 조회",
       "category": "payment_inquiry",
       "user_text": "아직 결제 안 된 금액이 얼마예요",
-      "expected_intent": "이용내역 안내",
+      "expected_intent": "결제대금 안내",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "low"
@@ -431,7 +431,7 @@
       "title": "결제일 변경",
       "category": "auto_payment",
       "user_text": "카드 결제일을 바꾸고 싶어요",
-      "expected_intent": "결제계좌 안내/변경",
+      "expected_intent": "결제일 안내/변경",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "medium"
@@ -461,7 +461,7 @@
       "title": "납부일 조회",
       "category": "auto_payment",
       "user_text": "납부일이 언제예요",
-      "expected_intent": "결제계좌 안내/변경",
+      "expected_intent": "결제일 안내/변경",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "low"
@@ -521,7 +521,7 @@
       "title": "카드 재발급 신청",
       "category": "card_reissue",
       "user_text": "카드 재발급 받고 싶어요",
-      "expected_intent": "청구지 안내/변경",
+      "expected_intent": "긴급 배송 신청",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "medium"
@@ -551,7 +551,7 @@
       "title": "카드 디자인 변경",
       "category": "card_reissue",
       "user_text": "카드 디자인 바꾸고 싶어요",
-      "expected_intent": "청구지 안내/변경",
+      "expected_intent": "긴급 배송 신청",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "low"
@@ -571,7 +571,7 @@
       "title": "재발급 소요 기간",
       "category": "card_reissue",
       "user_text": "카드 재발급 얼마나 걸려요",
-      "expected_intent": "도난/분실 신청/해제",
+      "expected_intent": "긴급 배송 신청",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "low"
@@ -581,7 +581,7 @@
       "title": "가족카드 재발급",
       "category": "card_reissue",
       "user_text": "가족카드 재발급 해주세요",
-      "expected_intent": "청구지 안내/변경",
+      "expected_intent": "긴급 배송 신청",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "medium"
@@ -611,7 +611,7 @@
       "title": "IC칩 불량 재발급",
       "category": "card_reissue",
       "user_text": "카드 칩이 안 읽혀요 새로 발급해주세요",
-      "expected_intent": "청구지 안내/변경",
+      "expected_intent": "긴급 배송 신청",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "medium"
@@ -821,7 +821,7 @@
       "title": "분할납부 신청",
       "category": "installment",
       "user_text": "이번 달 결제금액 나눠서 내고 싶어요",
-      "expected_intent": "선결제/즉시출금",
+      "expected_intent": "일부결제대금이월약정 안내",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "medium"
@@ -881,7 +881,7 @@
       "title": "할부 조기 상환",
       "category": "installment",
       "user_text": "할부 한꺼번에 갚고 싶어요",
-      "expected_intent": "선결제/즉시출금",
+      "expected_intent": "일부결제대금이월약정 안내",
       "expected_flow": ["triage_agent", "answer_agent", "chat_db_storage"],
       "auto_resolved": true,
       "priority": "medium"

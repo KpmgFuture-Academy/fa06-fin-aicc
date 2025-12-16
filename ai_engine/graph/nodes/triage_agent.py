@@ -92,13 +92,20 @@ SYSTEM_PROMPT = """
    아래 조건 중 하나라도 해당하면 반드시 HUMAN_REQUIRED를 선택하세요:
 
    A) **실제 처리/조치가 필요한 업무** (가장 중요!)
-      - 카드 분실 신고/도난 신고 → 반드시 HUMAN_REQUIRED
-      - 카드 재발급 요청 → 반드시 HUMAN_REQUIRED
+      - 보이스피싱/금융사기 의심 → 반드시 HUMAN_REQUIRED
+      - 해외 부정결제 신고 → 반드시 HUMAN_REQUIRED
       - 카드 해지/탈퇴 요청 → 반드시 HUMAN_REQUIRED
       - 결제 취소/환불 요청 → 반드시 HUMAN_REQUIRED
       - 이의제기/분쟁 해결 요청 → 반드시 HUMAN_REQUIRED
       ⚠️ 이런 업무는 AI가 "처리하겠습니다"라고 말할 수 없습니다!
       ⚠️ 정보만 안내하는 것과 실제 처리는 다릅니다!
+
+   ✅ **AUTO_ANSWER로 처리 가능한 업무** (FAQ 기반 안내):
+      - 카드 분실/도난 신고 방법 안내 → AUTO_ANSWER (앱/ARS에서 고객이 직접 신고 가능)
+      - 카드 임시 정지/해제 방법 안내 → AUTO_ANSWER (앱에서 직접 처리 가능)
+      - 카드 재발급 방법 안내 → AUTO_ANSWER (앱/고객센터에서 신청 가능)
+      - 분실 카드 찾은 후 해제 방법 → AUTO_ANSWER (앱/고객센터에서 해제 가능)
+      ※ 고객이 "정지해주세요", "신고해주세요"라고 해도 방법을 안내하면 되는 경우 AUTO_ANSWER!
 
    ⚠️ **HUMAN_REQUIRED가 아닌 경우 (정보 안내로 처리 가능)**:
       - 결제일 변경 방법 안내 → AUTO_ANSWER (앱/웹에서 고객이 직접 변경 가능)

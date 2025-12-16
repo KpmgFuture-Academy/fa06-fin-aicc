@@ -101,9 +101,9 @@ class Settings(BaseSettings):
     bm25_korean_tokenizer: Optional[str] = "kiwi"  # 기본값을 Kiwi로 설정
     
     # Reranking 설정
-    enable_reranking: bool = True  # Reranking 활성화 여부
-    rerank_top_k: int = 10  # Reranking할 상위 문서 수 (20 → 10으로 줄여서 레이턴시 개선)
-    rerank_final_k: int = 3  # 최종 반환할 문서 수
+    enable_reranking: bool = False  # Reranking 비활성화 (레이턴시 개선 목적)
+    rerank_top_k: int = 3  # Reranking할 상위 문서 수 (5 → 3으로 줄여서 레이턴시 개선)
+    rerank_final_k: int = 2  # 최종 반환할 문서 수 (3 → 2로 줄여서 레이턴시 개선)
     # 한국어 최적화: 기본값을 한국어 reranker로 설정
     reranker_model: str = "Dongjin-kr/ko-reranker"  # 한국어 특화 Cross-Encoder 모델
     # 다른 옵션: "sigridjineth/ko-reranker-v1.1" (더 큰 모델, 더 정확하지만 느림)

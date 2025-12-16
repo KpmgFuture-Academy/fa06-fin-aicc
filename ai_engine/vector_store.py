@@ -86,7 +86,7 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     if _embeddings is None:
         _embeddings = HuggingFaceEmbeddings(
             model_name=settings.embedding_model,
-            model_kwargs={"device": "cpu"},  # GPU 사용 시 "cuda"로 변경
+            model_kwargs={"device": "cpu"},
             encode_kwargs={
                 "normalize_embeddings": True,  # 코사인 유사도 최적화
                 "batch_size": 32  # 배치 크기 설정 (성능 향상)
@@ -281,7 +281,7 @@ def search_documents(
             if bm25_retriever is not None:
                 # 개선된 방식: 벡터 검색으로 상위 20개 추리고, 그에만 BM25 점수 보정
                 # 이렇게 하면 벡터 유사도 점수가 희석되지 않고, BM25가 보정 역할만 수행
-                vector_candidate_k = 20  # 벡터 검색으로 상위 20개 추림
+                vector_candidate_k = 12  # 벡터 검색으로 상위 12개 추림 (레이턴시 개선)
                 
                 # 벡터 검색: 원본 쿼리 사용 (임베딩 모델이 의미적 유사도 처리)
                 vector_results_with_score = vector_store.similarity_search_with_score(
