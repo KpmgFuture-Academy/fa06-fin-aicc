@@ -88,6 +88,7 @@ function App() {
     disconnect: disconnectRecord,  // 녹음 모드 WebSocket 연결 해제
     stopTTS: stopRecordTTS,  // 녹음 모드 TTS 중지 (Barge-in용)
     setOnBargeIn: setOnRecordBargeIn,  // 녹음 모드 Barge-in 콜백 설정
+    setOnAiResponse: setOnRecordAiResponse,  // 녹음 모드 추가 AI 응답 콜백 설정
   } = useVoiceRecording(sessionId);
   void _recordError;
   void recordVadEvent;  // 향후 UI 표시용
@@ -767,6 +768,37 @@ function App() {
       });
     });
   }, [setOnRecordBargeIn, startRecordRecording, markLastAiMessageAsInterrupted]);
+
+  // 녹음 모드용 추가 AI 응답 콜백 설정 (첫 번째 응답 후 추가 응답 처리)
+  useEffect(() => {
+    setOnRecordAiResponse((response) => {
+      if (!response || !response.text) return;
+
+      console.log('[App] 추가 AI 응답 수신 (녹음 모드):', response.text);
+
+      const aiMessageContent = response.text;
+      const assistantMessage: Message = {
+        id: `msg_${Date.now()}_assistant_${Math.random().toString(36).substring(2, 11)}`,
+        role: 'assistant',
+        content: aiMessageContent,
+        timestamp: new Date(),
+        isNew: true,
+      };
+
+      // 중복 메시지 방지: 최근 5개 메시지 중 동일 content가 있으면 추가하지 않음
+      setMessages((prev) => {
+        const recentMessages = prev.slice(-5);
+        const isDuplicate = recentMessages.some(
+          (m) => m.role === 'assistant' && m.content === aiMessageContent
+        );
+        if (isDuplicate) {
+          console.log('[App] 중복 AI 메시지 무시 (추가 응답):', aiMessageContent.substring(0, 30) + '...');
+          return prev;
+        }
+        return [...prev, assistantMessage];
+      });
+    });
+  }, [setOnRecordAiResponse]);
 
   // 마이크 버튼 클릭 핸들러
   const handleVoiceButtonClick = useCallback(async () => {

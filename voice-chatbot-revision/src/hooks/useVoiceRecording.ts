@@ -79,6 +79,7 @@ interface UseVoiceRecordingReturn {
   disconnect: () => void;     // WebSocket 연결 해제 (새 상담 시 호출)
   stopTTS: () => void;        // TTS 재생 중지 (Barge-in 등에서 사용)
   setOnBargeIn: (callback: () => void) => void;  // Barge-in 콜백 설정
+  setOnAiResponse: (callback: (response: VoiceRecordingResult['aiResponse']) => void) => void;  // AI 응답 콜백 설정
 }
 
 export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn => {
@@ -122,6 +123,9 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const speechStartTimeRef = useRef<number>(0);  // 연속 발화 시작 시점 (ms)
   const consecutiveSpeechRef = useRef<boolean>(false);  // 연속 발화 감지 여부
   const bargeInCallbackRef = useRef<(() => void) | null>(null);  // Barge-in 콜백
+
+  // AI 응답 콜백 (추가 응답이 도착할 때마다 호출)
+  const onAiResponseCallbackRef = useRef<((response: VoiceRecordingResult['aiResponse']) => void) | null>(null);
 
   // WebSocket URL 생성 (ref 사용으로 항상 최신 sessionId 보장)
   const getWsUrl = useCallback(() => {
@@ -236,6 +240,11 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   // Barge-in 콜백 설정
   const setOnBargeIn = useCallback((callback: () => void) => {
     bargeInCallbackRef.current = callback;
+  }, []);
+
+  // AI 응답 콜백 설정 (추가 응답 처리용)
+  const setOnAiResponse = useCallback((callback: (response: VoiceRecordingResult['aiResponse']) => void) => {
+    onAiResponseCallbackRef.current = callback;
   }, []);
 
   // 리샘플링 함수: 원본 샘플레이트 → 16kHz
@@ -369,6 +378,10 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
             });
             responseResolverRef.current = null;
             setIsProcessing(false);
+          } else if (latestAiResponseRef.current.text && onAiResponseCallbackRef.current) {
+            // 첫 번째 응답 후 추가 응답이 도착한 경우 콜백 호출
+            console.log('[VoiceRecording] 추가 AI 응답 수신 - 콜백 호출');
+            onAiResponseCallbackRef.current(latestAiResponseRef.current);
           }
           break;
 
@@ -739,6 +752,7 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     disconnect,
     stopTTS,
     setOnBargeIn,
+    setOnAiResponse,
   };
 };
 
