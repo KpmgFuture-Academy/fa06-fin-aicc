@@ -12,17 +12,17 @@ from ai_engine.vector_store import search_documents
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
-# 신뢰도 임계값 설정
-LOW_CONFIDENCE_THRESHOLD = 0.5  # 이 값보다 낮으면 신뢰도 낮음으로 판단
+# 신뢰도 임계값 설정 (0.5→0.6 상향: 낮은 스코어 시 추가 질의확장/재검색 트리거 강화)
+LOW_CONFIDENCE_THRESHOLD = 0.6  # 이 값보다 낮으면 신뢰도 낮음으로 판단
 
 
 @tool
-def search_rag_documents(query: str, top_k: int = 3) -> str:
+def search_rag_documents(query: str, top_k: int = 5) -> str:
     """벡터 DB에서 사용자 쿼리와 유사한 문서를 검색합니다.
-    
+
     Args:
         query: 검색할 사용자 메시지 또는 쿼리
-        top_k: 반환할 최대 문서 수 (기본값: 3)
+        top_k: 반환할 최대 문서 수 (기본값: 5, 3→5 확장)
         
     Returns:
         JSON 형태의 검색 결과 문자열. 형식:

@@ -11,6 +11,7 @@ import re
 import sys
 import time
 import wave
+import tempfile
 from pathlib import Path
 from typing import Counter as CounterType, Dict, List, Optional
 import numpy as np
@@ -189,7 +190,7 @@ def apply_vad(input_path: Path) -> Path:
     else:
         out_data = data # fallback
 
-    out_path = input_path.parent / "temp_vad_output.wav"
+    out_path = Path(tempfile.gettempdir()) / "temp_vad_output.wav"
     wavfile.write(out_path, sample_rate, out_data)
     return out_path
 
