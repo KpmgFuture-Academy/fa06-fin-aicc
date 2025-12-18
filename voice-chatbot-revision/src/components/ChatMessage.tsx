@@ -32,7 +32,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onTypingComplete }) 
     message.content,
     shouldAnimate,
     {
-      speed: 120,  // 한 글자당 120ms (TTS 음성 속도와 유사하게 조정)
+      speed: 20,  // 한 글자당 20ms (빠르게 표시하여 TTS와 거의 동시에 보이도록)
       onComplete: onTypingComplete,
     }
   );

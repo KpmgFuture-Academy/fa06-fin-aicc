@@ -7,7 +7,7 @@ import { voiceApi, getOrCreateSessionId, resetSessionId, formatSessionIdForDispl
 import './App.css';
 
 // 인사 메시지 설정 (새 상담 버튼 클릭 시에만 표시)
-const WELCOME_MESSAGE = "안녕하세요 고객님, 카드 상담 보이스봇에 연결되었습니다. 무엇을 도와 드릴까요? 음성 상담 및 텍스트 상담 모두 가능합니다.";
+const WELCOME_MESSAGE = "안녕하세요 고객님 무엇을 도와 드릴까요?";
 
 // 핸드오버 관련 설정
 const HANDOVER_POLL_INTERVAL_MS = 2000; // 2초마다 상담사 수락 여부 폴링
@@ -66,6 +66,7 @@ function App() {
     setOnAutoStop,
     setOnTTSComplete,
     setOnBargeIn,
+    setExternalTTSPlaying,  // 외부 TTS 재생 상태 설정 (첫 인사 Barge-in용)
   } = useVoiceStream(sessionId);
   // Suppress unused variable warnings
   void _isConnected;
@@ -85,9 +86,12 @@ function App() {
     startRecording: startRecordRecording,
     stopRecording: stopRecordRecording,
     disconnect: disconnectRecord,  // 녹음 모드 WebSocket 연결 해제
+    stopTTS: stopRecordTTS,  // 녹음 모드 TTS 중지 (Barge-in용)
+    setOnBargeIn: setOnRecordBargeIn,  // 녹음 모드 Barge-in 콜백 설정
   } = useVoiceRecording(sessionId);
   void _recordError;
   void recordVadEvent;  // 향후 UI 표시용
+  void stopRecordTTS;  // 향후 사용 (현재 내부에서 자동 호출)
 
   // 현재 모드에 따른 상태 통합
   const isRecording = isRecordingMode ? isRecordRecording : isStreamRecording;
@@ -690,15 +694,79 @@ function App() {
     });
   }, [setOnTTSComplete, isContinuousMode, isRecordingMode, startRecording]);
 
+  // Barge-in 시 마지막 AI 메시지에 "[고객 발화로 중단]" 표시 추가
+  // 텍스트가 너무 길면 앞부분만 보여주고 "..." 추가
+  const markLastAiMessageAsInterrupted = useCallback(() => {
+    setMessages((prev) => {
+      // 마지막 AI 메시지 찾기
+      const lastAiIndex = prev.map((m, i) => ({ m, i }))
+        .filter(({ m }) => m.role === 'assistant')
+        .pop()?.i;
+
+      if (lastAiIndex === undefined) return prev;
+
+      const lastAiMessage = prev[lastAiIndex];
+      // 이미 "[고객 발화로 중단]"이 붙어있으면 스킵
+      if (lastAiMessage.content.endsWith('[고객 발화로 중단]')) return prev;
+
+      // 텍스트 길이 제한 (50자 초과 시 자르기)
+      const MAX_LENGTH = 50;
+      let truncatedContent = lastAiMessage.content;
+      if (truncatedContent.length > MAX_LENGTH) {
+        truncatedContent = truncatedContent.substring(0, MAX_LENGTH) + '...';
+      }
+
+      // 새 배열 생성 후 마지막 AI 메시지 수정
+      const newMessages = [...prev];
+      newMessages[lastAiIndex] = {
+        ...lastAiMessage,
+        content: truncatedContent + ' [고객 발화로 중단]',
+      };
+      return newMessages;
+    });
+  }, []);
+
   // Barge-in 콜백 설정 (TTS 재생 중 사용자가 말하면 TTS 중단 + 녹음 시작)
+  // 실시간 스트리밍 모드용
   useEffect(() => {
     setOnBargeIn(() => {
-      console.log('[App] Barge-in 감지 - 녹음 시작');
-      startRecording().catch((err) => {
+      console.log('[App] Barge-in 감지 (스트리밍 모드) - 녹음 시작');
+
+      // 첫 인사 TTS (외부 audioRef)도 중단
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        console.log('[App] 첫 인사 TTS 중단 (Barge-in)');
+      }
+
+      // 외부 TTS 재생 상태 해제
+      setExternalTTSPlaying(false);
+
+      markLastAiMessageAsInterrupted();
+      startStreamRecording().catch((err) => {
         console.error('[App] Barge-in 녹음 시작 실패:', err);
       });
     });
-  }, [setOnBargeIn, startRecording]);
+  }, [setOnBargeIn, startStreamRecording, markLastAiMessageAsInterrupted, setExternalTTSPlaying]);
+
+  // 녹음 모드용 Barge-in 콜백 설정
+  useEffect(() => {
+    setOnRecordBargeIn(() => {
+      console.log('[App] Barge-in 감지 (녹음 모드) - 녹음 시작');
+
+      // 첫 인사 TTS (외부 audioRef)도 중단
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        console.log('[App] 첫 인사 TTS 중단 (Barge-in - 녹음 모드)');
+      }
+
+      markLastAiMessageAsInterrupted();
+      startRecordRecording().catch((err) => {
+        console.error('[App] Barge-in 녹음 시작 실패:', err);
+      });
+    });
+  }, [setOnRecordBargeIn, startRecordRecording, markLastAiMessageAsInterrupted]);
 
   // 마이크 버튼 클릭 핸들러
   const handleVoiceButtonClick = useCallback(async () => {
@@ -778,28 +846,61 @@ function App() {
       };
       setMessages([greetingMessage]);
 
-      // 인사 TTS 재생
+      // 인사 TTS 재생 (Barge-in 지원)
       try {
         const ttsResponse = await voiceApi.requestTTS(WELCOME_MESSAGE);
         if (ttsResponse.audio_base64) {
-          playAudio(ttsResponse.audio_base64);
+          console.log('[App] 인사 TTS 재생 시작 - Barge-in 감지 활성화');
+
+          // 오디오 재생
+          const audioBlob = base64ToBlob(ttsResponse.audio_base64, 'audio/mp3');
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          if (audioRef.current) {
+            // Barge-in 감지를 위한 마이크 시작 (TTS 재생과 동시에)
+            isResettingRef.current = false;  // 녹음 허용
+
+            // 실시간 모드에서 WebSocket 연결 및 VAD 시작
+            if (!isRecordingMode) {
+              console.log('[App] 인사 TTS 중 Barge-in 감지를 위해 마이크 시작');
+
+              // 먼저 마이크 시작하여 WebSocket 연결
+              startStreamRecording().then(() => {
+                // 연결 완료 후 외부 TTS 재생 상태 설정 (Barge-in 감지 활성화)
+                setExternalTTSPlaying(true);
+                console.log('[App] WebSocket 연결 완료 - 외부 TTS 재생 상태 설정');
+              }).catch((err) => {
+                console.error('[App] 인사 TTS 중 마이크 시작 실패:', err);
+              });
+            }
+
+            // 오디오 재생
+            audioRef.current.src = audioUrl;
+            audioRef.current.play();
+
+            // 오디오 종료 시 처리 (Barge-in으로 중단되지 않은 경우)
+            audioRef.current.onended = () => {
+              console.log('[App] 인사 TTS 재생 완료');
+              URL.revokeObjectURL(audioUrl);
+              // 외부 TTS 재생 상태 해제
+              setExternalTTSPlaying(false);
+            };
+          }
         }
       } catch (err) {
         console.warn('인사 TTS 재생 실패:', err);
-      }
-
-      // 딜레이 후 자동 녹음 허용 및 실시간 모드 자동 녹음 시작
-      setTimeout(() => {
+        // TTS 실패 시에도 녹음은 시작
         isResettingRef.current = false;
-        console.log('[App] 새 상담 준비 완료 - 실시간 모드 자동 녹음 시작');
         if (!isRecordingMode) {
-          startStreamRecording().catch((err) => {
-            console.error('[App] 새 상담 후 자동 녹음 시작 실패:', err);
-          });
+          setTimeout(() => {
+            startStreamRecording().catch((err) => {
+              console.error('[App] 새 상담 후 자동 녹음 시작 실패:', err);
+            });
+          }, 500);
         }
-      }, 500);  // 500ms 딜레이
+      }
     }
-  }, [playAudio, disconnectStream, disconnectRecord, cleanupHandoverPolling, isRecordingMode, startStreamRecording]);
+  }, [disconnectStream, disconnectRecord, cleanupHandoverPolling, isRecordingMode, startStreamRecording, setExternalTTSPlaying]);
 
   // 강제 종료 (현재 상담 중지 - 대기 상태로 전환)
   const handleForceStop = useCallback(() => {
@@ -1219,8 +1320,8 @@ function App() {
         {/* 헤더 */}
         <div className="chat-header">
           <div className="chat-header-content">
-            <h1>미래카드 AICC 상담 보이스봇</h1>
-            <p>음성 AI 기반 고객 상담 서비스</p>
+            <h1>상담 보이스봇</h1>
+            <p>카드사 AI 에이전트</p>
           </div>
           <div className="header-actions">
             {/* 음성 모드 토글 */}

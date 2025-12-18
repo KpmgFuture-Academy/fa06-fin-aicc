@@ -1185,8 +1185,8 @@ const Dashboard: React.FC = () => {
     <Container>
       {/* 대시보드 헤더 */}
       <DashboardHeader>
-        <DashboardTitle>미래카드 AICC 상담 대시보드</DashboardTitle>
-        <DashboardSubtitle>음성 AI 기반 고객 상담 서비스</DashboardSubtitle>
+        <DashboardTitle>상담 대시보드</DashboardTitle>
+        <DashboardSubtitle>카드사 AI 에이전트</DashboardSubtitle>
       </DashboardHeader>
 
       {/* 세션 선택 영역 */}

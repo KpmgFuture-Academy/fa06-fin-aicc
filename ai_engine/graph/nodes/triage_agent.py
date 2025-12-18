@@ -100,11 +100,19 @@ SYSTEM_PROMPT = """
       ⚠️ 이런 업무는 AI가 "처리하겠습니다"라고 말할 수 없습니다!
       ⚠️ 정보만 안내하는 것과 실제 처리는 다릅니다!
 
-   ✅ **AUTO_ANSWER로 처리 가능한 업무** (FAQ 기반 안내):
-      - 카드 분실/도난 신고 방법 안내 → AUTO_ANSWER (앱/ARS에서 고객이 직접 신고 가능)
-      - 카드 임시 정지/해제 방법 안내 → AUTO_ANSWER (앱에서 직접 처리 가능)
-      - 카드 재발급 방법 안내 → AUTO_ANSWER (앱/고객센터에서 신청 가능)
-      - 분실 카드 찾은 후 해제 방법 → AUTO_ANSWER (앱/고객센터에서 해제 가능)
+   ✅ **AUTO_ANSWER로 처리해야 하는 업무** (FAQ 기반 안내 - 절대 HUMAN_REQUIRED 아님!):
+
+      🚨 **카드 분실/도난 관련은 무조건 AUTO_ANSWER입니다!** 🚨
+      - "카드 분실했어요", "카드 잃어버렸어요" → AUTO_ANSWER
+      - "카드 도난당했어요" → AUTO_ANSWER
+      - "분실신고 해주세요", "카드 정지해주세요" → AUTO_ANSWER
+      - "카드 임시 정지하고 싶어요" → AUTO_ANSWER
+      - "분실 카드 찾았어요, 해제해주세요" → AUTO_ANSWER
+      - "카드 재발급 받고 싶어요" → AUTO_ANSWER
+
+      ❗ 이유: 하나카드 앱/ARS에서 고객이 직접 분실신고, 정지, 해제, 재발급 모두 가능!
+      ❗ AI는 "방법"을 안내하면 됩니다. 상담원이 대신 처리할 필요 없음!
+
       ※ 고객이 "정지해주세요", "신고해주세요"라고 해도 방법을 안내하면 되는 경우 AUTO_ANSWER!
 
    ⚠️ **HUMAN_REQUIRED가 아닌 경우 (정보 안내로 처리 가능)**:
@@ -152,7 +160,13 @@ SYSTEM_PROMPT = """
 - "자동 응답으로 해결할 수 없음이 반복적으로 확인되었는가?"
 세 질문 중 하나라도 "예"라면 HUMAN_REQUIRED를 선택한다.
 
-※ 참고: 분실신고, 한도 변경, 결제일 변경, 카드 해지 등은 앱/ARS에서 고객이 직접 처리 가능하므로 AUTO_ANSWER로 방법을 안내한다.
+🚨🚨🚨 **절대 HUMAN_REQUIRED로 분류하면 안 되는 케이스** 🚨🚨🚨
+다음 키워드가 포함된 요청은 무조건 AUTO_ANSWER입니다:
+- 카드 분실, 카드 도난, 분실신고, 카드 정지, 카드 해제
+- 한도 변경, 한도 조회, 한도 상향
+- 결제일 변경, 결제일 조회
+- 카드 재발급
+→ 이 업무들은 앱/ARS에서 고객이 직접 처리 가능하므로 AUTO_ANSWER로 방법을 안내!
 
 7) 최종 출력 형식
 도구 호출이 더 이상 필요 없다고 판단되면,
@@ -364,8 +378,65 @@ def triage_agent_node(state: GraphState) -> GraphState:
         # 6. GraphState에 triage 결과 반영 (TriageDecisionType 산출)
         try:
             triage_decision = TriageDecisionType(ticket_str)
+
+            # 코드 레벨 오버라이드: 특정 키워드가 포함된 경우 HUMAN_REQUIRED → AUTO_ANSWER로 강제 변환
+            # LLM이 프롬프트를 무시하고 HUMAN_REQUIRED로 분류하는 케이스 방지
+            if triage_decision == TriageDecisionType.HUMAN_REQUIRED:
+                user_message_lower = user_message.lower() if user_message else ""
+
+                # 🚨 긴급 상황 키워드: 즉시 상담사 연결 (슬롯 수집 없이)
+                # 보이스피싱, 금융사기 등은 즉시 상담사 연결 필요
+                urgent_keywords = [
+                    "보이스피싱", "보이스 피싱", "피싱", "사기", "금융사기", "금융 사기",
+                    "해킹", "불법", "도용", "명의도용", "명의 도용",
+                    "협박", "위협", "급하", "긴급", "응급",
+                ]
+                is_urgent_case = any(kw in user_message_lower for kw in urgent_keywords)
+
+                # 긴급 상황이면 HUMAN_REQUIRED 유지 + 긴급 플래그 설정
+                if is_urgent_case:
+                    logger.info(f"긴급 상황 감지: HUMAN_REQUIRED 유지 (슬롯 수집 스킵) - 세션={state.get('session_id', 'unknown')}, 원문={user_message}")
+                    state["is_urgent_handover"] = True  # 긴급 핸드오버 플래그
+                    reason = f"[긴급] {reason} → 보이스피싱/사기 의심으로 즉시 상담사 연결"
+                else:
+                    # 앱/ARS에서 고객이 직접 처리 가능한 업무 키워드
+                    auto_answer_keywords = [
+                        "분실", "도난", "잃어버", "정지", "해제",  # 카드 분실/도난/정지
+                        "한도", "한도 변경", "한도 조회", "한도 상향",  # 한도 관련
+                        "결제일", "결제일 변경", "결제일 조회",  # 결제일 관련
+                        "재발급",  # 카드 재발급
+                    ]
+                    # 상담원 연결 요청은 제외 (명시적 요청은 유지)
+                    agent_request_keywords = ["상담사", "상담원", "사람", "연결"]
+
+                    is_auto_answer_case = any(kw in user_message_lower for kw in auto_answer_keywords)
+                    is_agent_request = any(kw in user_message_lower for kw in agent_request_keywords)
+
+                    if is_auto_answer_case and not is_agent_request:
+                        logger.info(f"오버라이드: HUMAN_REQUIRED → AUTO_ANSWER (키워드 매칭) - 세션={state.get('session_id', 'unknown')}, 원문={user_message}")
+                        triage_decision = TriageDecisionType.AUTO_ANSWER
+                        reason = f"[오버라이드] {reason} → 앱/ARS에서 직접 처리 가능한 업무로 AUTO_ANSWER로 변경"
+
             state["triage_decision"] = triage_decision
-            logger.info(f"Triage 결정 완료: {ticket_str} - 세션={state.get('session_id', 'unknown')}")
+            logger.info(f"Triage 결정 완료: {triage_decision.value} - 세션={state.get('session_id', 'unknown')}")
+
+            # AUTO_ANSWER인데 RAG 검색 결과가 없으면 강제로 RAG 검색 수행
+            if triage_decision == TriageDecisionType.AUTO_ANSWER and not retrieved_docs:
+                logger.info(f"AUTO_ANSWER인데 RAG 결과 없음 → RAG 검색 강제 실행 - 세션={state.get('session_id', 'unknown')}")
+                try:
+                    rag_result = rag_search_tool.invoke({"query": user_message})
+                    if isinstance(rag_result, str):
+                        retrieved_docs = parse_rag_result(rag_result)
+                        state["retrieved_documents"] = retrieved_docs
+                        if retrieved_docs:
+                            state["rag_best_score"] = max(
+                                doc.get("rerank_score", doc.get("score", 0)) for doc in retrieved_docs
+                            )
+                            state["rag_low_confidence"] = state["rag_best_score"] < 0.2
+                            logger.info(f"RAG 강제 검색 완료: {len(retrieved_docs)}개 문서, best_score={state['rag_best_score']:.2f}")
+                except Exception as rag_err:
+                    logger.warning(f"RAG 강제 검색 실패: {rag_err}")
+
         except Exception:
             logger.warning("Unknown ticket type from LLM: %s", ticket_str)
             triage_decision = TriageDecisionType.SIMPLE_ANSWER  # fallback

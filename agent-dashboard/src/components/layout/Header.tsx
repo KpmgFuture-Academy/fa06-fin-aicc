@@ -171,7 +171,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
   return (
     <HeaderContainer>
       <LeftSection>
-        <Logo>하나카드 AICC</Logo>
+        <Logo>상담 대시보드</Logo>
 
         <StatusToggle status={agentInfo.status}>
           <StatusDot status={agentInfo.status} />
