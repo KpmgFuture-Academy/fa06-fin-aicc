@@ -597,12 +597,19 @@ class CardE2ETestRunner:
         report.avg_tts_latency_ms = sum(r.tts_latency_ms for r in results) / total
         report.avg_e2e_latency_ms = sum(r.e2e_latency_ms for r in results) / total
 
-        # RAG 검색 메트릭 계산
-        rag_scores = [r.rag_best_score for r in results if r.rag_best_score > 0]
-        report.avg_rag_score = sum(rag_scores) / len(rag_scores) if rag_scores else 0.0
-        report.avg_rag_doc_count = sum(r.rag_doc_count for r in results) / total
-        rag_hits = sum(1 for r in results if r.rag_doc_count > 0)
-        report.rag_hit_rate = rag_hits / total * 100
+        # RAG 검색 메트릭 계산 (human_transfer 카테고리 제외 - RAG 대상이 아님)
+        rag_target_results = [r for r in results if r.category != "human_transfer"]
+        rag_target_total = len(rag_target_results)
+        if rag_target_total > 0:
+            rag_scores = [r.rag_best_score for r in rag_target_results if r.rag_best_score > 0]
+            report.avg_rag_score = sum(rag_scores) / len(rag_scores) if rag_scores else 0.0
+            report.avg_rag_doc_count = sum(r.rag_doc_count for r in rag_target_results) / rag_target_total
+            rag_hits = sum(1 for r in rag_target_results if r.rag_doc_count > 0)
+            report.rag_hit_rate = rag_hits / rag_target_total * 100
+        else:
+            report.avg_rag_score = 0.0
+            report.avg_rag_doc_count = 0.0
+            report.rag_hit_rate = 0.0
 
         # 카테고리별 결과
         categories = set(r.category for r in results)
@@ -682,7 +689,7 @@ def print_report_summary(report: E2ETestReport):
     print(f"  E2E 성공률:         {report.e2e_success_rate:.1f}%")
     print(f"  자동 해결률:        {report.auto_resolution_rate:.1f}%")
 
-    print("\n[ RAG 검색 메트릭 (BM25 + KIWI Reranking) ]")
+    print("\n[ RAG 검색 메트릭 (BM25 + Reranking, human_transfer 제외) ]")
     print(f"  RAG 검색 성공률:    {report.rag_hit_rate:.1f}%")
     print(f"  평균 RAG 점수:      {report.avg_rag_score:.3f}")
     print(f"  평균 검색 문서 수:   {report.avg_rag_doc_count:.1f}개")

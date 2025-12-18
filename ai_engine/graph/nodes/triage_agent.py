@@ -147,10 +147,12 @@ SYSTEM_PROMPT = """
 도구 호출 결과(ToolMessage)에 포함된 결과를 꼼꼼히 읽고 종합 판단한다.
 
 단, HUMAN_REQUIRED를 선택할 때는 아래 세 질문을 참고해서 판단한다.
-- "이 업무는 실제 처리/조치가 필요한가?" (분실 신고, 재발급, 해지, 결제 취소, 한도 변경 등)
+- "이 업무는 상담원만 처리 가능한가?" (보이스피싱/금융사기 피해 신고, 부정사용 이의제기, 가맹점 결제 취소 중재, 민원/불만 접수 등)
 - "고객이 상담사 연결을 명시적으로 요청했는가?"
 - "자동 응답으로 해결할 수 없음이 반복적으로 확인되었는가?"
 세 질문 중 하나라도 "예"라면 HUMAN_REQUIRED를 선택한다.
+
+※ 참고: 분실신고, 한도 변경, 결제일 변경, 카드 해지 등은 앱/ARS에서 고객이 직접 처리 가능하므로 AUTO_ANSWER로 방법을 안내한다.
 
 7) 최종 출력 형식
 도구 호출이 더 이상 필요 없다고 판단되면,
@@ -293,8 +295,11 @@ def triage_agent_node(state: GraphState) -> GraphState:
         state["retrieved_documents"] = retrieved_docs
         
         # rag_best_score, rag_low_confidence 계산
+        # rerank_score가 있으면 우선 사용, 없으면 기존 score 사용
         if retrieved_docs:
-            state["rag_best_score"] = max(doc["score"] for doc in retrieved_docs)
+            state["rag_best_score"] = max(
+                doc.get("rerank_score", doc.get("score", 0)) for doc in retrieved_docs
+            )
             state["rag_low_confidence"] = state["rag_best_score"] < 0.2
         else:
             state["rag_best_score"] = None

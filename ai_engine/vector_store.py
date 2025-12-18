@@ -257,18 +257,21 @@ def search_documents(
         logger.info(f"[1단계: 메타 쿼리 필터링] 메타 쿼리 감지 - RAG 검색 건너뜀: query='{query}'")
         return []  # 빈 결과 반환 (상담원 연결 요청은 RAG 검색 대상이 아님)
     
-    # 쿼리 확장 (BM25 검색에만 적용, 벡터 검색은 원본 쿼리 사용)
-    # 벡터 검색: 임베딩 모델이 이미 의미적 유사도를 잘 처리하므로 원본 쿼리 사용
-    # BM25 검색: 키워드 매칭이므로 동의어 추가가 도움이 될 수 있음
-    vector_search_query = query  # 벡터 검색은 항상 원본 쿼리 사용
-    
+    # 쿼리 확장 (벡터 + BM25 모두 적용)
+    # 구어체 → 문어체 매핑으로 검색 품질 개선
     if settings.enable_query_expansion:
         from ai_engine.utils.query_expansion import expand_query
-        bm25_search_query = expand_query(query)  # BM25 검색에만 확장 쿼리 사용
-        logger.info(f"[2단계: 쿼리 확장] 벡터 검색: 원본 쿼리 '{query}' 사용")
-        logger.info(f"[2단계: 쿼리 확장] BM25 검색: 확장 쿼리 '{bm25_search_query}' 사용")
+        expanded_query = expand_query(query)
+        vector_search_query = expanded_query  # 벡터 검색에도 확장 쿼리 적용
+        bm25_search_query = expanded_query    # BM25 검색에도 확장 쿼리 적용
+        if expanded_query != query:
+            logger.info(f"[2단계: 쿼리 확장] 원본: '{query}'")
+            logger.info(f"[2단계: 쿼리 확장] 확장: '{expanded_query}'")
+        else:
+            logger.info(f"[2단계: 쿼리 확장] 확장 없음 - 원본 쿼리 사용: '{query}'")
     else:
-        bm25_search_query = query  # 확장 비활성화 시 원본 쿼리 사용
+        vector_search_query = query
+        bm25_search_query = query
         logger.info(f"[2단계: 쿼리 확장] 비활성화 - 원본 쿼리 사용: '{query}'")
     
     # Hybrid Search 사용 여부 확인
@@ -375,37 +378,53 @@ def search_documents(
                     max_score = filtered_results[0]['score']
                     logger.info(f"[5단계: Threshold 체크] 통과 - 최고 점수 {max_score:.4f} >= threshold {score_threshold}, {len(filtered_results)}개 문서 통과")
                 
-                # threshold를 넘은 경우에만 Reranking 적용 (순위 재정렬만)
+                # threshold를 넘은 경우에만 Reranking 적용 (rerank_score 반영)
                 if settings.enable_reranking and len(filtered_results) > 0:
                     rerank_candidates = filtered_results[:settings.rerank_top_k]
                     logger.info(f"[6단계: Reranking] 시작 - 상위 {len(rerank_candidates)}개 문서 재정렬 (모델: {settings.reranker_model})")
-                    
-                    # 원본 점수 저장 (Reranking 후에도 원본 점수 유지)
+
+                    # 원본 점수 저장 (로깅용)
                     original_scores = {doc["content"]: doc["score"] for doc in rerank_candidates}
-                    
+
                     reranked_results = _rerank_documents(
                         query=query,  # 원본 쿼리 사용
                         documents=rerank_candidates,
                         top_k=settings.rerank_final_k,
-                        return_raw_scores=False  # 순위만 재정렬
+                        return_raw_scores=True  # rerank_score 반환
                     )
-                    
-                    # Reranking은 순위 재정렬만 하고, 점수는 원본 점수 유지
+
+                    # rerank_score를 score로 사용 (원본 점수는 original_score로 보관)
                     for result in reranked_results:
                         content = result["content"]
                         original_score = original_scores.get(content, 0.0)
-                        # 원본 점수 그대로 유지 (순위만 reranking 결과로 재정렬됨)
-                        result["score"] = round(original_score, 4)
-                    
+                        result["original_score"] = round(original_score, 4)  # 로깅용 원본 점수
+                        # rerank_score를 score로 사용 (RAG Score 평가에 반영)
+                        if "rerank_score" in result:
+                            result["score"] = result["rerank_score"]
+
                     formatted_results = reranked_results
-                    logger.info(f"[6단계: Reranking] 완료 - 최종 {len(formatted_results)}개 문서 반환 (점수는 원본 유지)")
-                    # 최종 상위 3개 점수 로깅
+                    logger.info(f"[6단계: Reranking] 완료 - 최종 {len(formatted_results)}개 문서 반환 (rerank_score 반영)")
+                    # 최종 상위 3개 점수 로깅 (rerank_score 기준)
                     top_3_final = [f"{doc['score']:.4f}" for doc in formatted_results[:3]]
-                    logger.info(f"[6단계: Reranking] 최종 상위 3개 점수: {', '.join(top_3_final)}")
+                    top_3_original = [f"{doc.get('original_score', 0):.4f}" for doc in formatted_results[:3]]
+                    logger.info(f"[6단계: Reranking] 최종 상위 3개 rerank_score: {', '.join(top_3_final)} (원본: {', '.join(top_3_original)})")
                 else:
                     # Reranking 비활성화 시 top_k만큼만 반환
                     formatted_results = filtered_results[:top_k]
                     logger.info(f"[6단계: Reranking] 비활성화 - 상위 {len(formatted_results)}개 문서 반환")
+
+                # [7단계: 동적 검색 건수 조정] RAG Score 높으면 1건만 사용하여 LLM 컨텍스트 최소화
+                if formatted_results and formatted_results[0]['score'] >= 0.70:
+                    # 최고 점수가 0.70 이상이면 1건만 반환 (충분히 관련성 높음)
+                    formatted_results = formatted_results[:1]
+                    logger.info(f"[7단계: 동적 조정] 최고 점수 {formatted_results[0]['score']:.4f} >= 0.70 → 1건만 반환 (레이턴시 최적화)")
+                elif formatted_results and formatted_results[0]['score'] >= 0.60:
+                    # 0.60~0.70 사이면 2건 반환
+                    formatted_results = formatted_results[:2]
+                    logger.info(f"[7단계: 동적 조정] 최고 점수 >= 0.60 → 2건 반환")
+                else:
+                    # 0.60 미만이면 기존대로 3건 반환
+                    logger.info(f"[7단계: 동적 조정] 최고 점수 < 0.60 → 3건 유지")
                 
                 logger.info(f"[RAG 검색 완료] Hybrid Search (벡터 주 점수 + BM25 보정) + Reranking: query='{query}', 최종 결과 {len(formatted_results)}개 문서")
                 return formatted_results
@@ -463,32 +482,40 @@ def search_documents(
         max_score = filtered_results[0]['score']
         logger.info(f"[Fallback: Threshold 체크] 통과 - 최고 점수 {max_score:.4f} >= threshold {score_threshold}, {len(filtered_results)}개 문서 통과")
     
-    # threshold를 넘은 경우에만 Reranking 적용 (순위 재정렬만)
+    # threshold를 넘은 경우에만 Reranking 적용 (rerank_score 반영)
     if settings.enable_reranking and len(filtered_results) > 0:
         rerank_candidates = filtered_results[:settings.rerank_top_k]
-        
-        # 원본 점수 저장
+
+        # 원본 점수 저장 (로깅용)
         original_scores = {doc["content"]: doc["score"] for doc in rerank_candidates}
-        
+
         reranked_results = _rerank_documents(
             query=query,  # 원본 쿼리 사용
             documents=rerank_candidates,
             top_k=settings.rerank_final_k,
-            return_raw_scores=False  # 순위만 재정렬
+            return_raw_scores=True  # rerank_score 반환
         )
-        
-        # Reranking은 순위 재정렬만 하고, 점수는 원본 점수 유지
+
+        # rerank_score를 score로 사용 (원본 점수는 original_score로 보관)
         for result in reranked_results:
             content = result["content"]
             original_score = original_scores.get(content, 0.0)
-            # 원본 점수 그대로 유지 (순위만 reranking 결과로 재정렬됨)
-            result["score"] = round(original_score, 4)
-        
+            result["original_score"] = round(original_score, 4)  # 로깅용 원본 점수
+            # rerank_score를 score로 사용 (RAG Score 평가에 반영)
+            if "rerank_score" in result:
+                result["score"] = result["rerank_score"]
+
         formatted_results = reranked_results
     else:
         # Reranking 비활성화 시 top_k만큼만 반환
         formatted_results = filtered_results[:top_k]
-    
+
+    # [Fallback 동적 조정] RAG Score 높으면 1건만 사용
+    if formatted_results and formatted_results[0]['score'] >= 0.70:
+        formatted_results = formatted_results[:1]
+    elif formatted_results and formatted_results[0]['score'] >= 0.60:
+        formatted_results = formatted_results[:2]
+
     return formatted_results
 
 

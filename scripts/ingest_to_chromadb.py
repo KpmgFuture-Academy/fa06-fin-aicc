@@ -71,8 +71,38 @@ def ingest_documents():
     metadatas = []
 
     for doc in all_docs:
-        # content + summary를 텍스트로 사용
-        full_text = f"제목: {doc['title']}\n\n요약: {doc['summary']}\n\n내용:\n{doc['content']}"
+        # 검색 키워드를 앞부분에 배치하여 검색 효과 향상
+        content = doc['content']
+
+        # RAG 검색 보조 키워드 섹션 추출 (있으면)
+        keywords_section = ""
+        faq_section = ""
+        main_content = content
+
+        # 키워드와 FAQ를 content에서 추출
+        if "RAG 검색 보조 키워드" in content:
+            parts = content.split("RAG 검색 보조 키워드")
+            if len(parts) > 1:
+                main_content = parts[0].strip()
+                keyword_part = parts[1]
+                # FAQ 섹션이 있으면 분리
+                if "FAQ" in keyword_part:
+                    kw_faq_parts = keyword_part.split("FAQ", 1)
+                    keywords_section = kw_faq_parts[0].strip().lstrip('\n').strip()
+                    faq_section = kw_faq_parts[1].strip() if len(kw_faq_parts) > 1 else ""
+                else:
+                    keywords_section = keyword_part.strip().lstrip('\n').strip()
+
+        # 키워드를 앞에 배치: 제목 > 키워드 > FAQ > 요약 > 본문
+        full_text_parts = [f"제목: {doc['title']}"]
+        if keywords_section:
+            full_text_parts.append(f"\n검색 키워드: {keywords_section}")
+        if faq_section:
+            full_text_parts.append(f"\nFAQ:\n{faq_section}")
+        full_text_parts.append(f"\n요약: {doc['summary']}")
+        full_text_parts.append(f"\n내용:\n{main_content}")
+
+        full_text = "".join(full_text_parts)
         texts.append(full_text)
 
         # 메타데이터
@@ -87,11 +117,11 @@ def ingest_documents():
         }
         metadatas.append(metadata)
 
-    # ChromaDB에 적재
+    # ChromaDB에 적재 (chunk_size를 2000으로 증가하여 문서 분리 방지)
     ids = add_documents(
         texts=texts,
         metadatas=metadatas,
-        chunk_size=1000,
+        chunk_size=2000,
         chunk_overlap=200
     )
 

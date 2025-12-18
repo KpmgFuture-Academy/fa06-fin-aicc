@@ -89,10 +89,10 @@ class Settings(BaseSettings):
     enable_hybrid_search: bool = True  # Hybrid Search 활성화 여부
     # RRF (Reciprocal Rank Fusion) 사용 여부
     use_rrf: bool = True  # True면 RRF 사용, False면 가중치 결합 사용
-    rrf_k: int = 60  # RRF 상수 k (일반적으로 60 사용, 낮을수록 순위 영향 큼)
+    rrf_k: int = 30  # RRF 상수 k (60→30으로 낮춰서 상위 순위 문서 영향력 강화)
     # 가중치 결합 방식 (use_rrf=False일 때 사용)
-    vector_search_weight: float = 0.7  # 벡터 검색 가중치 (0.0 ~ 1.0)
-    bm25_search_weight: float = 0.3  # BM25 검색 가중치 (0.0 ~ 1.0, vector_weight + bm25_weight = 1.0 권장)
+    vector_search_weight: float = 0.6  # 벡터 검색 가중치 (0.0 ~ 1.0)
+    bm25_search_weight: float = 0.4  # BM25 검색 가중치 (0.0 ~ 1.0, vector_weight + bm25_weight = 1.0 권장) - 구어체 키워드 매칭 강화
     # BM25 한국어 토크나이저
     # None: 기본 정규표현식 토크나이저
     # "kiwi": Kiwi 형태소 분석기 사용 (권장, 높은 정확도)
@@ -101,9 +101,9 @@ class Settings(BaseSettings):
     bm25_korean_tokenizer: Optional[str] = "kiwi"  # 기본값을 Kiwi로 설정
     
     # Reranking 설정
-    enable_reranking: bool = False  # Reranking 비활성화 (레이턴시 개선 목적)
-    rerank_top_k: int = 3  # Reranking할 상위 문서 수 (5 → 3으로 줄여서 레이턴시 개선)
-    rerank_final_k: int = 2  # 최종 반환할 문서 수 (3 → 2로 줄여서 레이턴시 개선)
+    enable_reranking: bool = True  # Reranking 활성화 (RAG Score 향상 목적)
+    rerank_top_k: int = 10  # Reranking할 상위 문서 수 (5→10 확장)
+    rerank_final_k: int = 5  # 최종 반환할 문서 수 (3→5 확장)
     # 한국어 최적화: 기본값을 한국어 reranker로 설정
     reranker_model: str = "Dongjin-kr/ko-reranker"  # 한국어 특화 Cross-Encoder 모델
     # 다른 옵션: "sigridjineth/ko-reranker-v1.1" (더 큰 모델, 더 정확하지만 느림)
