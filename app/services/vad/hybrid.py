@@ -62,6 +62,7 @@ class HybridVADStream(VADEngine):
         self._last_speech_ms = 0
         self._silence_acc_ms = 0
         self._processed_ms = 0
+        self._last_silero_prob: float = 0.0  # 마지막 Silero 확률값 (Barge-in용)
 
     def reset(self) -> None:
         self._buffer.clear()
@@ -71,6 +72,7 @@ class HybridVADStream(VADEngine):
         self._last_speech_ms = 0
         self._silence_acc_ms = 0
         self._processed_ms = 0
+        self._last_silero_prob = 0.0
 
     def _get_silero_score(self, frame: bytes) -> float | None:
         """
@@ -86,9 +88,16 @@ class HybridVADStream(VADEngine):
             silero_frame = bytes(self._silero_buffer[:silero_exact_bytes])
             # 사용한 바이트만 제거 (나머지는 다음 계산에 사용)
             del self._silero_buffer[:silero_exact_bytes]
-            return self.silero.score_frame(silero_frame)
+            score = self.silero.score_frame(silero_frame)
+            self._last_silero_prob = score  # Barge-in용으로 저장
+            return score
 
         return None
+
+    @property
+    def last_silero_prob(self) -> float:
+        """마지막으로 계산된 Silero 음성 확률 (Barge-in용)"""
+        return self._last_silero_prob
 
     def feed(self, audio: bytes) -> list[FrameResult]:
         self._buffer.extend(audio)

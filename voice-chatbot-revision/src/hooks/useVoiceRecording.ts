@@ -9,6 +9,15 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+// ============================================================
+// Barge-in 상수 정의
+// ============================================================
+const BARGE_IN_GUARD_TIME_MS = 120;  // TTS 시작 후 이 시간 동안은 Barge-in 무시 (피드백 방지)
+const BARGE_IN_STRONG_PROB = 0.90;   // 강한 발화 임계값
+const BARGE_IN_STRONG_DURATION_MS = 120;  // 강한 발화 지속 시간
+const BARGE_IN_WEAK_PROB = 0.80;     // 약한 발화 임계값
+const BARGE_IN_WEAK_DURATION_MS = 200;    // 약한 발화 지속 시간
+
 // 서버 메시지 타입
 interface ServerMessage {
   type: 'connected' | 'stt_result' | 'ai_response' | 'tts_chunk' | 'completed' | 'error' | 'pong' | 'vad_result' | 'auto_send';
@@ -68,6 +77,8 @@ interface UseVoiceRecordingReturn {
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<VoiceRecordingResult | null>;
   disconnect: () => void;     // WebSocket 연결 해제 (새 상담 시 호출)
+  stopTTS: () => void;        // TTS 재생 중지 (Barge-in 등에서 사용)
+  setOnBargeIn: (callback: () => void) => void;  // Barge-in 콜백 설정
 }
 
 export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn => {
@@ -97,10 +108,20 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
   const latestAiResponseRef = useRef<VoiceRecordingResult['aiResponse']>(null);
   const responseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Barge-in용 오디오 캡처 유지 여부
+  const keepAudioCaptureRef = useRef<boolean>(false);
+
   // TTS 오디오 재생용 refs
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef<boolean>(false);
   const ttsAudioContextRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);  // 현재 재생 중인 소스
+
+  // Barge-in 관련 refs
+  const ttsStartTimeRef = useRef<number>(0);  // TTS 시작 시점 (ms)
+  const speechStartTimeRef = useRef<number>(0);  // 연속 발화 시작 시점 (ms)
+  const consecutiveSpeechRef = useRef<boolean>(false);  // 연속 발화 감지 여부
+  const bargeInCallbackRef = useRef<(() => void) | null>(null);  // Barge-in 콜백
 
   // WebSocket URL 생성 (ref 사용으로 항상 최신 sessionId 보장)
   const getWsUrl = useCallback(() => {
@@ -116,12 +137,31 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
       // 큐가 비어있고 재생 중이 아니면 TTS 완료
       if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
         setIsPlayingTTS(false);
+        // Barge-in refs 리셋
+        ttsStartTimeRef.current = 0;
+        speechStartTimeRef.current = 0;
+        consecutiveSpeechRef.current = false;
+        currentSourceRef.current = null;
+
+        // TTS 재생 완료 후 오디오 캡처 정리 (Barge-in 없이 정상 종료)
+        if (keepAudioCaptureRef.current && !isPlayingRef.current) {
+          console.log('[VoiceRecording] TTS 재생 완료 - 오디오 캡처 유지 (다음 상호작용 대기)');
+          // 오디오 캡처는 유지하여 다음 녹음 시작이 빠르게 되도록 함
+          keepAudioCaptureRef.current = false;
+        }
       }
       return;
     }
 
     isPlayingRef.current = true;
     setIsPlayingTTS(true);
+
+    // Barge-in: TTS 시작 시점 기록 (첫 청크만)
+    if (ttsStartTimeRef.current === 0) {
+      ttsStartTimeRef.current = Date.now();
+      console.log('[VoiceRecording] TTS 시작 시점 기록:', ttsStartTimeRef.current);
+    }
+
     const audioBase64 = audioQueueRef.current.shift();
 
     if (!audioBase64) {
@@ -149,8 +189,12 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
       source.buffer = audioBuffer;
       source.connect(ttsAudioContextRef.current.destination);
 
+      // 현재 소스 저장 (stopTTS에서 중지용)
+      currentSourceRef.current = source;
+
       source.onended = () => {
         isPlayingRef.current = false;
+        currentSourceRef.current = null;
         playNextAudio(); // 다음 청크 재생 (또는 완료 처리)
       };
 
@@ -159,8 +203,39 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     } catch (err) {
       console.error('[VoiceRecording] TTS 재생 오류:', err);
       isPlayingRef.current = false;
+      currentSourceRef.current = null;
       playNextAudio(); // 오류 발생 시 다음 청크 시도
     }
+  }, []);
+
+  // TTS 재생 중지
+  const stopTTS = useCallback(() => {
+    console.log('[VoiceRecording] stopTTS 호출');
+
+    // 현재 재생 중인 소스 중지
+    if (currentSourceRef.current) {
+      try {
+        currentSourceRef.current.stop();
+      } catch (err) {
+        // 이미 중지된 경우 무시
+      }
+      currentSourceRef.current = null;
+    }
+
+    // 오디오 큐 비우기
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsPlayingTTS(false);
+
+    // Barge-in refs 리셋
+    ttsStartTimeRef.current = 0;
+    speechStartTimeRef.current = 0;
+    consecutiveSpeechRef.current = false;
+  }, []);
+
+  // Barge-in 콜백 설정
+  const setOnBargeIn = useCallback((callback: () => void) => {
+    bargeInCallbackRef.current = callback;
   }, []);
 
   // 리샘플링 함수: 원본 샘플레이트 → 16kHz
@@ -207,6 +282,54 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
           }
           if (data.event) {
             setVadEvent(data.event);
+          }
+
+          // ============================================================
+          // Barge-in 로직: TTS 재생 중 사용자 발화 감지 시 TTS 중단
+          // ============================================================
+          if (isPlayingRef.current && ttsStartTimeRef.current > 0) {
+            const now = Date.now();
+            const elapsedSinceTTSStart = now - ttsStartTimeRef.current;
+
+            // Guard time (120ms) 이전은 무시 (TTS 피드백 방지)
+            if (elapsedSinceTTSStart < BARGE_IN_GUARD_TIME_MS) {
+              break;
+            }
+
+            const speechProbValue = data.speech_prob ?? 0;
+            const isSpeech = data.is_speech ?? false;
+
+            // speech_prob이 최소 임계값(BARGE_IN_WEAK_PROB) 이상일 때만 발화로 인정
+          // AEC 필터링 후 낮은 prob으로 is_speech=true가 되는 경우 제외
+          if (isSpeech && speechProbValue >= BARGE_IN_WEAK_PROB) {
+              // 연속 발화 시작 시점 기록
+              if (!consecutiveSpeechRef.current) {
+                consecutiveSpeechRef.current = true;
+                speechStartTimeRef.current = now;
+                console.log('[VoiceRecording] Barge-in: 발화 시작 감지, prob:', speechProbValue);
+              }
+
+              const speechDuration = now - speechStartTimeRef.current;
+
+              // 강한 발화 조건: 90% 이상 확률로 120ms 이상 지속
+              const isStrongSpeech = speechProbValue >= BARGE_IN_STRONG_PROB && speechDuration >= BARGE_IN_STRONG_DURATION_MS;
+              // 약한 발화 조건: 80% 이상 확률로 200ms 이상 지속
+              const isWeakSpeech = speechProbValue >= BARGE_IN_WEAK_PROB && speechDuration >= BARGE_IN_WEAK_DURATION_MS;
+
+              if (isStrongSpeech || isWeakSpeech) {
+                console.log(`[VoiceRecording] Barge-in 트리거! prob: ${speechProbValue}, duration: ${speechDuration}ms, type: ${isStrongSpeech ? 'strong' : 'weak'}`);
+                stopTTS();
+                bargeInCallbackRef.current?.();
+                consecutiveSpeechRef.current = false;
+              }
+            } else {
+              // 발화 종료 시 연속 발화 리셋
+              if (consecutiveSpeechRef.current) {
+                console.log('[VoiceRecording] Barge-in: 발화 종료, 연속 감지 리셋');
+                consecutiveSpeechRef.current = false;
+                speechStartTimeRef.current = 0;
+              }
+            }
           }
           break;
 
@@ -383,6 +506,8 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     processorRef.current = processor;
 
     processor.onaudioprocess = (e) => {
+      // Barge-in 지원: TTS 재생 중에도 VAD 감지를 위해 오디오 전송 유지
+      // AEC(에코 캔슬링)가 활성화되어 있으므로 TTS 피드백은 필터링됨
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         const inputData = e.inputBuffer.getChannelData(0);
 
@@ -450,8 +575,12 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
         await connectWebSocket();
       }
 
-      // 오디오 캡처 시작
-      await startAudioCapture();
+      // 오디오 캡처 시작 (이미 활성화되어 있으면 재사용)
+      if (!processorRef.current || !audioContextRef.current) {
+        await startAudioCapture();
+      } else {
+        console.log('[VoiceRecording] 기존 오디오 캡처 재사용 (Barge-in 후 빠른 시작)');
+      }
 
       setIsRecording(true);
 
@@ -477,8 +606,9 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
         timerRef.current = null;
       }
 
-      // 오디오 캡처 중지
-      stopAudioCapture();
+      // Barge-in 지원: 오디오 캡처는 유지 (TTS 재생 중 VAD 감지용)
+      // 오디오 캡처는 disconnect() 또는 TTS 재생 완료 후 정리됨
+      keepAudioCaptureRef.current = true;
 
       setIsRecording(false);
 
@@ -607,6 +737,8 @@ export const useVoiceRecording = (sessionId: string): UseVoiceRecordingReturn =>
     startRecording,
     stopRecording,
     disconnect,
+    stopTTS,
+    setOnBargeIn,
   };
 };
 

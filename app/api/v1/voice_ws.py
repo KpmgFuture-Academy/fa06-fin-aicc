@@ -456,7 +456,7 @@ class VoiceStreamSession:
                 logger.info(f"[{self.session_id}] 음성 시작")
                 await self.send_message('vad_result', {
                     'is_speech': True,
-                    'speech_prob': 0.0,
+                    'speech_prob': self.vad.last_silero_prob,  # 실제 Silero 확률값
                     'event': 'speech_start',
                 })
 
@@ -467,7 +467,7 @@ class VoiceStreamSession:
                 if not segments:
                     await self.send_message('vad_result', {
                         'is_speech': is_in_speech,  # 실제 VAD 상태
-                        'speech_prob': 0.0,  # HybridVAD는 프레임별 확률 제공 안함
+                        'speech_prob': self.vad.last_silero_prob,  # 실제 Silero 확률값
                         'event': 'speech_continue' if is_in_speech else 'silence_in_buffer',
                     })
 
@@ -506,7 +506,7 @@ class VoiceStreamSession:
             if not is_in_speech and not self.is_speaking and not segments:
                 await self.send_message('vad_result', {
                     'is_speech': False,
-                    'speech_prob': 0.0,
+                    'speech_prob': self.vad.last_silero_prob,  # 실제 Silero 확률값
                     'event': 'silence',
                 })
 

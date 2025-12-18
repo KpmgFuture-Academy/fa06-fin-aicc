@@ -39,7 +39,8 @@
 }
 
 /* AI 상담사 메시지 (기본 assistant 스타일) */
-.chat-message--ai .message-content {
+.chat-message--ai .message-content,
+.chat-message--assistant .message-content {
   background: white;
   color: #333;
   border-bottom-left-radius: 4px;
