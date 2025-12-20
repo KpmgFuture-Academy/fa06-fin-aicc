@@ -1,5 +1,7 @@
 # Tem_fa00-fin-NAME
-- 삼정 Future Academy 최종 프로젝트 템플릿입니다. 
+- 삼정 Future Academy 최종 프로젝트 템플릿입니다.
+- voice_model 브랜치에서는 STT/TTS/VAD 모듈 구축을 위한 작업이 이뤄졌습니다.
+- 최종 작업물들은 app/services 폴더에서 확인 가능합니다.
 ---------------------------------------
 
 # 프로젝트 계획서
