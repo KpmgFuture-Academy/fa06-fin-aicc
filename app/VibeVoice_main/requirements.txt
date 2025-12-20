@@ -1,0 +1,21 @@
+# VibeVoice 한글 TTS 서비스 필수 라이브러리
+
+# 웹 인터페이스
+gradio>=4.0.0
+
+# PyTorch (CUDA 지원 버전은 별도 설치 필요)
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# VibeVoice 모델 (별도 설치 필요)
+# git clone https://github.com/microsoft/VibeVoice.git
+# cd VibeVoice && pip install -e .
+
+# 추가 의존성
+transformers>=4.30.0
+accelerate>=0.20.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+numpy>=1.24.0
+scipy>=1.10.0
+soundfile>=0.12.0
