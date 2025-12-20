@@ -5,11 +5,11 @@ import asyncio
 
 from dotenv import load_dotenv
 
-from app.services.websocket.Hume.tts3 import HumeloTTSHttpEngine, TextToSpeechService
-
 # 프로젝트 루트를 PYTHONPATH에 추가 (스크립트 단독 실행 시 필요)
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 sys.path.append(str(ROOT))
+
+from app.services.Hume.tts3 import HumeloTTSHttpEngine, TextToSpeechService
 
 load_dotenv()
 

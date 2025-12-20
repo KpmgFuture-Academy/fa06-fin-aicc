@@ -1,5 +1,6 @@
 """
 Lightweight VAD using the WebRTC algorithm.
+(Modified for stability: Added flush method and tuned defaults)
 """
 
 from __future__ import annotations
@@ -20,9 +21,11 @@ class WebRTCVADStream(VADEngine):
         *,
         sample_rate: int = 16000,
         frame_ms: int = 20,
-        aggressiveness: int = 2,
-        min_speech_ms: int = 150,
-        max_silence_ms: int = 300,
+        # 수정 1: 민감도 완화 (3->1 or 2->1). 1이 가장 관대함(잡음 허용).
+        aggressiveness: int = 1,
+        min_speech_ms: int = 100,  # 짧은 감탄사("아", "네")도 인식하도록 감소
+        # 수정 2: 끊김 방지. 0.5초 침묵까지는 같은 문장으로 간주
+        max_silence_ms: int = 500,
     ) -> None:
         if frame_ms not in (10, 20, 30):
             raise ValueError("frame_ms must be one of 10, 20, 30 for WebRTC VAD")
@@ -91,3 +94,25 @@ class WebRTCVADStream(VADEngine):
 
         return results
 
+    # 수정 3: flush 메소드 추가 (필수)
+    def flush(self) -> list[FrameResult]:
+        """
+        오디오 스트림이 끝났을 때 호출.
+        진행 중이던 발화가 있다면 강제로 반환함.
+        """
+        results: list[FrameResult] = []
+        if self._in_speech:
+            duration = self._last_speech_ms - self._start_ms
+            # 최소 길이를 만족하면 반환
+            if duration >= self.min_speech_ms:
+                results.append(
+                    FrameResult(
+                        start_ms=self._start_ms,
+                        end_ms=self._last_speech_ms,
+                        is_speech=True,
+                        score=None,
+                        raw={"engine": "webrtc", "flushed": True},
+                    )
+                )
+        self.reset()
+        return results

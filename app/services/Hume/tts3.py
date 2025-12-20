@@ -84,14 +84,12 @@ class HumeloTTSHttpEngine:
         return await asyncio.to_thread(self._synthesize_sync, text, voice or self._voice_id, format)
 
     def _build_payload(self, *, text: str, voice: str, response_format: str) -> dict[str, Any]:
-        """
-        Compose the payload expected by Humelo/Hume's HTTP TTS endpoint.
-        Adjust keys to match your API contract.
-        """
         return {
             "model": self._model,
             "voiceId": voice,
-            "input": text,
+            "voiceName": voice,  # Some Humelo variants expect voiceName
+            "text": text,  # Humelo HTTP API expects this key
+            "input": text,  # Backward compatibility / alternate key
             "language": self._language,
             "emotion": self._emotion,
             "response_format": response_format,
