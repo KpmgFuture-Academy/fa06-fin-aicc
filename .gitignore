@@ -102,6 +102,7 @@ nul
 models/bert_intent_classifier/
 models/final_classifier_model/
 models/hana_card_model/
+models/Final_Hana_Card_Classifier/
 *.safetensors
 *.bin
 *.onnx
@@ -217,3 +218,8 @@ ai_engine/ingestion/*/Validation/
 # 중첩 디렉토리 (클론 실수 방지)
 # ========================================
 fa06-fin-aicc/
+
+# ========================================
+# Google Cloud 서비스 계정 키 (민감정보)
+# ========================================
+gen-lang-client-*.json

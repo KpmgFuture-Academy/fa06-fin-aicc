@@ -1,119 +1,281 @@
-# Tem_fa06-fin-aicc
-- 삼정 Future Academy 06기 최종 프로젝트 템플릿입니다.
----------------------------------------
+# Linker - AI 상담 서비스 플랫폼
 
-# 프로젝트 계획서
+> 심리스한 상담 경험을 제공하는 AI 상담 에이전트
 
-## 1. 프로젝트 개요
-- **프로젝트명** : 심리스한 상담 경험을 제공하는 AI 상담 서비스 기획 프로젝트입니다.
-- **목표** : 상담 맥락 단절을 해결하는 End-to-End AI 상담 에이전트
-- **기간** : 2025년 10월 - 2025년 12월
-- **팀명** : Linker
+---
 
-## 2. 프로젝트 일정
-- **분석 및 설계** : 2025년 10월 - 11월
-- **개발** : 2025년 11월 - 12월
-- **테스트** : 2025년 12월 - 12월
+## 📋 프로젝트 개요
 
-## 3. 팀 구성
-- **프로젝트 매니저** : A
-- **AI/백엔드 모델** : B, C
-- **Product 개발** : D
-   
----------------------------------------
-
-# 요구사항 정의서
-
-## 1. 기능 요구사항
-- [ ] 콜봇/챗봇 API 제공: `/api/v1/chat/message`
-- [ ] 상담원 핸드오버 분석 API 제공: `/api/v1/handover/analyze`
-- [ ] 음성 STT/TTS 모듈 제공: OpenAI Whisper, VITO STT, Hume/Humelo TTS, Google TTS
-- [ ] 실시간(WebSocket) 음성 스트리밍 지원: Whisper/VITO STT, Hume/Humelo TTS
-- [ ] Voice Conversion 데모 제공: Zonos 샘플 실행
-
-## 2. 비기능 요구사항
-- [ ] FastAPI 기반 REST 설계, Swagger 제공으로 확인 용이
-- [ ] 확장성: 음성/LLM 엔진 교체 및 추가 연동 용이
-- [ ] 보안: API 키 환경변수 관리, 최소 권한 원칙
-----------------------------------------
-
-# WBS
-## 1. 기획
-1.1. 문제 정의  
-1.2. 요구사항 수집 및 우선순위 정의  
-1.3. 인프라/보안 정책 수립  
-1.4. 프로젝트 일정 확정 및 커뮤니케이션 플랜
-
-## 2. 데이터 수집, 전처리
-2.1. 은행 FAQ/상품 문서 조사  
-2.2. KMS/검색 연동 설계 및 구축  
-2.3. 음성 데이터 정리 및 전처리  
-2.4. 프롬프트/시나리오 설계
-
-## 3. 대화/분석 모델링
-3.1. 의도 분류 및 정책 설계  
-3.2. 챗봇 답변 템플릿/프롬프트 작성  
-3.3. 감정 분석·키워드 추출 룰/모델 정의  
-3.4. LLM/KMS 호출 흐름 설계
-
-## 4. 서비스 개발
-4.1. 백엔드 API(FastAPI) 구현  
-4.2. 음성 파이프라인(STT/TTS) 모듈 구현 및 WebSocket 스트리밍  
-4.3. 핸드오버 분석/요약 기능 구현  
-4.4. 프런트엔드(AICC 콘솔/데모 UI) 연동
-
-## 5. 테스트/고도화
-5.1. 기능·부하 테스트  
-5.2. UX 개선 및 오류 처리 고도화  
-5.3. 보안/로그/모니터링 정비  
-5.4. QA 및 사용자 피드백 반영
-
-## 6. 결과 산출 및 보고
-6.1. 결과 정리/슬라이드 작성  
-6.2. 보고서/데모 영상 제작  
-6.3. 최종 발표
-
------------------------------------------
-
-# 모델 정의서
-
-## 1. 데이터 모델 (예시)
-- **사용자 테이블**
-  - `user_id` (PK), `username`, `password`, `email`, `role`
-- **분석 결과 테이블**
-  - `result_id` (PK), `user_id` (FK), `result_data` (JSON)
-
-## 2. 객체/엔진
-- **챗봇/콜봇 엔진** : `app/api/v1/chat.py` (목 응답 → LLM/KMS 연동 예정)
-- **핸드오버 분석 엔진** : `app/api/v1/handover.py` (감정/요약/키워드/KMS 추천)
-- **음성 엔진** :
-  - `app/services/voice` : OpenAI Whisper STT, OpenAI TTS
-  - `app/services/voice2` : VITO STT(diarization)
-  - `app/services/websocket` : Whisper/VITO STT, Hume/Humelo TTS WebSocket/HTTP
-  - `app/services/Zonos` : Voice Conversion 데모
-
-----------------------------------------
-
-# 최종 보고서 (요약)
-
-## 1. 프로젝트 개요
-- **목표**: 콜봇/챗봇, 핸드오버, 음성 파이프라인이 통합된 AICC 백엔드 데모 구축
+- **프로젝트명**: Linker - End-to-End AI 상담 에이전트
+- **목표**: 상담 맥락 단절을 해결하는 심리스한 AI 상담 서비스 구축
 - **기간**: 2025년 10월 - 2025년 12월
+- **팀명**: Linker (삼정 Future Academy 06기)
 
-## 2. 주요 성과
-- 대화·핸드오버 API 스켈레톤 제공 및 Swagger 문서화
-- Whisper/VITO/Hume/Humelo/Google TTS 등 음성 모듈 연동 샘플 제공
-- WebSocket 기반 실시간 STT/TTS 파이프라인 예제 제공
-- Voice Conversion(Zonos) 데모 환경 제공
+---
 
-## 3. 향후 개선 과제
-- 목 응답을 실데이터 기반 LLM/KMS 연동으로 대체
-- 상담원 콘솔/프런트엔드와 인증·권한 통합
-- 모니터링/로깅/데이터 거버넌스 강화
+## 🏗️ 시스템 아키텍처
 
------------------------------------------
+### 핵심 구성 요소
 
-# 참고
-- API 문서: `http://localhost:8000/docs`
-- 실행: `uvicorn app.main:app --reload --port 8000`
-- 환경 변수: `OPENAI_API_KEY`, `VITO_CLIENT_ID`, `VITO_CLIENT_SECRET`, `HUME_API_KEY`, `HUME_VOICE_ID`, `HUME_TTS_HTTP_URL`, `GOOGLE_APPLICATION_CREDENTIALS`
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend Layer                           │
+├─────────────────────────────────────────────────────────────────┤
+│  voice-chatbot-revision/  │  agent-dashboard/                   │
+│  (고객용 음성 챗봇 UI)     │  (상담원용 대시보드)                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Backend API Layer                           │
+├─────────────────────────────────────────────────────────────────┤
+│  FastAPI (app/)                                                 │
+│  - /api/v1/chat        : 채팅 메시지 처리                        │
+│  - /api/v1/handover    : 상담원 핸드오버 분석                     │
+│  - /api/v1/sessions    : 세션 관리                               │
+│  - /api/v1/voice       : 음성 STT/TTS (REST + WebSocket)         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       AI Engine Layer                           │
+├─────────────────────────────────────────────────────────────────┤
+│  LangGraph 워크플로우 (ai_engine/graph/)                         │
+│  - triage_agent    : 의도 분류 및 라우팅                          │
+│  - answer_agent    : RAG 기반 답변 생성                           │
+│  - waiting_agent   : 상담원 연결 전 정보 수집                      │
+│  - consent_check   : 고객 동의 확인                               │
+│  - summary_agent   : 대화 요약 생성                               │
+│  - human_transfer  : 상담원 이관                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Data Layer                                │
+├─────────────────────────────────────────────────────────────────┤
+│  ChromaDB (벡터 DB)  │  MySQL (세션/대화 저장)                    │
+│  - 금융 FAQ 문서      │  - chat_sessions 테이블                   │
+│  - 하나카드 38개 카테고리 │  - chat_messages 테이블                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ✨ 주요 기능
+
+### 1. LangGraph 기반 대화 워크플로우
+- **의도 분류 (Triage Agent)**: 38개 카테고리 분류 (KcELECTRA LoRA 파인튜닝)
+- **RAG 기반 답변 생성**: Hybrid Search (벡터 + BM25) + Reranking
+- **상담원 핸드오버**: 고객 동의 → 정보 수집 → 대화 요약 → 이관
+
+### 2. 음성 인터페이스
+- **STT (Speech-to-Text)**: VITO STT (Return Zero)
+- **TTS (Text-to-Speech)**: Google Cloud TTS
+- **VAD (Voice Activity Detection)**: Silero VAD (딥러닝 기반)
+- **실시간 스트리밍**: WebSocket 기반 양방향 통신
+- **Barge-in 지원**: TTS 재생 중 음성 입력 시 자동 중단
+
+### 3. 상담원 대시보드
+- 실시간 대화 모니터링
+- AI 생성 요약 및 핵심 키워드
+- 고객 감정 분석
+- 추천 문서/FAQ 표시
+
+### 4. E2E 평가 파이프라인
+- STT/Intent/RAG/Slot Filling/Summary/Flow 메트릭
+- HTML/JSON 리포트 자동 생성
+
+---
+
+## 🚀 빠른 시작
+
+### 1. 환경 설정
+
+```bash
+# 가상환경 생성
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 의존성 설치
+pip install -r requirements.txt
+```
+
+### 2. 환경 변수 설정 (`.env` 파일)
+
+```env
+# OpenAI API (필수)
+OPENAI_API_KEY=sk-...
+
+# VITO STT (음성 입력) - https://developers.vito.ai/
+VITO_CLIENT_ID=...
+VITO_CLIENT_SECRET=...
+
+# Google TTS (음성 출력) - https://ai.google.dev/
+GOOGLE_TTS_API_KEY=...
+# 또는 서비스 계정 사용
+GOOGLE_APPLICATION_CREDENTIALS=./gen-lang-client-xxxx.json
+
+# 데이터베이스 (선택)
+DATABASE_URL=mysql+pymysql://root:password@localhost:3306/aicc_db?charset=utf8mb4
+
+# LangSmith 추적 (디버깅용, 선택)
+LANGSMITH_API_KEY=...
+LANGSMITH_PROJECT=linker-aicc
+LANGSMITH_TRACING=true
+```
+
+### 3. 벡터 DB 초기화
+
+```bash
+# ChromaDB에 문서 인덱싱
+python scripts/ingest_to_chromadb.py
+```
+
+### 4. 서버 실행
+
+```bash
+# 백엔드 서버 (FastAPI)
+uvicorn app.main:app --reload --port 8000
+
+# 프론트엔드 (음성 챗봇)
+cd voice-chatbot-revision
+npm install
+npm run dev
+
+# 상담원 대시보드
+cd agent-dashboard
+npm install
+npm start
+```
+
+---
+
+## 📁 프로젝트 구조
+
+```
+fa06-fin-aicc/
+├── app/                          # FastAPI 백엔드
+│   ├── api/v1/                   # REST/WebSocket 엔드포인트
+│   │   ├── chat.py               # 채팅 API
+│   │   ├── handover.py           # 핸드오버 API
+│   │   ├── session.py            # 세션 관리 API
+│   │   ├── voice.py              # 음성 REST API
+│   │   └── voice_ws.py           # 음성 WebSocket API
+│   ├── core/                     # 설정 및 DB
+│   │   ├── config.py             # 환경 설정
+│   │   └── database.py           # DB 연결
+│   ├── models/                   # SQLAlchemy 모델
+│   ├── schemas/                  # Pydantic 스키마
+│   └── services/                 # 비즈니스 로직
+│       ├── vad/                  # VAD 서비스 (Silero, WebRTC, Hybrid)
+│       ├── voice/                # STT/TTS 서비스
+│       └── workflow_service.py   # LangGraph 워크플로우 래퍼
+│
+├── ai_engine/                    # AI 엔진
+│   ├── graph/                    # LangGraph 워크플로우
+│   │   ├── nodes/                # 노드 정의 (7개)
+│   │   ├── tools/                # 도구 (의도분류, RAG 등)
+│   │   ├── state.py              # 상태 정의
+│   │   └── workflow.py           # 워크플로우 빌더
+│   ├── ingestion/                # 문서 처리
+│   │   └── bert_financial_intent_classifier/  # 의도 분류 모델
+│   ├── prompts/                  # 프롬프트 템플릿
+│   └── vector_store.py           # ChromaDB 래퍼
+│
+├── voice-chatbot-revision/       # 고객용 음성 챗봇 (React + Vite)
+├── agent-dashboard/              # 상담원 대시보드 (React)
+├── e2e_evaluation_pipeline/      # E2E 평가 파이프라인
+├── models/                       # 학습된 모델 (의도 분류)
+├── data/                         # 학습 데이터
+├── scripts/                      # 유틸리티 스크립트
+├── chroma_db/                    # 벡터 DB 저장소
+└── docs/                         # 문서
+```
+
+---
+
+## 🔌 API 엔드포인트
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api/v1/chat/message` | 채팅 메시지 처리 |
+| POST | `/api/v1/handover/analyze` | 핸드오버 분석 |
+| POST | `/api/v1/handover/request` | 핸드오버 요청 |
+| GET | `/api/v1/sessions` | 세션 목록 조회 |
+| POST | `/api/v1/voice/stt` | 음성→텍스트 변환 |
+| POST | `/api/v1/voice/tts` | 텍스트→음성 변환 |
+| WS | `/api/v1/voice/streaming/{session_id}` | 실시간 음성 스트리밍 |
+| GET | `/api/v1/voice/vad/status` | VAD 서비스 상태 확인 |
+| GET | `/health` | 헬스체크 |
+
+📄 **Swagger 문서**: `http://localhost:8000/docs`
+
+---
+
+## 🤖 AI 모델
+
+### 의도 분류 모델
+- **모델**: KcELECTRA + LoRA 파인튜닝
+- **카테고리**: 38개 (하나카드 FAQ 기반)
+- **경로**: `models/Final_Hana_Card_Classifier/`
+
+### RAG 설정
+- **임베딩**: `jhgan/ko-sroberta-multitask` (한국어 특화)
+- **Reranker**: `Dongjin-kr/ko-reranker` (한국어 Cross-Encoder)
+- **검색**: Hybrid Search (벡터 0.6 + BM25 0.4) + RRF Fusion
+
+---
+
+## 📊 평가 파이프라인
+
+```bash
+# E2E 평가 실행
+python -m e2e_evaluation_pipeline --dataset datasets/test_set.json
+
+# 결과 확인
+# reports/ 폴더에 HTML/JSON 리포트 생성
+```
+
+---
+
+## 🛠️ 개발 도구
+
+### LangSmith 추적
+`.env`에서 `LANGSMITH_TRACING=true` 설정 시 LangSmith에서 LLM 호출 추적 가능
+
+### Docker 배포
+```bash
+docker-compose up -d
+```
+
+---
+
+## 📚 참고 문서
+
+- [설정 가이드](docs/setup/)
+- [WebSocket API 문서](docs/websocket/)
+- [트러블슈팅](docs/troubleshooting/)
+- [분석 보고서](docs/analysis/)
+- [대시보드 문서](docs/dashboard/)
+
+---
+
+## 👥 팀 구성
+
+| 역할 | 담당 |
+|------|------|
+| 프로젝트 매니저 | A |
+| AI/백엔드 모델 | B, C |
+| Product 개발 | D |
+
+---
+
+## 📝 변경 이력
+
+자세한 변경 사항은 [CHANGELOG.md](CHANGELOG.md)를 참조하세요.
+
+---
+
+## 📝 라이선스
+
+이 프로젝트는 삼정 Future Academy 06기 최종 프로젝트로 개발되었습니다.
